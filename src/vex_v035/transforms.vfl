@@ -1,0 +1,32 @@
+int seed = chi("../../random_seed");
+// Triangle-wave fold: reflects x back into [-h, h] however far it overshoots.
+float fold(float x; float h) {
+    if (h <= 0.0) return 0.0;
+    float period = 4.0*h;
+    float shifted = x + h;
+    float m = shifted - period*floor(shifted/period);   // in [0, period)
+    return m <= 2.0*h ? m - h : 3.0*h - m;
+}
+// Stable id and independent random streams: adding points preserves old draws.
+vector jitter = set(rand(set(i@id,seed,11)), rand(set(i@id,seed,12)), rand(set(i@id,seed,13)))*2-1;
+vector angles = set(rand(set(i@id,seed,21)), rand(set(i@id,seed,22)), rand(set(i@id,seed,23)))*2-1;
+@P += jitter*chv("../../position_random");
+// Optional: keep Area jitter inside the Area rectangle (X and Z only; Y jitter stays free).
+if (chi("../../mode") == 1 && chi("../../area_keepinside")) {
+    @P.x = fold(@P.x, 0.5*max(0.0, chf("../../area_sizex")));
+    @P.z = fold(@P.z, 0.5*max(0.0, chf("../../area_sizez")));
+}
+// Scale Instances off: Bounds Scale stretches only the layout. Scale the point positions about the Pivot here
+// (the USD transform then carries rotation and translation only), so the instances keep their own size.
+if (!chi("../../bound_scale_instances")) {
+    vector pivot = chv("../../bound_p");
+    @P = pivot + (@P - pivot)*max(set(0.0001,0.0001,0.0001), chv("../../bound_s"));
+}
+vector rotation = radians(chv("../../base_rotation") + angles*chv("../../rotation_random"));
+p@orient = eulertoquaternion(rotation, XFORM_XYZ);
+// ALIGNMENT hook: a generator (Circle facing today; Curve/Surface later) may write p@align. It turns the instance after its own
+// rotation, so Instance Transform > Rotation and Randomize still apply in the prototype's own frame.
+if (haspointattrib(0, "align")) p@orient = qmultiply(p@align, p@orient);
+float variation = clamp(chf("../../scale_random"), 0.0, 0.99);
+float s = max(0.0001, chf("../../base_scale"))*(1.0 + (2.0*rand(set(i@id,seed,31))-1.0)*variation);
+v@scale = set(s,s,s);

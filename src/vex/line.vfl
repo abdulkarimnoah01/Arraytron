@@ -1,0 +1,20 @@
+int count = max(1, chi("../../line_count"));
+int axis = clamp(chi("../../line_axis"),0,3);
+float length = max(0.0, chf("../../line_length"));
+int centered = chi("../../line_center");
+vector direction = {1,0,0};
+if (axis < 3) {
+    direction = {0,0,0};
+    direction[axis] = 1;
+} else {
+    direction = chv("../../line_direction");
+    // A zero vector has no direction. Fall back to local +X predictably.
+    direction = length2(direction) > 1e-12 ? normalize(direction) : set(1,0,0);
+}
+for (int i=0; i<count; i++) {
+    float distance = count > 1 ? float(i)*length/float(count-1) : 0.0;
+    if (centered && count > 1) distance -= length*0.5;
+    vector pos = direction*distance;
+    int pt = addpoint(0, pos);
+    setpointattrib(0, "id", pt, i, "set");
+}

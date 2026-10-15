@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">Arraytron — distribution seal</title>
+  <desc id="description">A monochrome double-ring seal. An inverted triangle floats above an isometric matrix of scattered cubes and spheres, joined by fine construction lines.</desc>
+  <g id="seal" stroke="#000" fill="none">
+    <circle id="white-field" cx="512" cy="512" r="446" fill="#fff" stroke="none"/>
+    <circle cx="512" cy="512" r="446" stroke-width="9"/>
+    <circle cx="512" cy="512" r="426" stroke-width="3.5"/>
+  </g>
+  <g id="construction" fill="none" stroke="#000" stroke-width="2" stroke-linecap="butt">
+
+<path d="M 465.50,353.50 L 837.50,581.50" />
+<path d="M 558.50,353.50 L 186.50,581.50" />
+<path d="M 372.50,410.50 L 744.50,638.50" />
+<path d="M 651.50,410.50 L 279.50,638.50" />
+<path d="M 279.50,467.50 L 651.50,695.50" />
+<path d="M 744.50,467.50 L 372.50,695.50" />
+<path d="M 186.50,524.50 L 558.50,752.50" />
+<path d="M 837.50,524.50 L 465.50,752.50" />
+<polygon points="512.0,325.0 884.0,553.0 512.0,781.0 140.0,553.0" stroke-width="3"/>
+<path d="M 512.00,314.00 L 512.00,875.00" stroke-dasharray="9 11"/>
+<path d="M 168.00,512.00 L 856.00,512.00" stroke-dasharray="8 11"/>
+<path d="M 921.00,512.00 L 938.00,512.00" stroke-width="4"/>
+<path d="M 512.00,921.00 L 512.00,938.00" stroke-width="4"/>
+<path d="M 103.00,512.00 L 86.00,512.00" stroke-width="4"/>
+<path d="M 512.00,103.00 L 512.00,86.00" stroke-width="4"/>
+</g>
+<g id="inverted-triangle" fill="#000">
+  <path d="M 387,176 H 637 L 512,326 Z"/>
+</g>
+<g id="scattered-matrix" stroke="#000" stroke-linejoin="miter">
+<g id="cube-1" transform="translate(512 381) scale(1.04)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="sphere-2" transform="translate(598 442) scale(0.94)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="sphere-5" transform="translate(415 433) scale(0.94)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="cube-3" transform="translate(705 492) scale(1.03)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="cube-6" transform="translate(516 500) scale(1.12)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="cube-9" transform="translate(333 496) scale(1.04)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="sphere-4" transform="translate(794 555) scale(0.86)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="sphere-7" transform="translate(600 551) scale(0.85)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="sphere-10" transform="translate(411 557) scale(0.98)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="sphere-13" transform="translate(228 551) scale(0.86)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="cube-8" transform="translate(706 612) scale(1.0)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="cube-11" transform="translate(515 605) scale(1.08)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="cube-14" transform="translate(332 613) scale(1.0)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="cube-12" transform="translate(601 674) scale(0.92)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+<g id="sphere-15" transform="translate(415 666) scale(0.91)">
+      <circle r="26" fill="#fff" stroke-width="3.8"/>
+      <path d="M 0,-26 A 26,26 0 0 1 0,26 C 18,20 18,-20 0,-26 Z" fill="#000" stroke="none"/>
+      <ellipse rx="26" ry="8" fill="none" stroke-width="2"/>
+      <path d="M 0,-26 C -15,-16 -15,16 0,26" fill="none" stroke-width="2"/>
+    </g>
+<g id="cube-16" transform="translate(512 729) scale(1.1)" stroke-width="3.8">
+      <path d="M 0,-32 28,-16 28,16 0,32 -28,16 -28,-16 Z" fill="#fff"/>
+      <path d="M 0,0 28,-16 28,16 0,32 Z" fill="#000"/>
+      <path d="M -28,-16 0,0 28,-16 M 0,0 V 32" fill="none"/>
+    </g>
+</g>
+  <g id="lower-register" fill="none" stroke="#000">
+    <circle cx="512" cy="861" r="13" stroke-width="3" fill="#fff"/>
+    <circle cx="512" cy="861" r="4" stroke-width="2" fill="#000"/>
+    <path d="M 472,861 H 489 M 535,861 H 552" stroke-width="2"/>
+  </g>
+</svg>

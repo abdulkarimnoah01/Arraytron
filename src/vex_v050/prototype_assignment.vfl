@@ -1,0 +1,54 @@
+// PROTOTYPE_ASSIGNMENT: choose a Prototype Bank entry per point, then apply that entry's own scale and rotation offset.
+// Runs after the variation stage, so a point's position/orientation/scale and its prototype are decided independently:
+// changing weights or the selection mode never reshuffles positions, and per-point random draws are keyed on the stable id.
+int rows = chi("../../protos");
+int rowid[];
+float weight[];
+float pscale[];
+float pvar[];
+vector4 poff[];
+for (int r = 1; r <= rows; r++) {
+    if (!chi(sprintf("../../proto_on%d", r))) continue;
+    append(rowid, r);
+    append(weight, max(0.0, chf(sprintf("../../proto_weight%d", r))));
+    append(pscale, max(0.0001, chf(sprintf("../../proto_scale%d", r))));
+    append(pvar, clamp(chf(sprintf("../../proto_scalevar%d", r)), 0.0, 0.99));
+    vector eul = radians(chv(sprintf("../../proto_rot%d", r)));
+    append(poff, eulertoquaternion(eul, XFORM_XYZ));
+}
+int n = len(rowid);
+if (n < 1) n = 1;     // the Source Resolver reports an empty bank; keep the cook well defined
+int mode = chi("../../proto_mode");
+int seed = chi("../../proto_seed");
+float total = 0.0;
+for (int k = 0; k < len(weight); k++) total += weight[k];
+int pick = 0;
+if (mode == 3) {
+    // Cycle: round robin in id order, weights ignored.
+    pick = i@id % n;
+} else if (mode == 0 || total <= 0.0) {
+    // Random: uniform over the enabled entries (also the fallback when every weight is 0).
+    pick = min(int(rand(set(i@id, seed, 41))*float(n)), n - 1);
+} else {
+    // Weighted Random draws a stable per-id number; Sequential walks the ids in order. Both read the cumulative
+    // weights, so changing one weight only moves the points that cross a boundary.
+    // Even Percent (mode 4): Fibonacci hashing of the id (32-bit integer multiply by 2^32 / golden ratio, wrapping; the top bit is dropped because VEX has no shift) is a low-discrepancy sequence: nearly exact percentages for any set of ids, and
+    // every id keeps its pick when other points come or go. Integer arithmetic keeps the quality for large ids (a float golden-ratio product loses it).
+    int fib = i@id * -1640531527 + seed * 1013904223;
+    float u = mode == 2 ? (float(@ptnum) + 0.5)/float(max(1, npoints(0))) : (mode == 4 ? float((fib & 2147483647) / 256)/8388608.0 : rand(set(i@id, seed, 41)));
+    float t = u*total;
+    float cumulative = 0.0;
+    pick = n - 1;
+    for (int k = 0; k < len(weight); k++) {
+        cumulative += weight[k];
+        if (weight[k] > 0.0 && t < cumulative) { pick = k; break; }
+    }
+}
+i@protoindex = pick;
+i@proto_id = len(rowid) > 0 ? rowid[pick] : 0;       // bank row number: stable when other rows are disabled
+if (len(rowid) > 0) {
+    v@scale *= pscale[pick]*(1.0 + (2.0*rand(set(i@id, seed, 51)) - 1.0)*pvar[pick]);
+    p@orient = qmultiply(p@orient, poff[pick]);       // the offset turns the prototype itself, before the instance rotation
+}
+// Mask Scale (v0.5.0): MASK_PROCESSOR wrote f@maskscale (absent unless the mask effect includes Scale), multiply it in last.
+if (haspointattrib(0, "maskscale")) v@scale *= f@maskscale;

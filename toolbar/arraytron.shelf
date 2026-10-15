@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <toolshelf name="arraytron" label="Arraytron">
+    <memberTool name="arraytron_update"/>
+  </toolshelf>
+  <tool name="arraytron_update" label="Check for Updates" icon="$ARRAYTRON/icon/Arraytron-Clean.svg">
+    <helpText>Check whether a newer Arraytron is available and offer to install it.</helpText>
+    <script scriptType="python"><![CDATA[
+import os, sys
+folder = os.path.join(os.environ.get("ARRAYTRON", ""), "updater")
+if folder not in sys.path:
+    sys.path.insert(0, folder)
+import arraytron_update_ui
+arraytron_update_ui.check_for_updates()
+]]></script>
+  </tool>
+</shelfDocument>

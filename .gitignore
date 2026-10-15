@@ -1,0 +1,41 @@
+# Arraytron is published as source, tools, tests, documents and the installer.
+# The built HDAs, demo scenes, caches and renders are NOT in git: they come with the GitHub release
+# (Arraytron-<version>.zip), which the in-Houdini "Check for Updates" tool installs.
+*
+!/.gitignore
+!/.gitattributes
+!/.github/
+!/.github/**
+!/LICENSE
+!/README.md
+!/INSTALL.md
+!/CHANGELOG.md
+!/installer/
+!/installer/**
+!/icon/
+!/icon/**
+!/src/
+!/src/**
+!/toolbar/
+!/toolbar/**
+!/tools/
+!/tools/**
+!/tests/
+!/tests/**
+!/docs/
+!/docs/**
+__pycache__/
+*.pyc
+# past multi-agent run artifacts
+/docs/*AUDIT*
+/docs/TEAM_*
+/docs/CODER_RETRY.md
+/docs/CONTROLS_*.md
+/docs/FINAL_REVIEW.md
+/docs/INITIAL_TEAM_TASK.md
+/docs/RESEARCH_*.md
+/tools/account_google.py
+/tools/team_run.py
+/tools/team_specialist.py
+/tests/*.json
+/tests/*.usda

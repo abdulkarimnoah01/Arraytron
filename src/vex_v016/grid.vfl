@@ -1,0 +1,27 @@
+// Grid / matrix points. X varies fastest: id = i + nx*(j + ny*k). Each axis is capped at 100 points.
+int spacemode = chi("../../grid_spacemode");
+int centered = chi("../../grid_center");
+vector size = max(set(0,0,0), chv("../../grid_size"));
+vector spacing = max(set(0.001,0.001,0.001), chv("../../grid_spacing"));
+int cnt[] = array(chi("../../grid_countx"), chi("../../grid_county"), chi("../../grid_countz"));
+vector step = {0,0,0};
+vector start = {0,0,0};
+for (int a=0; a<3; a++) {
+    if (spacemode == 1) {
+        cnt[a] = clamp(int(floor(size[a]/spacing[a] + 1e-6)) + 1, 1, 100);
+        step[a] = spacing[a];
+    } else {
+        cnt[a] = clamp(cnt[a], 1, 100);
+        step[a] = cnt[a] > 1 ? size[a]/float(cnt[a]-1) : 0.0;
+    }
+    // Centre the span the points actually cover (equals Size in By Count mode).
+    start[a] = centered ? -0.5*float(cnt[a]-1)*step[a] : 0.0;
+}
+for (int k=0; k<cnt[2]; k++) {
+    for (int j=0; j<cnt[1]; j++) {
+        for (int i=0; i<cnt[0]; i++) {
+            int pt = addpoint(0, start + set(float(i)*step.x, float(j)*step.y, float(k)*step.z));
+            setpointattrib(0, "id", pt, i + cnt[0]*(j + cnt[1]*k), "set");
+        }
+    }
+}

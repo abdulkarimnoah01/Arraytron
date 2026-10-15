@@ -1,0 +1,10 @@
+int count = max(1, chi("../../area_count"));
+int seed = chi("../../area_seed");
+float sx = max(0.0, chf("../../area_sizex"));
+float sz = max(0.0, chf("../../area_sizez"));
+for (int i=0; i<count; i++) {
+    float x = (rand(set(i,seed,101))-0.5)*sx;
+    float z = (rand(set(i,seed,102))-0.5)*sz;
+    int pt = addpoint(0, set(x,0,z));
+    setpointattrib(0,"id",pt,i,"set");
+}
