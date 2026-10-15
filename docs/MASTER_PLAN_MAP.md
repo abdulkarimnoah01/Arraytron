@@ -71,3 +71,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-12: v1.1.0 Houdini 20.5 / 21 build (docs/PORT_HOUDINI_205.md): the same node on the older Instancer LOP with identical USD output, installer for 20.5 / 21 / 22; v1.0.0 archived. A compatibility release outside the master plan; open items are the GUI checks.
 - 2026-10-14: v1.5.0 Imported Points (user request after the roadmap: scatter on imported FX sim points / any points with full control of prototype percentages, scale, rotation and ids for AOVs), docs/IMPORTED_POINTS.md; v1.1.0 archived.
 - 2026-10-15: v1.6.0 Paint tool shortcuts (user request after the first working GUI test of the brush); v1.5.0 archived.
+- 2026-10-15: v1.6.1 fix (Paint tool entered by selecting the node must not change the mode); v1.6.0 archived.

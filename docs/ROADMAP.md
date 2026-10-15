@@ -54,3 +54,5 @@ Status 2026-10-12 (latest): v1.1.0 adds the Houdini 20.5 / 21 build (docs/PORT_H
 Status 2026-10-14 (latest): v1.5.0 Imported Points built and validated in Houdini 22, 20.5 and 21 (docs/IMPORTED_POINTS.md). The master roadmap v0.1 to v1.0 stays complete; further work follows the user's review.
 
 Status 2026-10-15 (latest): v1.6.0 Paint shortcuts built and validated in Houdini 22, 20.5 and 21 (docs/PAINT_BRUSH.md).
+
+Status 2026-10-15 (latest): v1.6.1 fixes the Paint tool switching the Distribution Mode when the node is selected.

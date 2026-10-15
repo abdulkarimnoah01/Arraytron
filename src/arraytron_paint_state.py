@@ -31,7 +31,7 @@ class PaintState(object):
     def __init__(self,state_name,scene_viewer):
         self.state_name=state_name;self.scene_viewer=scene_viewer
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
-        self.resizing=None;self.hover_kind='add';self.show_help=True
+        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
         self.preview=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_paint_points')
@@ -51,6 +51,17 @@ class PaintState(object):
         if dev.isCtrlKey() and not dev.isShiftKey():return 'add' if op==1 else 'remove'
         if dev.isShiftKey() and not dev.isCtrlKey():return 'add' if op==3 else 'relax'
         return KINDS[op]
+    def _active(self):return self.node is not None and self.node.evalParm('mode')==6
+    def _ensure(self):
+        """True while the node is in Paint mode. Selecting the node enters this tool by itself, so it never changes the Distribution Mode: with another mode it stays idle
+        (nothing drawn, no prompt, every mouse / key event is left to Houdini) and wakes up when the mode becomes Paint (the Start Painting button sets it)."""
+        if not self._active():
+            if self.loaded:
+                self._commit();self.loaded=False;self.painting=False;self.resizing=None
+                self.brush.show(False);self.core.show(False);self.preview.show(False);self.scene_viewer.clearPromptMessage()
+            return False
+        if not self.loaded:self._load();self.loaded=True;self._prompt()
+        return True
     def _load(self):
         m=self._m();self.data=m.paint_decode(self.node.evalParm('paint_data'))
         try:self.surface=m.paint_surface(self.node)
@@ -109,12 +120,10 @@ class PaintState(object):
     # ----- state callbacks
     @guarded
     def onEnter(self,kwargs):
-        self.node=kwargs['node']
-        if self.node.evalParm('mode')!=6:self.node.parm('mode').set(6)
-        self._load();self._prompt()
+        self.node=kwargs['node'];self.loaded=False;self._ensure()
     @guarded
     def onResume(self,kwargs):
-        self._load();self._prompt()
+        self.loaded=False;self._ensure()
     @guarded
     def onInterrupt(self,kwargs):
         self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False)
@@ -123,6 +132,7 @@ class PaintState(object):
         self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.scene_viewer.clearPromptMessage()
     @guarded
     def onMouseEvent(self,kwargs):
+        if not self._ensure():return False
         ev=kwargs['ui_event'];dev=ev.device();reason=ev.reason()
         if dev.isMiddleButton() or dev.isAltKey():return False                        # let the camera handle navigation
         self._pick(ev)
@@ -150,6 +160,7 @@ class PaintState(object):
     @guarded
     def onMouseWheelEvent(self,kwargs):
         """Shift + wheel: radius; Ctrl + wheel: strength; Ctrl + Shift + wheel: density (anything else scrolls / zooms the camera as usual)."""
+        if not self._ensure():return False
         dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
         if sign==0 or dev.isAltKey():return False
         if dev.isShiftKey() and dev.isCtrlKey():self._set('paint_density',self.node.evalParm('paint_density')*1.15**sign,0.0,1000.0)
@@ -159,6 +170,7 @@ class PaintState(object):
         self._prompt();self._draw_brush();return True
     @guarded
     def onKeyEvent(self,kwargs):
+        if not self._ensure():return False
         key=kwargs['ui_event'].device().keyString();n=self.node
         if key in ('[',']'):self._set('paint_radius',n.evalParm('paint_radius')*(1.1 if key==']' else 1/1.1),0.01,100.0)
         elif key in ('-','_'):self._set('paint_strength',n.evalParm('paint_strength')-0.05,0.0,1.0)

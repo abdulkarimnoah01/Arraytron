@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0'}[VID]
+PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_polish_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -172,10 +172,10 @@ def paint_refine():
     glob={'hou':ns,'np':np};exec(compile((ROOT/'src/arraytron_paint_state.py').read_text().replace('import hou'+chr(10),'',1),'s','exec'),glob);glob['STRICT']=True;R=hou.uiEventReason
     a.parm('paint_prim').set('');a.parm('paint_radius').set(0.5);a.parm('paint_density').set(150.0);a.parm('paint_spacing').set(0.0);a.parm('paint_falloff').set(3)
     for op,ctrl,expect in ((2,False,'replace'),(3,False,'relax'),(2,True,'remove'),(1,True,'add'),(0,True,'remove'),(0,False,'add')):
-        a.parm('paint_op').set(op);a.parm('paint_data').set('');state=glob['PaintState']('x',Viewer());state.onEnter({'node':a})
+        a.parm('paint_op').set(op);a.parm('paint_data').set('');state=glob['PaintState']('x',Viewer());a.parm('mode').set(6);state.onEnter({'node':a})
         state.onMouseEvent({'ui_event':Event(Device(30,20,left=True,ctrl=ctrl),R.Start)});assert state.kind==expect,(op,ctrl,state.kind,expect)
         state.onMouseEvent({'ui_event':Event(Device(30,20,left=True,ctrl=ctrl),R.Changed)})
-    a.parm('paint_op').set(2);state=glob['PaintState']('x',Viewer());a.parm('paint_data').set(m.paint_encode(d));state.onEnter({'node':a});first_new=m.paint_decode(a.evalParm('paint_data'))['next']
+    a.parm('paint_op').set(2);state=glob['PaintState']('x',Viewer());a.parm('paint_data').set(m.paint_encode(d));a.parm('mode').set(6);state.onEnter({'node':a});first_new=m.paint_decode(a.evalParm('paint_data'))['next']
     state.onMouseEvent({'ui_event':Event(Device(0,0,left=True),R.Start)});state.onMouseEvent({'ui_event':Event(Device(0,0,left=True),R.Changed)});after=m.paint_decode(a.evalParm('paint_data'))
     assert after['next']>first_new and np.all(np.linalg.norm(after['pts'][after['pts'][:,6]>=first_new][:,[0,2]],axis=1)<=0.5+1e-6) and len(after['pts'][after['pts'][:,6]>=first_new])>0       # the viewer state ran Replace: new ids inside the brush
 class Stub(object):

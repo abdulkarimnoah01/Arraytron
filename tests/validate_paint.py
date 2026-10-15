@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0'}[VID]
+PREVIOUS={'v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_paint_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
@@ -271,7 +271,11 @@ def viewer_state():
     ns=types.SimpleNamespace(**{k:getattr(hou,k) for k in ('Vector4','Vector3','Geometry','drawableGeometryType','uiEventReason','promptMessageType','Error','lopNodeTypeCategory','ViewerStateTemplate')});ns.GeometryDrawable=StubDrawable
     glob={'hou':ns,'np':np,'__name__':'arraytron_paint_state_test'};exec(compile((ROOT/'src/arraytron_paint_state.py').read_text().replace('import hou'+chr(10),'',1),'arraytron_paint_state.py','exec'),glob);glob['STRICT']=True;glob['STRICT']=True
     viewer=StubViewer();state=glob['PaintState']('arraytron_paint_test',viewer);R=hou.uiEventReason
-    state.onEnter({'node':a});assert a.evalParm('mode')==6 and 'Arraytron Paint [' in viewer.prompt                                    # entering switches the node to Paint mode
+    # selecting the node enters the tool by itself: with another Distribution Mode it must change nothing and leave every event to Houdini
+    state.onEnter({'node':a});assert a.evalParm('mode')==0 and 'Arraytron Paint [' not in (viewer.prompt or '')
+    assert state.onMouseEvent({'ui_event':Event(Device(30,20,left=True),R.Start)}) is False and state.onMouseWheelEvent({'ui_event':Event(Device(0,0,wheel=1,shift=True),R.Changed)}) is False and state.onKeyEvent({'ui_event':Event(Device(0,0,key=']'),R.Changed)}) is False
+    assert a.evalParm('mode')==0 and a.evalParm('paint_radius')==0.5 and a.evalParm('paint_data')=='' and not state.painting
+    a.parm('mode').set(6);state.onMouseEvent({'ui_event':Event(Device(30,20),R.Located)});assert 'Arraytron Paint [' in viewer.prompt        # Paint mode (the Start Painting button sets it) wakes the tool
     # stroke: press at (30, 20) -> world (3, 0, 2), drag to (34, 20), release
     assert state.onMouseEvent({'ui_event':Event(Device(30,20,left=True),R.Start)}) is True
     hit=state.hit;assert hit is not None and np.allclose(hit[0],[3.0,0.0,2.0],atol=1e-9) and np.allclose(hit[1],[0,1,0]) and state.painting
@@ -296,7 +300,7 @@ def viewer_state():
 def brush_shortcuts():
     """Mouse and keyboard shortcuts of the Paint tool through the stand-in viewport: Ctrl+Shift drag and Shift / Ctrl / Ctrl+Shift wheel, keys, the live prompt,
     Shift = Relax, Ctrl = erase, the brush colour per operation and the strength ring."""
-    st,sc=new_scene('keys');a=arraytron(st,sc,mode=0,paint_prim='',paint_radius=0.5,paint_density=200.0,paint_spacing=0.0,paint_falloff=3,paint_strength=1.0);m=a.hdaModule()
+    st,sc=new_scene('keys');a=arraytron(st,sc,mode=6,paint_prim='',paint_radius=0.5,paint_density=200.0,paint_spacing=0.0,paint_falloff=3,paint_strength=1.0);m=a.hdaModule()
     ns=types.SimpleNamespace(**{k:getattr(hou,k) for k in ('Vector4','Vector3','Geometry','drawableGeometryType','uiEventReason','promptMessageType','Error','lopNodeTypeCategory','ViewerStateTemplate')});ns.GeometryDrawable=StubDrawable
     text=(ROOT/'src/arraytron_paint_state.py').read_text().replace('import hou'+chr(10),'',1)
     if MUTATE=='paint_resize':text=text.replace("2.0**((dev.mouseX()-x0)/150.0)","2.0**((x0-dev.mouseX())/150.0)")
