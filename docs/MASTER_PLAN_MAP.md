@@ -73,3 +73,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-15: v1.6.0 Paint tool shortcuts (user request after the first working GUI test of the brush); v1.5.0 archived.
 - 2026-10-15: v1.6.1 fix (Paint tool entered by selecting the node must not change the mode); v1.6.0 archived.
 - 2026-10-18: v1.6.2 Settle tab renamed Physics (user request); v1.6.1 archived.
+- 2026-10-18: v1.7.0 Pick Instance (user request: easier way to get and select instance ids); v1.6.2 archived.

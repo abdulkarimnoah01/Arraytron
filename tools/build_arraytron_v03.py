@@ -31,14 +31,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.5.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),
         'v1.6.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
         'v1.6.1':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.1: the same features, the Paint tool no longer switches the Distribution Mode on its own; v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
-        'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True)}     # v1.6.2: the same features, the Settle tab is called Physics
+        'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.2: the same features, the Settle tab is called Physics
+        'v1.7.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True)}     # v1.7.0: the same features, plus Pick Instance (click an instance in the viewport to create its override row)
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=LABEL=PHYS_TAB=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LABEL=PHYS_TAB=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,LABEL,PHYS_TAB
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LABEL,PHYS_TAB
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LABEL=vid
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
 configure(versions.CURRENT)
@@ -305,7 +306,7 @@ def finish_folder():
     export=callback(hou.ButtonParmTemplate('export_usd','Export USD',help='Write the final instances of this node (positions, orientations, scales, ids, prototype indices, hidden ids, primvars and the prototypes) to a self-contained USD file, for a cache, a hand-over or a reference. The debug guides are not exported.'),"n=kwargs['node']\npath,count=n.hdaModule().export_instances(n)\nprint('Arraytron: wrote %d instances to %s' % (count,path))")
     path=hou.StringParmTemplate('export_path','Export File',1,default_value=('$HIP/arraytron_export/$OS.usd',),string_type=hou.stringParmType.FileReference,tags={'filechooser_pattern':'*.usd,*.usda,*.usdc','filechooser_mode':'write'},help='Where Export USD writes. $OS is the node name.')
     dbg=lambda name,label,default,help_:hide(hou.ToggleParmTemplate(name,label,default_value=default,help=help_),'{ dbg_on == 0 }')
-    return hou.FolderParmTemplate('finish','Finish',folder_type=hou.folderType.Simple,parm_templates=(table,info,clear,
+    fold=hou.FolderParmTemplate('finish','Finish',folder_type=hou.folderType.Simple,parm_templates=(table,info,clear,
         hou.ToggleParmTemplate('dbg_on','Debug Views',default_value=False,help='Show debug guides under the output prim (Debug). They are guide purpose: visible in the viewport, never rendered. Off by default.'),
         dbg('dbg_generated','Generated Points',True,'The points as the distribution generated them (white), before the Mask, Field Stack, Separation and Avoid Geometry.'),
         dbg('dbg_rejected','Rejected Points',True,'Generated points that are gone at the end: masked, thinned, separated or avoided (red).'),
@@ -315,6 +316,8 @@ def finish_folder():
         dbg('dbg_centres','Cluster Centres',False,'The cluster centres (Cluster mode).'),
         hide(hou.FloatParmTemplate('dbg_size','Debug Size',1,default_value=(0.05,),min=0.001,max=100,help='Size of the debug points and axes.'),'{ dbg_on == 0 }'),
         path,export,cinfo))
+    if PICK:fold.addParmTemplate(callback(hou.ButtonParmTemplate('ovr_pick','Pick Instance in Viewport',help='Click an instance in the viewport to create its override row (its stable id is filled in for you). Ctrl-click ticks Delete as well. The marker shows the instance under the mouse and the prompt its id. Esc or Enter finishes. The instances come from the node output, so hidden or deleted ones cannot be picked.'),"kwargs['node'].hdaModule().pick_start(kwargs['node'])"))
+    return fold
 
 def imported_folder():
     """Imported Points (v1.5.0): scatter on points from a SOP (an FX simulation, a scatter ...) or on a USD Points / PointInstancer prim."""
@@ -582,7 +585,7 @@ def ui_layout(g):
         optimize+=heading('PRIMVARS')+[o2[n] for n in ('pv_id','pv_proto','pv_random','pv_mask','pv_density','pv_cluster')+(('pv_srcid','pv_copy') if IMPORTED else ())+('pv_lod','pv_seed')]
     finish=[]
     if FINISH:
-        f2=content('finish');finish=hint('Fix single instances by hand, look inside the result, and write it out.')+heading('INSTANCE OVERRIDES')+[f2['overrides'],f2['ovr_info'],f2['ovr_clear']]
+        f2=content('finish');finish=hint('Fix single instances by hand, look inside the result, and write it out.')+heading('INSTANCE OVERRIDES')+([f2['ovr_pick']] if PICK else [])+[f2['overrides'],f2['ovr_info'],f2['ovr_clear']]
         finish+=heading('DEBUG')+[f2[n] for n in ('dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size')]
         finish+=heading('EXPORT AND CACHE')+[f2['export_path'],f2['export_usd'],f2['cache_info']]
     tabs=[tab('tab_source','Source',source),tab('tab_layout','Layout',layout),tab('tab_look','Look',look)]
@@ -673,6 +676,7 @@ def module_text():
     if H205:text+='\n\n# ---- Houdini 20.5 / 21 support (src/arraytron_h205.py)\n'+(ROOT/'src/arraytron_h205.py').read_text()
     if IMPORTED:text+='\n\n# ---- Imported points (src/arraytron_imported.py)\n'+(ROOT/'src/arraytron_imported.py').read_text()
     if FINISH:text+='\n\n# ---- Manual overrides (src/arraytron_overrides.py)\n'+(ROOT/'src/arraytron_overrides.py').read_text()+'\n\n# ---- Production finishing (src/arraytron_finish.py)\n'+(ROOT/'src/arraytron_finish.py').read_text()
+    if PICK:text+='\n\n# ---- Pick Instance (src/arraytron_pick.py)\n'+(ROOT/'src/arraytron_pick.py').read_text()
     return text
 
 def python_sop(parent,name,call):

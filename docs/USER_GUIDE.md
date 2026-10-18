@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.6.2)
+# Arraytron user guide (v1.7.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.6.2`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.7.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -77,7 +77,7 @@ The values live in the node's parameters (Brush Radius, Strength, Density, Opera
 
 ## 7. Overrides (Finish tab)
 
-To fix one instance by hand add a row to **Instance Overrides**: give the **Instance Id** (turn on *Arraytron Id* primvars or the *Id* debug colours to find it), then tick **Delete**, or set **Move**, **Rotate**, **Scale** or **Prototype Row**. Overrides are applied last (after the physics, before Grow), keep working when other settings change, and removing the rows brings the generated instances back. Python: `hou.pwd().hdaModule().override_set(node, id, move=(0,1,0))`, `override_delete_ids(node, [ids])`, `override_clear(node)`.
+To fix one instance by hand add a row to **Instance Overrides**: give the **Instance Id** (the easy way: press **Pick Instance in Viewport** and click the instance; Ctrl+click also ticks Delete, Esc finishes. Or read the *Arraytron Id* primvars or the *Id* debug colours), then tick **Delete**, or set **Move**, **Rotate**, **Scale** or **Prototype Row**. Overrides are applied last (after the physics, before Grow), keep working when other settings change, and removing the rows brings the generated instances back. Python: `hou.pwd().hdaModule().override_set(node, id, move=(0,1,0))`, `override_delete_ids(node, [ids])`, `override_clear(node)`.
 
 ## 8. Debug views (Finish tab)
 

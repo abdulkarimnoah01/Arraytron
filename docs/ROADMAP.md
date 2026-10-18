@@ -58,3 +58,5 @@ Status 2026-10-15 (latest): v1.6.0 Paint shortcuts built and validated in Houdin
 Status 2026-10-15 (latest): v1.6.1 fixes the Paint tool switching the Distribution Mode when the node is selected.
 
 Status 2026-10-18 (latest): v1.6.2 renames the Settle tab to Physics.
+
+Status 2026-10-18 (latest): v1.7.0 adds Pick Instance (viewport picking of instance ids for the overrides).
