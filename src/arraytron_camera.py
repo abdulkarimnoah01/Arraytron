@@ -10,11 +10,12 @@ PRIMVAR_TOGGLES=(('pv_id','arraytron_id'),('pv_proto','prototype_id'),('pv_rando
 # ---------------------------------------------------------------- LOD prototypes (bank rows)
 def lod_entries(asset):
     """[(row, level 1..3, prim path)] for every enabled bank row that has LOD 1 / LOD 2 / Proxy prims, in row then level order."""
-    out=[]
+    out=[];gen='lodgen_path' in globals() and asset.parm('lodg_on') is not None and bool(asset.evalParm('lodg_on'))                  # the LOD generator (v1.8.0) fills the levels without a prim
     for r in bank_rows(asset):
         for level,name in ((1,'proto_lod1'),(2,'proto_lod2'),(3,'proto_proxy')):
             p=asset.parm('%s%d'%(name,r))
             if p is not None and p.eval().strip():out.append((r,level,p.eval().strip()))
+            elif gen:out.append((r,level,lodgen_path(asset,r,level)))
     return out
 
 def lod_table(asset,entries=None):

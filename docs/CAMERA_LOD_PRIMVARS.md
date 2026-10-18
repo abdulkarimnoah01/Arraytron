@@ -26,6 +26,24 @@ In the Prototype Bank each row has three optional prim paths: **LOD 1 Prim**, **
 
 A level without a prim falls back to the next finer one that is defined; a row without LOD prims keeps its hero. The thresholds need not be sorted (a Proxy distance below the LOD 2 distance skips LOD 2). The switch is one change of `protoIndices`, so a render uses native instancing and the cost is the same as before. An LOD prim must be a different prim from the heroes and from each other (a readable error otherwise).
 
+## LOD generator (v1.8.0)
+
+Instead of modelling LOD and proxy prims by hand, tick **Generate LODs** (Optimize tab, section LOD GENERATOR). Every enabled Prototype Bank row that has no LOD prim of its own for a level gets a reduced copy of its hero, written next to the other prims of the stream (`<Output Prim Path>_LOD/Proto01_LOD1`, `_LOD2`, `_PROXY`) and used as that level. The levels then switch like hand made ones (Camera Optimisation on, Level Of Detail on: by distance or by screen size). The hero prims are never changed, and a prim you type into **LOD 1 Prim**, **LOD 2 Prim** or **Proxy Prim** of a row always wins for that level.
+
+| Control | Meaning |
+| --- | --- |
+| Generate LODs | Master switch (off by default: nothing is written and the output equals v1.7.0). |
+| LOD 1 / LOD 2 / Proxy Triangles (%) | Share of the hero's triangles that level keeps (default 50, 20 and 5). Every mesh of the prototype is reduced by the same share. |
+| Minimum Triangles | No generated mesh gets fewer triangles (default 12); a mesh that already has fewer is copied as it is. |
+| Generated LODs | Read only: the triangle count of every prototype and of its levels, after the node has cooked. |
+
+**How it reduces.** Vertex clustering on a uniform grid whose cell size is searched until the triangle count meets the target, with the position of every cluster chosen by the quadric error of the surface around it (so a plane stays flat and a sphere stays on the sphere). Collapsed and duplicate triangles are removed; polygons are triangulated. It is plain numpy, so Houdini 22 and 20.5 / 21 give the same result, it is deterministic, and results are cached while the mesh and the settings stay the same (82,000 triangles take well under a second). Carried over: transforms, material bindings, purpose, visibility, and the primvars (uv, colour, ...) with their interpolation (uv are kept per corner of the original triangle). Normals are recomputed smooth.
+
+**Limits.** Subsets (a material per face group) are not carried over: the level uses the material bound on the mesh itself. Static meshes only (the first time sample is used); skinned or animated meshes should get hand made levels. Hard edges and sharp features soften at low percentages, which is what the far levels are for. Basic shapes (Cube, Sphere ...) are copied as they are. Checked by `tests/validate_lodgen.py` (8 groups, 5 mutations) with a real icosphere, a quad grid, a thin double sheet, primvars, a material and a camera; how it looks and feels in the viewport is for the user to judge.
+
+Demo: `dist/Arraytron_v1.8.0_lodgen_demo.hip` (render `renders/arraytron_v1.8.0_lodgen_demo_xpu.png`): a ladder of four rocks (hero 5,120 triangles, LOD 1 at 40%, LOD 2 at 12%, Proxy at 3%) and a field of 380 rocks whose level follows the camera distance.
+
+
 ## Primvars
 
 Tick the ones you want in PRIMVARS; the PointInstancer then writes `primvars:<name>` per instance:

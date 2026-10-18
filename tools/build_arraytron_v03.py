@@ -32,14 +32,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.6.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
         'v1.6.1':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.1: the same features, the Paint tool no longer switches the Distribution Mode on its own; v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
         'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.2: the same features, the Settle tab is called Physics
-        'v1.7.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True)}     # v1.7.0: the same features, plus Pick Instance (click an instance in the viewport to create its override row)
+        'v1.7.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True),     # v1.7.0: the same features, plus Pick Instance (click an instance in the viewport to create its override row)
+        'v1.8.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True)}     # v1.8.0: the same features, plus the built-in LOD generator (Optimize tab)
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LABEL=PHYS_TAB=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=LABEL=PHYS_TAB=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LABEL,PHYS_TAB
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,LABEL,PHYS_TAB
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);LABEL=vid
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
 configure(versions.CURRENT)
@@ -247,7 +248,7 @@ def optimize_folder():
     info.setDefaultExpression(('hou.pwd().hdaModule().camera_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
     frame=hou.FloatParmTemplate('cam_frame','Frame',1,default_value=(1,),help='Internal: the current frame, which makes the node depend on time while Camera is on.');frame.setDefaultExpression(('$FF',));frame.setDefaultExpressionLanguage((hou.scriptLanguage.Hscript,));frame.hide(True)
     off='{ cam_on == 0 }'
-    return hou.FolderParmTemplate('optimize','Optimize',folder_type=hou.folderType.Simple,parm_templates=(
+    fold=hou.FolderParmTemplate('optimize','Optimize',folder_type=hou.folderType.Simple,parm_templates=(
         hou.ToggleParmTemplate('cam_on','Camera Optimisation',default_value=False,help='Hide or simplify instances by their distance to a camera. Nothing is deleted: instances are hidden through the PointInstancer\'s invisibleIds and level of detail switches protoIndices to the LOD prototypes, so turning this off brings everything back. The camera is read at the current frame (animated cameras work).'),
         hide(hou.StringParmTemplate('cam_prim','Camera Prim',1,default_value=('/cameras/camera1',),tags=tags,help='A USD camera in the stream: wire a Camera LOP into the first input (before Arraytron) and pick it.'),off),
         hide(hou.ToggleParmTemplate('cam_frustum','Frustum Culling',default_value=False,help='Hide instances that lie completely outside the camera\'s view (their bounding sphere is tested against the field of view and the clipping range). The camera aperture decides the aspect ratio, not the render resolution.'),off),
@@ -280,6 +281,18 @@ def optimize_folder():
           hou.StringParmTemplate('pv_copy','Copy Attributes As Primvars',1,default_value=('',),help='Imported Points: names of the source attributes (separated by spaces) that are written as primvars, for example Cd age temperature. They are copied by name; vectors and floats are supported.')) if IMPORTED else ()),
         hide(hou.ToggleParmTemplate('pv_lod','Primvar: arraytron_lod',default_value=False,help='Write primvars:arraytron_lod, the level of detail every instance uses (0 hero, 1 LOD 1, 2 LOD 2, 3 proxy). Needs Camera Optimisation.'),off),
         hou.IntParmTemplate('pv_seed','Primvar Seed',1,default_value=(1,),min=0,max=10000,min_is_strict=True,help='Seed of primvars:random.')))
+    if LODGEN:
+        gen=lambda template,cond='{ lodg_on == 0 }':hide(template,cond)
+        fold.addParmTemplate(hou.ToggleParmTemplate('lodg_on','Generate LODs',default_value=False,help='Write reduced copies of every Prototype Bank row and use them as its LOD 1, LOD 2 and Proxy levels. A level that has a prim of its own in the bank keeps it. The hero prims are never changed. The levels are switched by distance or screen size in the LEVEL OF DETAIL section (Camera Optimisation and Level Of Detail on).'))
+        fold.addParmTemplate(gen(hou.FloatParmTemplate('lodg_1','LOD 1 Triangles (%)',1,default_value=(50.0,),min=1,max=100,min_is_strict=True,help='Triangles kept for LOD 1, as a percentage of the hero (all meshes of the prototype are reduced by the same fraction).')))
+        fold.addParmTemplate(gen(hou.FloatParmTemplate('lodg_2','LOD 2 Triangles (%)',1,default_value=(20.0,),min=1,max=100,min_is_strict=True,help='Triangles kept for LOD 2, as a percentage of the hero.')))
+        fold.addParmTemplate(gen(hou.FloatParmTemplate('lodg_3','Proxy Triangles (%)',1,default_value=(5.0,),min=0.1,max=100,min_is_strict=True,help='Triangles kept for the Proxy, as a percentage of the hero (see Minimum Triangles).')))
+        fold.addParmTemplate(gen(hou.IntParmTemplate('lodg_min','Minimum Triangles',1,default_value=(12,),min=4,max=100000,min_is_strict=True,help='No generated mesh gets fewer triangles than this (a mesh that already has fewer is copied as it is).')))
+        info=hou.StringParmTemplate('lodg_info','Generated LODs',1,default_value=('',),tags={'editor':'1','editorlines':'2-4'},help='Read only. The triangle count of every prototype and of its generated levels (after the node has cooked).')
+        info.setDefaultExpression(('hou.pwd().hdaModule().lodgen_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
+        fold.addParmTemplate(info)
+    return fold
+
 
 def finish_folder():
     """Finish (v1.0.0): manual instance overrides, debug views and the USD export."""
@@ -582,6 +595,7 @@ def ui_layout(g):
     if CAMERA:
         o2=content('optimize');optimize=hint('Hide or simplify instances by camera distance, and write extra data for shaders.')+heading('CAMERA')+[o2[n] for n in ('cam_on','cam_prim','cam_frustum','cam_margin','cam_behind','cam_behind_keep','cam_distcull','cam_maxdist','cam_densityon','cam_dnear','cam_dfar','cam_dmin','cam_seed')]
         optimize+=heading('LEVEL OF DETAIL')+[o2[n] for n in ('cam_lod','lod_by','lod_d1','lod_d2','lod_d3','lod_s1','lod_s2','lod_s3')]+[o2['cam_info'],o2['cam_frame']]
+        if LODGEN:optimize+=heading('LOD GENERATOR')+[o2[n] for n in ('lodg_on','lodg_1','lodg_2','lodg_3','lodg_min','lodg_info')]
         optimize+=heading('PRIMVARS')+[o2[n] for n in ('pv_id','pv_proto','pv_random','pv_mask','pv_density','pv_cluster')+(('pv_srcid','pv_copy') if IMPORTED else ())+('pv_lod','pv_seed')]
     finish=[]
     if FINISH:
@@ -673,6 +687,7 @@ def module_text():
     if FIELDS:text+='\n\n# ---- Field Stack (src/arraytron_fields.py)\n'+(ROOT/'src/arraytron_fields.py').read_text()
     if CLUSTER:text+='\n\n# ---- Clustering (src/arraytron_cluster.py)\n'+(ROOT/'src/arraytron_cluster.py').read_text()
     if CAMERA:text+='\n\n# ---- Camera, LOD and primvars (src/arraytron_camera.py)\n'+(ROOT/'src/arraytron_camera.py').read_text()
+    if LODGEN:text+='\n\n# ---- LOD generator (src/arraytron_lodgen.py)\n'+(ROOT/'src/arraytron_lodgen.py').read_text()
     if H205:text+='\n\n# ---- Houdini 20.5 / 21 support (src/arraytron_h205.py)\n'+(ROOT/'src/arraytron_h205.py').read_text()
     if IMPORTED:text+='\n\n# ---- Imported points (src/arraytron_imported.py)\n'+(ROOT/'src/arraytron_imported.py').read_text()
     if FINISH:text+='\n\n# ---- Manual overrides (src/arraytron_overrides.py)\n'+(ROOT/'src/arraytron_overrides.py').read_text()+'\n\n# ---- Production finishing (src/arraytron_finish.py)\n'+(ROOT/'src/arraytron_finish.py').read_text()
@@ -742,12 +757,15 @@ def build():
         previous=stager
     resolver=asset.createNode('pythonscript','SOURCE_RESOLVER');resolver.setInput(0,previous)
     resolver.parm('python').set((ROOT/'src/source_resolver.py').read_text())
+    source=resolver
+    if LODGEN:
+        source=asset.createNode('pythonscript','LOD_GENERATOR');source.setInput(0,resolver);source.parm('python').set((ROOT/'src/lod_generate.py').read_text())
     # --- USD_COMPILER (native PointInstancer; SOP stages inside)
     if H205:
         # Houdini 20.5 / 21: the older instancer LOP. Prototypes come from the second input (PROTO_STAGE) at flat top-level paths, are picked per
         # point by the string attribute protopath, and PROTO_NORMALIZE restores the bank order afterwards (src/arraytron_h205.py explains why).
-        proto_stage=asset.createNode('pythonscript','PROTO_STAGE');proto_stage.setInput(0,resolver);proto_stage.parm('python').set((ROOT/'src/proto_stage_h205.py').read_text())
-        inst=asset.createNode('instancer','USD_COMPILER');inst.setInput(0,resolver);inst.setInput(1,proto_stage)
+        proto_stage=asset.createNode('pythonscript','PROTO_STAGE');proto_stage.setInput(0,source);proto_stage.parm('python').set((ROOT/'src/proto_stage_h205.py').read_text())
+        inst=asset.createNode('instancer','USD_COMPILER');inst.setInput(0,source);inst.setInput(1,proto_stage)
         inst.parm('primpath').setExpression('chs("../outputpath")',hou.exprLanguage.Hscript)
         inst.parm('method').set('pointinstancer');inst.parm('transformsourcemode').set('intsop')
         inst.parm('protosourcemode').set('second')
@@ -757,7 +775,7 @@ def build():
         inst.parm('attribs').set('')
         if CAMERA:inst.parm('attribs').setExpression('hou.pwd().parent().hdaModule().primvar_attribs(hou.pwd().parent())',hou.exprLanguage.Python)
     else:
-        inst=asset.createNode('pointinstancer','USD_COMPILER');inst.setInput(0,resolver)
+        inst=asset.createNode('pointinstancer','USD_COMPILER');inst.setInput(0,source)
         inst.parm('primpath').setExpression('chs("../outputpath")',hou.exprLanguage.Hscript)
         inst.parm('protosourcemode').set('first')
         inst.parm('protopattern').setExpression('hou.pwd().parent().hdaModule().pattern(hou.pwd().parent())',hou.exprLanguage.Python)
@@ -826,7 +844,7 @@ def build():
         dbg=asset.createNode('pythonscript','debug_guide');dbg.setInput(0,last);dbg.parm('python').set((ROOT/'src/debug_guide.py').read_text());last=dbg
     out=asset.createNode('output','OUT_ARRAYTRON');out.setInput(0,last);out.setDisplayFlag(True)
     inst.layoutChildren();asset.layoutChildren()
-    usd=asset.stage();errors=(asset.errors(),resolver.errors(),inst.errors(),guide.errors())
+    usd=asset.stage();errors=(asset.errors(),resolver.errors(),source.errors(),inst.errors(),guide.errors())
     pi=UsdGeom.PointInstancer(usd.GetPrimAtPath('/World/Arraytron')) if usd else None
     assert pi and len(pi.GetPositionsAttr().Get(hou.frame()))==10,errors
     assert usd.GetPrimAtPath('/World/Arraytron/Bounds_Guide/Bounds'),'bounds guide was not authored'

@@ -60,3 +60,5 @@ Status 2026-10-15 (latest): v1.6.1 fixes the Paint tool switching the Distributi
 Status 2026-10-18 (latest): v1.6.2 renames the Settle tab to Physics.
 
 Status 2026-10-18 (latest): v1.7.0 adds Pick Instance (viewport picking of instance ids for the overrides).
+
+Status 2026-10-18 (latest): v1.8.0 adds the built-in LOD generator.

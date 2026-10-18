@@ -17,7 +17,7 @@ SCALEINST=a.parm('bound_scale_instances') is not None
 BANK=a.parm('protos') is not None
 CIRCLE=a.parm('circle_radius') is not None
 VAREXTRAS=a.parm('yaw_random') is not None
-assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
+assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
 COMPILER='USD_COMPILER' if BANK else 'build_pointinstancer'
 VARIATION='VARIATION_PROCESSOR' if BANK else 'modify_point_transforms'
 ASSIGNMENT='PROTOTYPE_ASSIGNMENT'
@@ -725,7 +725,7 @@ def modular_network():
     lop=[];node=a.node('OUT_ARRAYTRON')
     while node is not None and not node.type().name()=='merge':
         lop.append(node.name());node=node.inputs()[0] if node.inputs() else None
-    assert lop==['OUT_ARRAYTRON']+(['debug_guide'] if a.node('debug_guide') else [])+(['camera_optimize'] if a.node('camera_optimize') else [])+['transform_distribution','bounds_guide','ensure_prototype_visible']+(['PROTO_NORMALIZE'] if a.node('PROTO_NORMALIZE') else [])+['USD_COMPILER','SOURCE_RESOLVER','sop_stage_4','sop_stage_3','sop_stage_2','sop_stage_1'],lop
+    assert lop==['OUT_ARRAYTRON']+(['debug_guide'] if a.node('debug_guide') else [])+(['camera_optimize'] if a.node('camera_optimize') else [])+['transform_distribution','bounds_guide','ensure_prototype_visible']+(['PROTO_NORMALIZE'] if a.node('PROTO_NORMALIZE') else [])+['USD_COMPILER']+(['LOD_GENERATOR'] if a.node('LOD_GENERATOR') else [])+['SOURCE_RESOLVER','sop_stage_4','sop_stage_3','sop_stage_2','sop_stage_1'],lop
     # the Source Resolver creates no points and no geometry; it only validates and stages hidden file references
     assert a.node('SOURCE_RESOLVER').type().name()=='pythonscript'
 

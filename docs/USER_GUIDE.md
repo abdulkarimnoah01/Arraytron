@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.7.0)
+# Arraytron user guide (v1.8.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.7.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.8.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -22,7 +22,7 @@ That is a working scatter. Everything else is optional and stays out of the way 
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
 | **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |
-| **Optimize** | **Camera optimisation** (frustum, distance, density, behind-camera), **LOD / proxy** switching, **primvars** for shaders. |
+| **Optimize** | **Camera optimisation** (frustum, distance, density, behind-camera), **LOD / proxy** switching, **primvars** for shaders. **Generate LODs** writes reduced copies of the prototypes (`docs/CAMERA_LOD_PRIMVARS.md`). |
 | **Finish** | **Instance overrides** by id, **debug views**, **USD export**. |
 
 ## 3. Choosing a distribution

@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2'}[VID]
+PREVIOUS={'v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_camera_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
 HAP,VAP,FOCAL=36.0,20.25,50.0;HX,HY=HAP/(2*FOCAL),VAP/(2*FOCAL);NEAR,FAR=0.5,150.0          # camera: tangent of the half fields of view 0.36 / 0.2025, clipping range
@@ -94,7 +94,7 @@ def ui_contract():
     assert g.find('cam_on').defaultValue() is False and g.find('cam_lod').defaultValue() is False and g.find('cam_behind').menuLabels()==('Keep All','Reduce','Hide') and g.find('lod_by').menuLabels()==('Distance','Screen Size')
     assert g.find('cam_frame').isHidden() and g.find('cam_prim').defaultValue()==('/cameras/camera1',)
     tabs=[t.label() for t in g.entries()];assert tabs[:7]==['Source','Layout','Look','Spacing',PHYSTAB,'Animate','Optimize'],tabs
-    opt=g.entries()[6];heads=[t.columnLabels()[0] for t in opt.parmTemplates() if t.name().startswith('ui_head')];assert heads==['CAMERA','LEVEL OF DETAIL','PRIMVARS']
+    opt=g.entries()[6];heads=[t.columnLabels()[0] for t in opt.parmTemplates() if t.name().startswith('ui_head')];assert heads==['CAMERA','LEVEL OF DETAIL']+(['LOD GENERATOR'] if a.parm('lodg_on') is not None else [])+['PRIMVARS']
     assert '{ cam_on == 0 }' in g.find('cam_frustum').conditionals()[hou.parmCondType.HideWhen] and '{ lod_by != 0 }' in g.find('lod_d1').conditionals()[hou.parmCondType.HideWhen]
     assert a.node('camera_optimize').inputs()[0].name()=='transform_distribution' and a.node('OUT_ARRAYTRON').inputs()[0].name()==('debug_guide' if a.node('debug_guide') else 'camera_optimize')
     feed=a.node('USD_COMPILER/OUT_POINTS').inputs()[0]
