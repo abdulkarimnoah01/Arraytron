@@ -15,7 +15,7 @@ The stones are not "approximately" colliding: every stone gets a collision shape
 ## Your first pile in five minutes
 
 1. Make a stone prototype and an **Area** distribution (Area Size = the spill zone, Count = how many stones). Add rotation and scale randomness in **Randomize**.
-2. Open the **Settle** tab and turn on **Physics Settle**. Look at the viewport: the stones are now floating in a stacked cloud, with two outlines: **Ground** (where the floor is) and **Drop** (where the lowest stones start).
+2. Open the **Physics** tab and turn on **Physics Settle**. Look at the viewport: the stones are now floating in a stacked cloud, with two outlines: **Ground** (where the floor is) and **Drop** (where the lowest stones start).
 3. If there is a floor or a container in your scene, type its prim path in **Collider Prims** (for example `/World/Box`). The built-in **Ground Plane** is on by default at height 0.
 4. Press **Simulate & Cache**. A progress bar runs; Cancel stops it without saving anything.
 5. Read the **Status** line. "came to rest" means you are done. "NOT at rest" means the time ran out: raise **Maximum Sim Time** and simulate again.

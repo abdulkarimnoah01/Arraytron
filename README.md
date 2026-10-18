@@ -1,6 +1,6 @@
 # Arraytron
 
-> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.6.1**; v1.6.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
+> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.6.2**; v1.6.1 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
 
 
 # Get Arraytron
@@ -15,9 +15,9 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 
 **Updating:** click **Check for Updates** on the *Arraytron* shelf in Houdini. It reads the latest release from GitHub, shows what is new and installs it after you say yes; nothing is checked in the background. Details, rollback and publishing a release: `INSTALL.md`.
 
-# Arraytron v1.6.1 (current)
+# Arraytron v1.6.2 (current)
 
-`dist/Arraytron_v1.6.1.hda` (type `arraytron::instancer::1.6.1`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.6.1_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
+`dist/Arraytron_v1.6.2.hda` (type `arraytron::instancer::1.6.2`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.6.2_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
 
 A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Eight tabs in workflow order: **Source** (Prototype Bank, selection, LOD / proxy prims), **Layout** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**), **Look** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Settle** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD, primvars), **Finish** (instance overrides, debug views, USD export).
 
@@ -35,14 +35,15 @@ A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInsta
 | v1.1.0 | the **Houdini 20.5 / 21 build** (older Instancer LOP behind the same node; identical USD), installer for 20.5 / 21 / 22 |
 | v1.5.0 | **Imported Points**: scatter on FX simulation points and any imported points (SOP or USD) with percentages, scale, rotation and ids for AOVs, in both builds |
 | v1.6.0 | **Paint tool shortcuts**: Ctrl erase, Shift relax, Ctrl+Shift drag radius, wheel radius / strength / density, number keys for the operation, live prompt, coloured brush |
-| **v1.6.1** | Fix: selecting the node no longer switches the Distribution Mode to Paint |
+| v1.6.1 | Fix: selecting the node no longer switches the Distribution Mode to Paint |
+| **v1.6.2** | The Settle tab is called **Physics** |
 
 What v1.0.0 and v1.1.0 guarantee (all tested, `tests/validate_production.py`): a saved scene reloads to the identical result; two separate processes give bit-identical output; every Distribution Mode gives unique, deterministic ids that rotation, scale, weights, selection and masks never change; random parameter fuzzing never produces a Python traceback; the exported USD passes `usdchecker`; every demo cooks.
 
 Rebuild and validate with `C:/Program Files/Side Effects Software/Houdini 22.0.368/bin/hython.exe` (the full command list is in `CLAUDE.md`):
 
 ```text
-tools/build_arraytron_v03.py v1.6.1
+tools/build_arraytron_v03.py v1.6.2
 tools/build_demo_v03.py v1.1.0 ; build_demo_grow_v052.py ; build_demo_overlap_v051.py ; build_demo_mask_v050.py ; build_demo_paint_v060.py ; build_demo_fields_v070.py ; build_demo_cluster_v080.py ; build_demo_camera_v090.py ; build_demo_finish_v100.py ; build_demo_physics.py railway|box ; build_demo_all.py
 tests/validate_v016.py v1.1.0 (39) ; validate_physics.py (19) ; validate_scatter.py (24) ; validate_mask.py (11) ; validate_overlap.py (6) ; validate_grow.py (8) ; validate_paint.py (16) ; validate_fields.py (16) ; validate_cluster.py (8) ; validate_avoid.py (7) ; validate_camera.py (9) ; validate_polish.py (9) ; validate_production.py (7)
 ```

@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.6.1)
+# Arraytron user guide (v1.6.2)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.6.1`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.6.2`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -20,7 +20,7 @@ That is a working scatter. Everything else is optional and stays out of the way 
 | **Layout** | Where the points go. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
 | **Look** | Per-instance rotation and scale, **Randomize**, the **Mask** (noise, image, mesh primvar) and the **Field Stack** (Height, Slope, Noise, Image, Distance, Exclusion). |
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
-| **Settle** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
+| **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |
 | **Optimize** | **Camera optimisation** (frustum, distance, density, behind-camera), **LOD / proxy** switching, **primvars** for shaders. |
 | **Finish** | **Instance overrides** by id, **debug views**, **USD export**. |

@@ -198,7 +198,7 @@ def ui_contract():
     for n in ('phys_gravity','phys_density','phys_friction','phys_bounce','phys_drag','phys_drop','phys_duration','phys_quality','phys_ground','phys_stack','phys_colliders','phys_cachedir','phys_bake'):
         assert a.parm(n).parmTemplate().help().strip(),'no help on '+n
     menu=a.parm('phys_quality').parmTemplate();assert menu.menuLabels()==('Draft','Standard','High')
-    folder=[t for t in a.parmTemplateGroup().entries() if t.name() in ('physics','tab_source_4')][0];assert folder.label() in ('Physics Settle','Settle')
+    folder=[t for t in a.parmTemplateGroup().entries() if t.name() in ('physics','tab_source_4')][0];assert folder.label() in ('Physics Settle','Settle','Physics')
     assert a.type().definition().sections()['ArraytronVersion'].contents().startswith(VID)
     m=a.hdaModule();assert all(hasattr(m,n) for n in ('bake','clear_cache','sop_apply','sop_spawn','sop_proxies','sop_colliders','physics_status','quickhull'))
 

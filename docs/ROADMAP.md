@@ -56,3 +56,5 @@ Status 2026-10-14 (latest): v1.5.0 Imported Points built and validated in Houdin
 Status 2026-10-15 (latest): v1.6.0 Paint shortcuts built and validated in Houdini 22, 20.5 and 21 (docs/PAINT_BRUSH.md).
 
 Status 2026-10-15 (latest): v1.6.1 fixes the Paint tool switching the Distribution Mode when the node is selected.
+
+Status 2026-10-18 (latest): v1.6.2 renames the Settle tab to Physics.

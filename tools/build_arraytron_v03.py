@@ -30,14 +30,16 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.1.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True),
         'v1.5.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),
         'v1.6.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
-        'v1.6.1':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True)}     # v1.6.1: the same features, the Paint tool no longer switches the Distribution Mode on its own; v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
+        'v1.6.1':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.1: the same features, the Paint tool no longer switches the Distribution Mode on its own; v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
+        'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True)}     # v1.6.2: the same features, the Settle tab is called Physics
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=LABEL=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=LABEL=PHYS_TAB=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,LABEL
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,LABEL,PHYS_TAB
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
     TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);LABEL=vid
+    PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
 configure(versions.CURRENT)
 FIELD_TYPE_LABELS=('Height','Slope','Noise','Image','Distance','Exclusion')
@@ -585,7 +587,7 @@ def ui_layout(g):
         finish+=heading('EXPORT AND CACHE')+[f2['export_path'],f2['export_usd'],f2['cache_info']]
     tabs=[tab('tab_source','Source',source),tab('tab_layout','Layout',layout),tab('tab_look','Look',look)]
     if spacing:tabs.append(tab('tab_spacing','Spacing',spacing))
-    if settle:tabs.append(tab('tab_settle','Settle',settle))
+    if settle:tabs.append(tab('tab_settle',PHYS_TAB,settle))
     if animate:tabs.append(tab('tab_animate','Animate',animate))
     if optimize:tabs.append(tab('tab_optimize','Optimize',optimize))
     if finish:tabs.append(tab('tab_finish','Finish',finish))

@@ -12,7 +12,7 @@ Codex (gpt-6-astra, medium effort) was asked for a design (`team/v052-codex-ui/`
 | **Layout** | Distribution Mode, then **only the active mode's settings** under a heading (Line / Area / Grid / Circle / Curve / Surface; the others are hidden, no tab row changes), then MOVE THE LAYOUT (Position, Rotation, Scale, Scale Instances, Reset, *Pivot & Guide*) |
 | **Look** | INDIVIDUAL INSTANCES (rotation, scale), VARIATION (Randomize; *Variation Details* = non-uniform scale), MASK (source, effect, contrast, read-out; *Mask Details* = noise offset/octaves/roughness/contrast, image channel/projection/centre/size/outside, UV name) |
 | **Spacing** | No Overlap (mode, size, spacing, axes, read-out; *Solver Settings* = iterations, strength) |
-| **Settle** | Physics Settle (on, status, spawn, **Simulate & Cache**, drop height, overlap-free spawn, seed, maximum time, quality; *Material & Forces*, *Collision Settings*, *Cache Settings* with Clear Cache) |
+| **Physics** | Physics Settle (on, status, spawn, **Simulate & Cache**, drop height, overlap-free spawn, seed, maximum time, quality; *Material & Forces*, *Collision Settings*, *Cache Settings* with Clear Cache) |
 | **Animate** | Grow animation |
 
 Design rules that came out of the review: workflow order, **fixed tabs** (never a tab that comes and goes), mode panels as headings with their parameters directly below (shown by the same `mode` condition), **local disclosure** instead of a global Basic / Advanced switch, specialist settings in collapsible "... Details" sections, a one-line hint under each tab title, read-outs beside the decision they support.

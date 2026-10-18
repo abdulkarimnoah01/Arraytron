@@ -40,9 +40,10 @@ VERSIONS={
  'v1.5.0':dict(old='-',type='arraytron::instancer::1.5.0',h205=True),     # adds Imported Points (scatter on FX / imported points)
  'v1.6.0':dict(old='-',type='arraytron::instancer::1.6.0',h205=True),     # the Paint tool shortcuts (mouse wheel, Ctrl+Shift drag, keys, live prompt, coloured brush)
  'v1.6.1':dict(old='-',type='arraytron::instancer::1.6.1',h205=True),     # fix: selecting the node no longer switches the Distribution Mode to Paint
+ 'v1.6.2':dict(old='-',type='arraytron::instancer::1.6.2',h205=True),     # the Settle tab is called Physics
  'v1.1.0':dict(old='-',type='arraytron::instancer::1.1.0',h205=True),     # adds the Houdini 20.5 / 21 build (otls_h205/); see docs/PORT_HOUDINI_205.md
 }
-CURRENT='v1.6.1'
+CURRENT='v1.6.2'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',

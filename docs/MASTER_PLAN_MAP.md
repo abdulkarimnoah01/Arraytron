@@ -72,3 +72,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-14: v1.5.0 Imported Points (user request after the roadmap: scatter on imported FX sim points / any points with full control of prototype percentages, scale, rotation and ids for AOVs), docs/IMPORTED_POINTS.md; v1.1.0 archived.
 - 2026-10-15: v1.6.0 Paint tool shortcuts (user request after the first working GUI test of the brush); v1.5.0 archived.
 - 2026-10-15: v1.6.1 fix (Paint tool entered by selecting the node must not change the mode); v1.6.0 archived.
+- 2026-10-18: v1.6.2 Settle tab renamed Physics (user request); v1.6.1 archived.

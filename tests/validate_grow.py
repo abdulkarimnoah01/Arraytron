@@ -9,7 +9,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0'}[VID]
+PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
+PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_grow_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -84,13 +85,13 @@ def flat(entries):
 
 def ui_tabs():
     st,n,a=scene();g=a.parmTemplateGroup();tabs=g.entries()
-    assert [t.label() for t in tabs]==['Source','Layout','Look','Spacing','Settle','Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+(['Finish'] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
+    assert [t.label() for t in tabs]==['Source','Layout','Look','Spacing',PHYSTAB,'Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+(['Finish'] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
     assert sum(len(flat([t])) for t in tabs)>=140,'every parameter is still there'
     contents={t.label():flat([t]) for t in tabs}
     exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents['Source'] else [])+['proto_summary'];assert contents['Source'][:len(exp)]==exp and contents['Source'][-1]=='outputpath'
     assert contents['Layout'][0]=='mode' and 'bound_t' in contents['Layout'] and 'line_axis' in contents['Layout'] and 'surface_prim' in contents['Layout']
     assert contents['Look'][:2]==['base_rotation','base_scale'] and 'mask_source' in contents['Look'] and 'scale_nonuniform' in contents['Look']
-    assert contents['Spacing'][0]=='overlap_mode' and contents['Settle'][0]=='phys_on' and contents['Animate'][0]=='grow_on' and 'phys_bake' in contents['Settle']
+    assert contents['Spacing'][0]=='overlap_mode' and contents[PHYSTAB][0]=='phys_on' and contents['Animate'][0]=='grow_on' and 'phys_bake' in contents[PHYSTAB]
     # no parameter appears twice and the old flat names are all present
     names=flat(tabs);assert len(names)==len(set(names)),[n for n in names if names.count(n)>1]
     old=hou.nodeType(hou.lopNodeTypeCategory(),OLD_TYPE).parmTemplateGroup();oldnames=flat(old.entries());assert set(oldnames)<=set(names),sorted(set(oldnames)-set(names))

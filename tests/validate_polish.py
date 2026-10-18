@@ -10,7 +10,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0'}[VID]
+PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
+PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_polish_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -77,7 +78,7 @@ def quat_matrix(q):
 # ------------------------------------------------------------------ groups
 def ui_contract():
     st,sc=new_scene('ui');a=painted(st,sc,[[0,0,0]]);g=a.parmTemplateGroup()
-    assert [t.label() for t in g.entries()]==['Source','Layout','Look','Spacing','Settle','Animate','Optimize','Finish']
+    assert [t.label() for t in g.entries()]==['Source','Layout','Look','Spacing',PHYSTAB,'Animate','Optimize','Finish']
     ov=g.find('overrides');assert ov.folderType()==hou.folderType.MultiparmBlock and ov.defaultValue()==0
     for name in ('ovr_id#','ovr_delete#','ovr_move#','ovr_rot#','ovr_scale#','ovr_proto#','ovr_info','ovr_clear','dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size','export_path','export_usd','cache_info'):assert g.find(name) is not None,name
     assert g.find('dbg_on').defaultValue() is False and g.find('dbg_color').menuLabels()==('Off','Prototype','Id','Weight') and '{ ovr_delete# == 1 }' in g.find('ovr_move#').conditionals()[hou.parmCondType.HideWhen]
