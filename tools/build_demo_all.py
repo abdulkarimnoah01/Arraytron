@@ -6,7 +6,7 @@ import sys, hou, tempfile
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
-VID=versions.BUILD;DEMOS=(('demo','Main'),('paint_demo','Paint (viewport brush)'),('paint_k_demo','Paint only: the letter K'),('fields_demo','Field Stack'),('cluster_demo','Clusters + Separation + Avoid Geometry'),('camera_demo','Camera + LOD + primvars'),('finish_demo','Overrides + Debug (v1.0)'),('lodgen_demo','LOD generator (ladder + field)'),('imported_demo','Imported Points (FX sim)'),('grow_demo','Grow'),('mask_demo','Masks'),('overlap_demo','Separation (No Overlap)'),('physics_railway_demo','Physics Railway'),('physics_box_demo','Physics Box'))
+VID=versions.BUILD;DEMOS=(('demo','Main'),('paint_demo','Paint (viewport brush)'),('paint_k_demo','Paint only: the letter K'),('fields_demo','Field Stack'),('cluster_demo','Clusters + Separation + Avoid Geometry'),('camera_demo','Camera + LOD + primvars'),('finish_demo','Overrides + Debug (v1.0)'),('place_demo','Instance Place (one at a time)'),('lodgen_demo','LOD generator (ladder + field)'),('imported_demo','Imported Points (FX sim)'),('grow_demo','Grow'),('mask_demo','Masks'),('overlap_demo','Separation (No Overlap)'),('physics_railway_demo','Physics Railway'),('physics_box_demo','Physics Box'))
 tmp=Path(tempfile.mkdtemp());files=[];displays=[];objfiles=[]
 for suffix,title in DEMOS:
     hou.hipFile.load(str(versions.demo_file(VID,suffix)),suppress_save_prompt=True,ignore_load_warnings=True)

@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.9.0 - Instance Place
+* **New Distribution Mode: Instance Place** (Layout tab): instances are placed one at a time, like the transforms of a Copy and Transform SOP. A table (*Placed Instances*) holds every instance: on, stable id, position, rotation, scale and the Prototype Bank row it uses. Mask, Field Stack, Separation, Physics, Instance Overrides, Grow, Variation and primvars work on placed instances like on any others.
+* **Place Instances in Viewport:** click a surface to add one instance (aligned to the surface normal if you want, with the New Scale, New Rotation and New Prototype Row settings); Ctrl+click deletes the one under the mouse; wheel and keys change the settings; every click is one undo step. Selecting the node never starts the tool. Fix Ids writes unique ids into rows that have none.
+* New suite `tests/validate_place.py` (8 groups, 5 mutations); demo `Arraytron_v1.9.0_place_demo.hip`; documentation `docs/INSTANCE_PLACE.md`. Both builds. New VEX folder `src/vex_v190` (a placed instance may name its Prototype Bank row).
+
 ## v1.8.0 - LOD generator
 * **Generate LODs** (Optimize tab): reduced copies of every prototype are written as the LOD 1, LOD 2 and Proxy levels of each Prototype Bank row that has no prim of its own for the level (a typed prim always wins). Set the share of triangles of each level (50 / 20 / 5 % by default) and a minimum. Vertex clustering with quadric positions, plain numpy, the same in Houdini 22 and 20.5 / 21; uv, colours and other primvars, transforms and material bindings are carried over; the heroes are never touched. Switch by distance or screen size with the existing Level Of Detail controls.
 * New LOD_GENERATOR node (Python LOP) between the source resolver and the compiler; it does nothing with the switch off. New suite `tests/validate_lodgen.py` (8 groups, 5 mutations) and a demo (a ladder of four levels and a field of rocks).

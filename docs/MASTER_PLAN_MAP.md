@@ -75,3 +75,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-18: v1.6.2 Settle tab renamed Physics (user request); v1.6.1 archived.
 - 2026-10-18: v1.7.0 Pick Instance (user request: easier way to get and select instance ids); v1.6.2 archived.
 - 2026-10-18: v1.8.0 built-in LOD generator (user request: reduce the poly count of the source prims as an option); v1.7.0 archived.
+- 2026-10-19: v1.9.0 Instance Place distribution mode (user request: placing individual instances one at a time like Copy and Transform); v1.8.0 archived.

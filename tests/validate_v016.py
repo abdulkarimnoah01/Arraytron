@@ -17,7 +17,7 @@ SCALEINST=a.parm('bound_scale_instances') is not None
 BANK=a.parm('protos') is not None
 CIRCLE=a.parm('circle_radius') is not None
 VAREXTRAS=a.parm('yaw_random') is not None
-assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
+assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
 COMPILER='USD_COMPILER' if BANK else 'build_pointinstancer'
 VARIATION='VARIATION_PROCESSOR' if BANK else 'modify_point_transforms'
 ASSIGNMENT='PROTOTYPE_ASSIGNMENT'
@@ -91,7 +91,7 @@ def ui_contract():
     g=a.parmTemplateGroup()
     for name in ('mode','line_axis','line_spacemode')+(('grid_spacemode',) if GRID else ()):
         t=g.find(name);assert t.menuItems()==tuple(str(i) for i in range(len(t.menuItems()))),(name,t.menuItems())
-    assert g.find('mode').menuLabels()==(('Line','Area','Grid / Matrix','Circle / Radial')+(('Curve',) if a.parm('curve_prim') is not None else ())+(('Surface',) if a.parm('surface_prim') is not None else ())+(('Paint',) if a.parm('paint_prim') is not None else ())+(('Cluster',) if a.parm('cluster_prim') is not None else ())+(('Imported Points',) if a.parm('imp_sop') is not None else ()) if CIRCLE else ('Line','Area','Grid / Matrix') if GRID else ('Line','Area'))
+    assert g.find('mode').menuLabels()==(('Line','Area','Grid / Matrix','Circle / Radial')+(('Curve',) if a.parm('curve_prim') is not None else ())+(('Surface',) if a.parm('surface_prim') is not None else ())+(('Paint',) if a.parm('paint_prim') is not None else ())+(('Cluster',) if a.parm('cluster_prim') is not None else ())+(('Imported Points',) if a.parm('imp_sop') is not None else ())+(('Instance Place',) if a.parm('places') is not None else ()) if CIRCLE else ('Line','Area','Grid / Matrix') if GRID else ('Line','Area'))
     assert g.find('line_axis').menuLabels()==('X','Y','Z','Custom') and g.find('line_spacemode').menuLabels()==('By Count','By Spacing')
     def hide(n):
         c=g.find(n).conditionals()[hou.parmCondType.HideWhen]
@@ -720,7 +720,7 @@ def modular_network():
         assert compiler.node('OUT_POINTS').isDisplayFlagSet()
     else:
         assert order==['OUT_POINTS','PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR','DISTRIBUTION_GENERATOR','generate_line'] or order[:4]==['OUT_POINTS','PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR','DISTRIBUTION_GENERATOR'],order
-    assert [n.name() for n in compiler.node('DISTRIBUTION_GENERATOR').inputs()]==['generate_line','generate_area','generate_grid']+(['generate_circle'] if CIRCLE else [])+(['generate_curve'] if a.node(COMPILER+'/generate_curve') else [])+(['generate_surface'] if a.node(COMPILER+'/generate_surface') else [])+(['generate_paint'] if a.node(COMPILER+'/generate_paint') else [])+(['generate_cluster'] if a.node(COMPILER+'/generate_cluster') else [])+(['generate_imported'] if a.node(COMPILER+'/generate_imported') else [])
+    assert [n.name() for n in compiler.node('DISTRIBUTION_GENERATOR').inputs()]==['generate_line','generate_area','generate_grid']+(['generate_circle'] if CIRCLE else [])+(['generate_curve'] if a.node(COMPILER+'/generate_curve') else [])+(['generate_surface'] if a.node(COMPILER+'/generate_surface') else [])+(['generate_paint'] if a.node(COMPILER+'/generate_paint') else [])+(['generate_cluster'] if a.node(COMPILER+'/generate_cluster') else [])+(['generate_imported'] if a.node(COMPILER+'/generate_imported') else [])+(['generate_place'] if a.node(COMPILER+'/generate_place') else [])
     # LOP side order: merge > SOP stagers > resolver > compiler > visibility > guide > transform > output
     lop=[];node=a.node('OUT_ARRAYTRON')
     while node is not None and not node.type().name()=='merge':

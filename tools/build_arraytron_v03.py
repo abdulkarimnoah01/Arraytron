@@ -33,14 +33,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.6.1':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.1: the same features, the Paint tool no longer switches the Distribution Mode on its own; v1.6.0: the same features with the Paint tool shortcuts; v1.1.0: the same features, plus the Houdini 20.5 / 21 build (H205, chosen by the running Houdini: versions.is_h205())
         'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.2: the same features, the Settle tab is called Physics
         'v1.7.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True),     # v1.7.0: the same features, plus Pick Instance (click an instance in the viewport to create its override row)
-        'v1.8.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True)}     # v1.8.0: the same features, plus the built-in LOD generator (Optimize tab)
+        'v1.8.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True),     # v1.8.0: the same features, plus the built-in LOD generator (Optimize tab)
+        'v1.9.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True)}     # v1.9.0: the same features, plus the Instance Place distribution mode
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=LABEL=PHYS_TAB=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=LABEL=PHYS_TAB=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,LABEL,PHYS_TAB
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,LABEL,PHYS_TAB
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);LABEL=vid
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
 configure(versions.CURRENT)
@@ -178,6 +179,36 @@ def paint_folder():
         info,
         callback(hou.ButtonParmTemplate('paint_clear','Clear Paint',help='Remove every painted point (undoable).'),"kwargs['node'].hdaModule().paint_clear(kwargs['node'])"),
         data))
+
+def place_folder():
+    """Instance Place (v1.9.0): instances placed one at a time, like the transforms of a Copy and Transform SOP, by a table or by clicking a surface in the viewport."""
+    tags=base.picker_tags()
+    def callback(template,code):
+        template.setScriptCallback(code);template.setScriptCallbackLanguage(hou.scriptLanguage.Python);return template
+    row=(
+        hou.ToggleParmTemplate('place_on#','On',default_value=True,help='Switch this instance off without deleting its row.'),
+        hou.IntParmTemplate('place_id#','Id',1,default_value=(0,),min=0,max=100000000,help='The stable id of this instance (Variation, Mask, Instance Overrides, primvars and Grow key on it). 0 or a repeated id gets the next free number: press Fix Ids to write them into the table. The viewport tool fills it in.'),
+        hou.FloatParmTemplate('place_pos#','Position',3,default_value=(0,0,0),min=-100000,max=100000,help='World position of the instance.'),
+        hou.FloatParmTemplate('place_rot#','Rotate (deg)',3,default_value=(0,0,0),min=-360,max=360,help='Rotation in degrees about X, then Y, then Z (fixed axes), the same convention as the Instance Overrides. Applied before the Look tab rotation.'),
+        hou.FloatParmTemplate('place_scale#','Scale',3,default_value=(1,1,1),min=0.0001,max=1000,min_is_strict=True,help='Scale of the instance, multiplied by the Look tab scale and the Prototype Bank scale.'),
+        hou.IntParmTemplate('place_proto#','Prototype Row',1,default_value=(0,),min=0,max=1000,help='The Prototype Bank row this instance uses (its number in the bank). 0 lets the Selection Mode choose. A row that is not enabled is ignored.'))
+    table=hou.FolderParmTemplate('places','Placed Instances',folder_type=hou.folderType.MultiparmBlock,default_value=0,parm_templates=row)
+    info=hou.StringParmTemplate('place_info','Placed',1,default_value=('',),tags={'editor':'1','editorlines':'2-3'},help='Read only. How many instances are placed.')
+    info.setDefaultExpression(('hou.pwd().hdaModule().place_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
+    return hou.FolderParmTemplate('place','Instance Place',folder_type=hou.folderType.Simple,parm_templates=(
+        callback(hou.ButtonParmTemplate('place_start','Place Instances in Viewport',help='Switch to Instance Place and enter the viewport tool: click a surface to place one instance at a time (a row is added to the table). Ctrl-click deletes the placed instance under the mouse; the wheel with Shift changes the scale, with Ctrl the rotation; [ ] scale, comma and period rotate, 0 to 9 pick the Prototype Row (0 = automatic). Esc or Enter finishes.'),"kwargs['node'].hdaModule().place_start(kwargs['node'])"),
+        hou.StringParmTemplate('place_target','Place On',1,default_value=('',),tags=tags,help='The surface the tool places on: a Mesh, a basic shape or a hierarchy of the Scene Stream (first input). Empty: the ground plane Y = 0.'),
+        hou.FloatParmTemplate('place_align','Align To Surface',1,default_value=(0.0,),min=0,max=1,help='0 keeps new instances upright, 1 tilts their up axis (+Y) fully onto the surface normal.'),
+        hou.FloatParmTemplate('place_offset','Offset',1,default_value=(0.0,),min=-10,max=10,help='Moves a new instance along the surface normal (negative sinks it into the surface).'),
+        hou.FloatParmTemplate('place_def_scale','New Scale',1,default_value=(1.0,),min=0.0001,max=1000,min_is_strict=True,help='The scale a new instance gets (the wheel with Shift and the [ ] keys change it in the viewport).'),
+        hou.FloatParmTemplate('place_def_yaw','New Rotation (deg)',1,default_value=(0.0,),min=-360,max=360,help='The rotation about the up axis a new instance gets (the wheel with Ctrl and the comma and period keys change it in the viewport).'),
+        hou.FloatParmTemplate('place_def_yawrand','Random Rotation (+/- deg)',1,default_value=(0.0,),min=0,max=180,help='A random extra rotation about the up axis for every new instance, from minus to plus this many degrees.'),
+        hou.IntParmTemplate('place_def_proto','New Prototype Row',1,default_value=(0,),min=0,max=1000,help='The Prototype Bank row a new instance uses; 0 lets the Selection Mode choose (the keys 0 to 9 set it in the viewport).'),
+        hou.IntParmTemplate('place_seed','Rotation Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random rotation of new instances.'),
+        info,
+        callback(hou.ButtonParmTemplate('place_fix','Fix Ids',help='Write a unique id into every row that has none or a repeated one (undoable).'),"kwargs['node'].hdaModule().place_normalize(kwargs['node'])"),
+        callback(hou.ButtonParmTemplate('place_clear','Clear Placed Instances',help='Remove every placed instance (undoable).'),"kwargs['node'].hdaModule().place_clear(kwargs['node'])"),
+        table))
 
 def mask_folder():
     """Mask (v0.5.0): one 0..1 value per point from noise, an image or a mesh primvar, used to remove points and / or scale them."""
@@ -557,7 +588,7 @@ def ui_layout(g):
         *heading('OUTPUT'),src['outputpath']]
     # ---- Layout
     layout=hint('Choose how the points are laid out, then move the whole layout.')+list(folders['distribution'].parmTemplates())
-    for index,(name,title) in enumerate((('line','LINE SETTINGS'),('area','AREA SETTINGS'),('grid','GRID SETTINGS'),('circle','CIRCLE SETTINGS'),('curve','CURVE SETTINGS'),('surface','SURFACE SETTINGS'),('paint','PAINT SETTINGS'),('cluster','CLUSTER SETTINGS'),('imported','IMPORTED POINTS'))):
+    for index,(name,title) in enumerate((('line','LINE SETTINGS'),('area','AREA SETTINGS'),('grid','GRID SETTINGS'),('circle','CIRCLE SETTINGS'),('curve','CURVE SETTINGS'),('surface','SURFACE SETTINGS'),('paint','PAINT SETTINGS'),('cluster','CLUSTER SETTINGS'),('imported','IMPORTED POINTS'),('place','INSTANCE PLACE'))):
         if name not in folders:continue
         condition='{ mode != %d }'%index
         layout+=heading(title,condition)+[also_hide(t,condition) for t in folders[name].parmTemplates()]
@@ -622,7 +653,7 @@ def parms():
         circle=circle_folder();circle.setConditional(hou.parmCondType.HideWhen,'{ mode != 3 }')
         g.insertAfter('grid',circle)
     if CURVE:
-        names=['Line','Area','Grid / Matrix','Circle / Radial','Curve']+(['Surface'] if SURFACE else [])+(['Paint'] if PAINT else [])+(['Cluster'] if CLUSTER else [])+(['Imported Points'] if IMPORTED else [])
+        names=['Line','Area','Grid / Matrix','Circle / Radial','Curve']+(['Surface'] if SURFACE else [])+(['Paint'] if PAINT else [])+(['Cluster'] if CLUSTER else [])+(['Imported Points'] if IMPORTED else [])+(['Instance Place'] if PLACE else [])
         g.replace('distribution',hou.FolderParmTemplate('distribution','Distribution',folder_type=hou.folderType.Simple,parm_templates=(
             hou.MenuParmTemplate('mode','Distribution Mode',tuple(str(i) for i in range(len(names))),tuple(names)),)))
         curve=curve_folder();curve.setConditional(hou.parmCondType.HideWhen,'{ mode != 4 }');g.insertAfter('circle',curve)
@@ -634,6 +665,8 @@ def parms():
             cluster=cluster_folder();cluster.setConditional(hou.parmCondType.HideWhen,'{ mode != 7 }');g.insertAfter('paint',cluster)
         if IMPORTED:
             imported=imported_folder();imported.setConditional(hou.parmCondType.HideWhen,'{ mode != 8 }');g.insertAfter('cluster',imported)
+        if PLACE:
+            place=place_folder();place.setConditional(hou.parmCondType.HideWhen,'{ mode != 9 }');g.insertAfter('imported',place)
     if MASK:g.insertAfter('randomize',mask_folder())
     if FIELDS:g.insertAfter('mask',fields_folder())
     if OVERLAP:g.insertAfter('fieldstack' if FIELDS else 'mask',overlap_folder())
@@ -692,6 +725,7 @@ def module_text():
     if IMPORTED:text+='\n\n# ---- Imported points (src/arraytron_imported.py)\n'+(ROOT/'src/arraytron_imported.py').read_text()
     if FINISH:text+='\n\n# ---- Manual overrides (src/arraytron_overrides.py)\n'+(ROOT/'src/arraytron_overrides.py').read_text()+'\n\n# ---- Production finishing (src/arraytron_finish.py)\n'+(ROOT/'src/arraytron_finish.py').read_text()
     if PICK:text+='\n\n# ---- Pick Instance (src/arraytron_pick.py)\n'+(ROOT/'src/arraytron_pick.py').read_text()
+    if PLACE:text+='\n\n# ---- Instance Place (src/arraytron_place.py)\n'+(ROOT/'src/arraytron_place.py').read_text()
     return text
 
 def python_sop(parent,name,call):
@@ -799,6 +833,7 @@ def build():
     if IMPORTED:
         source=inst.createNode('object_merge','imported_source');source.parm('numobj').set(1);source.parm('objpath1').setExpression("(lambda a:a.evalParm('imp_sop') if a.evalParm('imp_source')==0 else '')(hou.pwd().parent().parent())",hou.exprLanguage.Python)
         imported_sop=python_sop(inst,'generate_imported','sop_imported');imported_sop.setInput(0,source);generators.append(imported_sop)
+    if PLACE:generators.append(python_sop(inst,'generate_place','sop_place'))
     switch=inst.createNode('switch','DISTRIBUTION_GENERATOR')
     for index,generator in enumerate(generators):switch.setInput(index,generator)
     switch.parm('input').setExpression('ch("../../mode")',hou.exprLanguage.Hscript)

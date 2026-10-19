@@ -62,3 +62,5 @@ Status 2026-10-18 (latest): v1.6.2 renames the Settle tab to Physics.
 Status 2026-10-18 (latest): v1.7.0 adds Pick Instance (viewport picking of instance ids for the overrides).
 
 Status 2026-10-18 (latest): v1.8.0 adds the built-in LOD generator.
+
+Status 2026-10-19 (latest): v1.9.0 adds the Instance Place distribution mode.

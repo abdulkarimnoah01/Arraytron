@@ -1,0 +1,7 @@
+// PRIMVARS (v0.9.0): per-instance data for shaders, filtering and downstream tools. Always written (cheap); the PointInstancer only copies the
+// attributes that are ticked in the Primvars section (primvars:arraytron_id, primvars:prototype_id, primvars:random, primvars:mask, primvars:density, primvars:cluster).
+i@arraytron_id = i@id;                                                   // the stable instance id
+i@prototype_id = i@proto_id;                                             // the Prototype Bank row of the (hero) prototype, stable when other rows are disabled
+f@random = rand(set(i@id, chi("../../pv_seed"), 61));                    // a stable random number in [0, 1) per id
+f@mask = haspointattrib(0, "maskweight") ? f@maskweight : 1.0;           // the Mask weight (1 without a mask)
+f@density = haspointattrib(0, "fieldweight") ? f@fieldweight : 1.0;      // the Field Stack weight (1 without a stack)

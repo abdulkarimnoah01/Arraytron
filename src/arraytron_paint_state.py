@@ -14,6 +14,7 @@ KINDS=('add','remove','replace','relax');KIND_NAMES=('Add','Remove','Replace','R
 KIND_COLORS={'add':(1.0,0.65,0.1,1.0),'remove':(1.0,0.2,0.2,1.0),'replace':(0.3,0.6,1.0,1.0),'relax':(0.3,0.9,0.4,1.0)}
 HELP=('LMB paint  |  Ctrl+LMB erase  |  Shift+LMB relax  |  Ctrl+Shift+LMB drag: radius  |  wheel + Shift: radius, + Ctrl: strength, + Ctrl+Shift: density  |  '
       '[ ] radius  |  - = strength  |  , . density  |  1 2 3 4: Add Remove Replace Relax  |  F falloff  |  H hide this help  |  Esc / Enter: finish')
+import time
 import traceback
 def guarded(func):
     """A callback that never breaks the viewer: an error is printed to the Houdini console and shown in the viewport prompt (tests re-raise it)."""
@@ -31,7 +32,7 @@ class PaintState(object):
     def __init__(self,state_name,scene_viewer):
         self.state_name=state_name;self.scene_viewer=scene_viewer
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
-        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None
+        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None)
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
         self.preview=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_paint_points')
@@ -53,19 +54,26 @@ class PaintState(object):
         if dev.isCtrlKey() and not dev.isShiftKey():return 'add' if op==1 else 'remove'
         if dev.isShiftKey() and not dev.isCtrlKey():return 'add' if op==3 else 'relax'
         return KINDS[op]
-    def _active(self):return self.node is not None and (self.picking or self.node.evalParm('mode')==6)
+    def _active(self):return self.node is not None and (self.picking or self.placing or self.node.evalParm('mode')==6)
     def _ensure(self):
         """True while the node is in Paint mode. Selecting the node enters this tool by itself, so it never changes the Distribution Mode: with another mode it stays idle
         (nothing drawn, no prompt, every mouse / key event is left to Houdini) and wakes up when the mode becomes Paint (the Start Painting button sets it)."""
         if self.node is not None and not self.picking and self.node.userData('arraytron_pick'):             # the Pick Instance button asked for picking
-            self.node.destroyUserData('arraytron_pick');self.picking=True;self.loaded=False;self.painting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_pick');self.picking=True;self.placing=False;self.loaded=False;self.painting=False;self.resizing=None
+        if self.node is not None and not self.placing and self.node.userData('arraytron_place'):                          # the Place Instances button asked for placing
+            self.node.destroyUserData('arraytron_place');self.placing=True;self.picking=False;self.loaded=False;self.painting=False;self.resizing=None
         if not self._active():
             if self.loaded:
                 self._commit();self.loaded=False;self.painting=False;self.resizing=None
                 self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.scene_viewer.clearPromptMessage()
             return False
         if not self.loaded:
-            if self.picking:
+            if self.placing:
+                self.place_hit=None;self.brush.show(False);self.core.show(False);self.preview.show(False)
+                try:self.place_surf=self._m().place_surface(self.node)
+                except hou.Error as exc:
+                    self.place_surf=None;self.scene_viewer.setPromptMessage('Arraytron Place: %s'%exc,hou.promptMessageType.Error)
+            elif self.picking:
                 self.inst=self._m().pick_instances(self.node);self.pick_hit=None;self.brush.show(False);self.core.show(False);self.preview.show(False)
             else:self._load()
             self.loaded=True;self._prompt()
@@ -121,6 +129,11 @@ class PaintState(object):
     def status(self):
         """The prompt line: the live brush values (and the shortcuts until H hides them)."""
         n=self.node
+        if self.placing:
+            proto=n.evalParm('place_def_proto')
+            head='Arraytron Place  |  scale %.3g  rotation %g  prototype %s  |  %d placed'%(n.evalParm('place_def_scale'),n.evalParm('place_def_yaw'),'auto' if proto==0 else 'row %d'%proto,n.evalParm('places'))
+            if self.place_hit is None:head+='  |  no surface under the mouse'
+            return head+('\nClick: place an instance  |  Ctrl+click: delete the one under the mouse  |  wheel + Shift: scale, + Ctrl: rotation  |  [ ] scale  |  , . rotation  |  0-9 prototype row (0 auto)  |  H hide this help  |  Esc / Enter: finish' if self.show_help else '')
         if self.picking:
             head='Arraytron Pick  |  no instance under the mouse'
             if self.pick_hit is not None:
@@ -143,13 +156,14 @@ class PaintState(object):
         self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False)
     @guarded
     def onExit(self,kwargs):
-        self._commit();self.picking=False;self.inst=None;self.pick_hit=None;self.loaded=False
+        self._commit();self.picking=False;self.placing=False;self.place_hit=None;self.inst=None;self.pick_hit=None;self.loaded=False
         self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.scene_viewer.clearPromptMessage()
     @guarded
     def onMouseEvent(self,kwargs):
         if not self._ensure():return False
         ev=kwargs['ui_event'];dev=ev.device();reason=ev.reason()
         if dev.isMiddleButton() or dev.isAltKey():return False                        # let the camera handle navigation
+        if self.placing:return self._place_mouse(ev,dev,reason)
         if self.picking:return self._pick_mouse(ev,dev,reason)
         self._pick(ev)
         if self.resizing is not None:                                                  # Ctrl+Shift+LMB drag: the radius follows the mouse sideways (about 150 pixels per doubling)
@@ -173,6 +187,32 @@ class PaintState(object):
         elif reason==hou.uiEventReason.Changed and self.painting:
             self.painting=False;self._commit();self._prompt()
         self._draw_brush();return True
+    def _place_mouse(self,ev,dev,reason):
+        """Instance Place: the marker follows the surface under the mouse; a click adds one instance (a row of the Placed Instances table), Ctrl-click deletes the placed instance under the mouse."""
+        try:origin,direction=ev.ray()
+        except Exception:
+            origin,direction=ev.curViewport().mapToWorld(dev.mouseX(),dev.mouseY())
+        m=self._m();o=np.array(origin,dtype=float);d=np.array(direction,dtype=float);d=d/np.linalg.norm(d);self.place_hit=None
+        if self.place_surf is not None:
+            P,T,area,normals,vn=self.place_surf;t,j=m.ray_triangles(o,d,P,T)
+            if j[0]>=0:
+                n=normals[j[0]]
+                if np.dot(n,d)>0:n=-n
+                self.place_hit=(o+d*t[0],n,float(t[0]))
+        click=dev.isLeftButton() and reason in (hou.uiEventReason.Start,hou.uiEventReason.Picked)
+        stamp=(dev.mouseX(),dev.mouseY());fresh=click and not (self.place_last[1]==stamp and time.time()-self.place_last[0]<0.25)      # a click can arrive as Start and as Picked: act once
+        if fresh:
+            self.place_last=(time.time(),stamp)
+            if dev.isCtrlKey():
+                found=m.place_nearest(self.node,o,d)
+                if found is not None:m.place_remove(self.node,found[0])
+            elif self.place_hit is not None:m.place_add(self.node,self.place_hit[0],self.place_hit[1])
+        if self.place_hit is None:self.marker.show(False)
+        else:
+            pos,nrm,t=self.place_hit;r=max(t*0.02,1e-3);geo=self._ring(pos,nrm,r)
+            a=geo.createPoint();a.setPosition(hou.Vector3(tuple((pos+nrm*0.01).tolist())));b=geo.createPoint();b.setPosition(hou.Vector3(tuple((pos+nrm*r*3.0).tolist())));line=geo.createPolygon(is_closed=False);line.addVertex(a);line.addVertex(b)
+            self.marker.setParams({'color1':hou.Vector4((0.2,1.0,0.4,1.0)),'line_width':3.0});self.marker.setGeometry(geo);self.marker.show(True)
+        self._prompt();return True
     def _pick_mouse(self,ev,dev,reason):
         """Pick Instance: the marker follows the instance under the mouse; a click creates (or finds) its override row, Ctrl-click ticks Delete."""
         try:origin,direction=ev.ray()
@@ -184,7 +224,7 @@ class PaintState(object):
         if self.pick_hit is None:self.marker.show(False)
         else:
             iid,pos,t=self.pick_hit;view=-np.asarray(direction,dtype=float);view=view/np.linalg.norm(view)
-            self.marker.setGeometry(self._ring(pos-view*0.0,view,max(t*0.03,1e-3)));self.marker.show(True)
+            self.marker.setParams({'color1':hou.Vector4((1.0,0.9,0.1,1.0)),'line_width':3.0});self.marker.setGeometry(self._ring(pos,view,max(t*0.03,1e-3)));self.marker.show(True)
             if dev.isLeftButton() and reason in (hou.uiEventReason.Start,hou.uiEventReason.Picked):
                 m.pick_add(self.node,iid,delete=dev.isCtrlKey());self.inst=None                       # the list is read again (a deleted instance is gone)
         self._prompt();return True
@@ -192,6 +232,13 @@ class PaintState(object):
     def onMouseWheelEvent(self,kwargs):
         """Shift + wheel: radius; Ctrl + wheel: strength; Ctrl + Shift + wheel: density (anything else scrolls / zooms the camera as usual)."""
         if not self._ensure() or self.picking:return False
+        if self.placing:
+            dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
+            if sign==0 or dev.isAltKey():return False
+            if dev.isShiftKey():self._set('place_def_scale',self.node.evalParm('place_def_scale')*1.1**sign,0.0001,1000.0)
+            elif dev.isCtrlKey():self._set('place_def_yaw',self.node.evalParm('place_def_yaw')+15.0*sign,-360.0,360.0)
+            else:return False
+            self._prompt();return True
         dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
         if sign==0 or dev.isAltKey():return False
         if dev.isShiftKey() and dev.isCtrlKey():self._set('paint_density',self.node.evalParm('paint_density')*1.15**sign,0.0,1000.0)
@@ -203,6 +250,13 @@ class PaintState(object):
     def onKeyEvent(self,kwargs):
         if not self._ensure() or self.picking:return False
         key=kwargs['ui_event'].device().keyString();n=self.node
+        if self.placing:
+            if key in ('[',']'):self._set('place_def_scale',n.evalParm('place_def_scale')*(1.1 if key==']' else 1/1.1),0.0001,1000.0)
+            elif key in (',','.'):self._set('place_def_yaw',n.evalParm('place_def_yaw')+(15.0 if key=='.' else -15.0),-360.0,360.0)
+            elif len(key)==1 and key.isdigit():n.parm('place_def_proto').set(int(key))
+            elif key in ('h','H'):self.show_help=not self.show_help
+            else:return False
+            self._prompt();return True
         if key in ('[',']'):self._set('paint_radius',n.evalParm('paint_radius')*(1.1 if key==']' else 1/1.1),0.01,100.0)
         elif key in ('-','_'):self._set('paint_strength',n.evalParm('paint_strength')-0.05,0.0,1.0)
         elif key in ('=','+'):self._set('paint_strength',n.evalParm('paint_strength')+0.05,0.0,1.0)

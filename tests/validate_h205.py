@@ -13,7 +13,7 @@ HOUDINI=Path('C:/Program Files/Side Effects Software')
 H22=HOUDINI/'Houdini 22.0.368/bin/hython.exe'
 OLDER=(('20.5.445',HOUDINI/'Houdini 20.5.445/bin/hython.exe'),('21.0.440',HOUDINI/'Houdini 21.0.440/bin/hython.exe'))     # the one HDA built in 20.5 must work in both
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else 'v1.1.0')
-DEMOS=(('','1,24,64'),('paint','1'),('paint_k','1'),('fields','1'),('cluster','1'),('camera','1,12'),('finish','1'),('imported','1,17,48,96'),('lodgen','1'),('grow','1,24,44,84,110'),('mask','1'),('overlap','1'))
+DEMOS=(('','1,24,64'),('paint','1'),('paint_k','1'),('fields','1'),('cluster','1'),('camera','1,12'),('finish','1'),('imported','1,17,48,96'),('lodgen','1'),('place','1'),('grow','1,24,44,84,110'),('mask','1'),('overlap','1'))
 TOL=dict(positions=1e-4,scales=1e-4,orientations=2e-3)
 def hip22(kind):
     base=versions.CURRENT if (ROOT/'dist'/f'Arraytron_{VID}_{kind+"_" if kind else ""}demo.hip').exists()==False else VID

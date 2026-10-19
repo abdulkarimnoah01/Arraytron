@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0'}[VID]
+PREVIOUS={'v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.9.0':'v1.8.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_imported_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
 def ref_hash(i,seed,stream=0):
@@ -102,7 +102,7 @@ def qmat(q):
 
 # ------------------------------------------------------------------ groups
 def ui_contract():
-    st,sc=new_scene('ui');a=imported(st,sc);g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[8]=='Imported Points' and len(mode.menuItems())==9 and mode.defaultValue()==0
+    st,sc=new_scene('ui');a=imported(st,sc);g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[8]=='Imported Points' and len(mode.menuItems())==9+(1 if a.parm('places') is not None else 0) and mode.defaultValue()==0
     for name in ('imp_source','imp_sop','imp_prim','imp_offset','imp_percent','imp_seed','imp_idmode','imp_idattr','imp_scale','imp_scale_attr','imp_scale_mult','imp_orient','imp_orient_attr','imp_vel_attr','imp_normal_attr','imp_copy','imp_info','imp_frame','pv_srcid','pv_copy','proto_percent'):
         t=g.find(name);assert t is not None,name
     for name,cond in (('imp_sop','{ imp_source != 0 }'),('imp_prim','{ imp_source != 1 }'),('imp_offset','{ imp_source != 1 }'),('imp_idattr','{ imp_idmode != 0 }'),('imp_scale_attr','{ imp_scale == 0 }'),('imp_orient_attr','{ imp_orient != 1 }'),('imp_vel_attr','{ imp_orient != 2 }'),('imp_normal_attr','{ imp_orient != 3 }')):assert cond in g.find(name).conditionals()[hou.parmCondType.HideWhen],name

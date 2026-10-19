@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.8.0)
+# Arraytron documentation index (v1.9.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
@@ -40,3 +40,4 @@ Start with the **User guide**. Everything is plain Markdown in `docs/`; the proj
 ## Tests and tools (developers)
 
 `tests/validate_*.py` (one suite per feature, plus `validate_production.py`) and `tools/` (builders, demo builders, `render_demo.py`, `archive_release.py`, `make_manifest.py`); the commands are listed in `CLAUDE.md`.
+- [Instance Place](INSTANCE_PLACE.md): placing instances one at a time (table and viewport tool).
