@@ -32,7 +32,7 @@ class PaintState(object):
     def __init__(self,state_name,scene_viewer):
         self.state_name=state_name;self.scene_viewer=scene_viewer
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
-        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None)
+        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None);self.place_drag=None
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
         self.preview=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_paint_points')
@@ -132,8 +132,10 @@ class PaintState(object):
         if self.placing:
             proto=n.evalParm('place_def_proto')
             head='Arraytron Place  |  scale %.3g  rotation %g  prototype %s  |  %d placed'%(n.evalParm('place_def_scale'),n.evalParm('place_def_yaw'),'auto' if proto==0 else 'row %d'%proto,n.evalParm('places'))
-            if self.place_hit is None:head+='  |  no surface under the mouse'
-            return head+('\nClick: place an instance  |  Ctrl+click: delete the one under the mouse  |  wheel + Shift: scale, + Ctrl: rotation  |  [ ] scale  |  , . rotation  |  0-9 prototype row (0 auto)  |  H hide this help  |  Esc / Enter: finish' if self.show_help else '')
+            if n.evalParm('place_snap')>0 or n.evalParm('place_snap_rot')>0:head+='  |  snap %g / %g deg'%(n.evalParm('place_snap'),n.evalParm('place_snap_rot'))
+            if self.place_drag is not None:head='Arraytron Place  |  drag: rotation %+.0f deg  scale x%.2f  |  release to place'%(self.place_drag['yaw'],self.place_drag['scale'])
+            elif self.place_hit is None:head+='  |  no surface under the mouse'
+            return head+('\nClick: place an instance (press, drag to turn and scale, release)  |  Ctrl+click: delete the one under the mouse  |  wheel + Shift: scale, + Ctrl: rotation  |  [ ] scale  |  , . rotation  |  0-9 prototype row (0 auto)  |  H hide this help  |  Esc / Enter: finish' if self.show_help else '')
         if self.picking:
             head='Arraytron Pick  |  no instance under the mouse'
             if self.pick_hit is not None:
@@ -156,7 +158,7 @@ class PaintState(object):
         self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False)
     @guarded
     def onExit(self,kwargs):
-        self._commit();self.picking=False;self.placing=False;self.place_hit=None;self.inst=None;self.pick_hit=None;self.loaded=False
+        self._commit();self.picking=False;self.placing=False;self.place_hit=None;self.place_drag=None;self.inst=None;self.pick_hit=None;self.loaded=False
         self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.scene_viewer.clearPromptMessage()
     @guarded
     def onMouseEvent(self,kwargs):
@@ -188,29 +190,45 @@ class PaintState(object):
             self.painting=False;self._commit();self._prompt()
         self._draw_brush();return True
     def _place_mouse(self,ev,dev,reason):
-        """Instance Place: the marker follows the surface under the mouse; a click adds one instance (a row of the Placed Instances table), Ctrl-click deletes the placed instance under the mouse."""
+        """Instance Place: the marker follows the surface under the mouse (snapped to the grid when Snap Position is on). Press and drag turn and scale the new instance, release places it (a plain click
+        that arrives as Picked places at once; with Drag Sets Rotation And Scale off the press places). Ctrl-click deletes the placed instance under the mouse."""
         try:origin,direction=ev.ray()
         except Exception:
             origin,direction=ev.curViewport().mapToWorld(dev.mouseX(),dev.mouseY())
-        m=self._m();o=np.array(origin,dtype=float);d=np.array(direction,dtype=float);d=d/np.linalg.norm(d);self.place_hit=None
-        if self.place_surf is not None:
-            P,T,area,normals,vn=self.place_surf;t,j=m.ray_triangles(o,d,P,T)
-            if j[0]>=0:
-                n=normals[j[0]]
-                if np.dot(n,d)>0:n=-n
-                self.place_hit=(o+d*t[0],n,float(t[0]))
-        click=dev.isLeftButton() and reason in (hou.uiEventReason.Start,hou.uiEventReason.Picked)
-        stamp=(dev.mouseX(),dev.mouseY());fresh=click and not (self.place_last[1]==stamp and time.time()-self.place_last[0]<0.25)      # a click can arrive as Start and as Picked: act once
-        if fresh:
-            self.place_last=(time.time(),stamp)
-            if dev.isCtrlKey():
-                found=m.place_nearest(self.node,o,d)
-                if found is not None:m.place_remove(self.node,found[0])
-            elif self.place_hit is not None:m.place_add(self.node,self.place_hit[0],self.place_hit[1])
-        if self.place_hit is None:self.marker.show(False)
+        m=self._m();node=self.node;o=np.array(origin,dtype=float);d=np.array(direction,dtype=float);d=d/np.linalg.norm(d);left=dev.isLeftButton();R=hou.uiEventReason
+        if self.place_drag is None:
+            self.place_hit=None
+            if self.place_surf is not None:
+                P,T,area,normals,vn=self.place_surf;t,j=m.ray_triangles(o,d,P,T)
+                if j[0]>=0:
+                    nrm=normals[j[0]]
+                    if np.dot(nrm,d)>0:nrm=-nrm
+                    point,nrm=m.place_snap_point(node,self.place_surf,o+d*t[0],nrm);self.place_hit=(point,nrm,float(t[0]))
+        def commit(yaw_add=0.0,scale_mult=1.0):
+            if time.time()-self.place_last[0]<0.25:return                                   # a click can arrive as Start, Changed and Picked: place once
+            self.place_last=(time.time(),None);pos,nrm,t=self.place_hit
+            m.place_add(node,pos,nrm,yaw_add=yaw_add,scale_mult=scale_mult,snap_rot=node.evalParm('place_snap_rot') or None)
+        if left and reason==R.Start and dev.isCtrlKey():
+            if time.time()-self.place_last[0]>=0.25:
+                self.place_last=(time.time(),None);found=m.place_nearest(node,o,d)
+                if found is not None:m.place_remove(node,found[0])
+        elif left and reason==R.Start and self.place_hit is not None:
+            if node.evalParm('place_dragset'):self.place_drag=dict(x=dev.mouseX(),y=dev.mouseY(),hit=self.place_hit,yaw=0.0,scale=1.0)
+            else:commit()
+        elif self.place_drag is not None and reason==R.Active:
+            self.place_drag['yaw'],self.place_drag['scale']=m.place_drag_values(dev.mouseX()-self.place_drag['x'],self.place_drag['y']-dev.mouseY())
+        elif self.place_drag is not None and reason in (R.Changed,R.Picked):
+            drag=self.place_drag;self.place_drag=None;self.place_hit=drag['hit'];commit(drag['yaw'],drag['scale'])
+        elif left and reason==R.Picked and self.place_hit is not None and not dev.isCtrlKey():commit()
+        shown=self.place_drag['hit'] if self.place_drag is not None else self.place_hit
+        if shown is None:self.marker.show(False)
         else:
-            pos,nrm,t=self.place_hit;r=max(t*0.02,1e-3);geo=self._ring(pos,nrm,r)
-            a=geo.createPoint();a.setPosition(hou.Vector3(tuple((pos+nrm*0.01).tolist())));b=geo.createPoint();b.setPosition(hou.Vector3(tuple((pos+nrm*r*3.0).tolist())));line=geo.createPolygon(is_closed=False);line.addVertex(a);line.addVertex(b)
+            pos,nrm,t=shown;r=max(t*0.02,1e-3);yaw=node.evalParm('place_def_yaw')+(self.place_drag['yaw'] if self.place_drag is not None else 0.0);k=self.place_drag['scale'] if self.place_drag is not None else 1.0
+            snap=node.evalParm('place_snap_rot')
+            if snap>0:yaw=float(np.round(yaw/snap)*snap)
+            geo=self._ring(pos,nrm,r);a=geo.createPoint();a.setPosition(hou.Vector3(tuple((pos+nrm*0.01).tolist())));b=geo.createPoint();b.setPosition(hou.Vector3(tuple((pos+nrm*r*3.0).tolist())));line=geo.createPolygon(is_closed=False);line.addVertex(a);line.addVertex(b)
+            forward=m.place_rotate(m.place_aim(nrm,node.evalParm('place_align'),yaw),(0.0,0.0,1.0));c=geo.createPoint();c.setPosition(hou.Vector3(tuple((pos+nrm*0.01).tolist())));e=geo.createPoint();e.setPosition(hou.Vector3(tuple((pos+nrm*0.01+forward*r*3.0*k).tolist())))
+            head=geo.createPolygon(is_closed=False);head.addVertex(c);head.addVertex(e)                                      # the heading of the new instance (+Z)
             self.marker.setParams({'color1':hou.Vector4((0.2,1.0,0.4,1.0)),'line_width':3.0});self.marker.setGeometry(geo);self.marker.show(True)
         self._prompt();return True
     def _pick_mouse(self,ev,dev,reason):

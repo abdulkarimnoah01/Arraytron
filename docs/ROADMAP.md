@@ -66,3 +66,5 @@ Status 2026-10-18 (latest): v1.8.0 adds the built-in LOD generator.
 Status 2026-10-19 (latest): v1.9.0 adds the Instance Place distribution mode.
 
 Status 2026-10-20 (latest): v1.10.0 adds Instance Place arrays (Copies and steps).
+
+Status 2026-10-20 (latest): v1.11.0 adds the Place tool extras and the cleanups.

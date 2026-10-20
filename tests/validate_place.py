@@ -1,7 +1,7 @@
 """v1.9.0 Instance Place in real Houdini: hython tests/validate_place.py [version]
 Distribution Mode "Instance Place": instances placed one at a time from a table (Position, Rotate, Scale, Prototype Row, stable id) or by clicking a surface in the viewport.
 Expected values come from independent rotation matrices, plain geometry and the instancer's own arrays. The viewport tool is exercised through a stand-in viewport that looks
-straight down. Env ARRAYTRON_MUTATE=place_euler|place_ids|place_on|place_ctrl|place_align|place_cspace|place_cids|place_cscale|place_corder breaks the module; the suite must FAIL."""
+straight down. Env ARRAYTRON_MUTATE=place_euler|place_ids|place_on|place_ctrl|place_align|place_cspace|place_cids|place_cscale|place_corder|place_snap|place_snaprot|place_drag|place_curve breaks the module; the suite must FAIL."""
 from pathlib import Path
 import hou, json, os, sys, tempfile, time, types
 import numpy as np
@@ -10,13 +10,14 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.9.0':'v1.8.0','v1.10.0':'v1.9.0'}[VID]
+PREVIOUS={'v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_place_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
     path=WORK/'place.usda';s=Usd.Stage.CreateNew(str(path));root=UsdGeom.Xform.Define(s,'/World');s.SetDefaultPrim(root.GetPrim());UsdGeom.SetStageUpAxis(s,UsdGeom.Tokens.y)
     for name in ('Ball','BallB'):UsdGeom.Xform.Define(s,'/World/Props/'+name);UsdGeom.Cube.Define(s,'/World/Props/%s/C'%name).CreateSizeAttr(0.2)
     r=UsdGeom.Mesh.Define(s,'/World/Ramp');r.CreatePointsAttr([(-5,0,5),(5,0,5),(5,5,-5),(-5,5,-5)]);r.CreateFaceVertexCountsAttr([4]);r.CreateFaceVertexIndicesAttr([0,1,2,3]);r.CreateOrientationAttr('rightHanded')
+    c=UsdGeom.BasisCurves.Define(s,'/World/Path');c.CreateTypeAttr('linear');c.CreateWrapAttr('nonperiodic');c.CreatePointsAttr([(0,0.5,0),(4,0.5,0),(4,0.5,4)]);c.CreateCurveVertexCountsAttr([3])
     s.GetRootLayer().Save();return path.as_posix()
 SCENE=write_scene()
 def new_scene(name='scene'):
@@ -79,6 +80,12 @@ def mutate(a=None):
                     P[k]=p;Q[k]=q;S[k]=sv;q=g['place_qmul'](q,qs);p=p+g['place_rotate'](q,sv*np.array(t,dtype=float));sv=sv*sc                       # rotates before it moves
                 return P,Q,S
             g['place_expand']=swapped
+        elif MUTATE=='place_snap':g['place_snap_point']=lambda asset,surface,point,normal:(point,normal)
+        elif MUTATE=='place_snaprot':g['place_snap_value']=lambda value,step:float(value)
+        elif MUTATE=='place_drag':
+            good=g['place_drag_values'];g['place_drag_values']=lambda dx,dy,yaw_per_pixel=0.5,scale_pixels=150.0:(lambda r:(-r[0],r[1]))(good(dx,dy,yaw_per_pixel,scale_pixels))
+        elif MUTATE=='place_curve':
+            good=g['place_curve_samples'];g['place_curve_samples']=lambda asset:(lambda r:(r[0],r[1]*0.0))(good(asset))
         elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
 def check(name,func):
     t=time.time();func();checks.append(name);print('PASS %s (%.1fs)'%(name,time.time()-t));sys.stdout.flush()
@@ -180,10 +187,9 @@ def viewer_place():
     state.onEnter({'node':a});assert not state.placing and mouse(3,2,R.Start,left=True) is False and a.evalParm('places')==0
     a.setUserData('arraytron_place','1');assert mouse(3,2,R.Located) is True and state.placing and a.userData('arraytron_place') is None                                  # the flag is found on the next mouse event
     assert state.marker.shown and 'Arraytron Place' in viewer.prompt and '0 placed' in viewer.prompt and 'scale 1' in viewer.prompt and 'Esc' in viewer.prompt
-    mouse(3,2,R.Start,left=True);assert a.evalParm('places')==1 and np.allclose(a.evalParmTuple('place_pos1'),[3,0,2],atol=1e-6) and a.evalParm('place_id1')==1 and '1 placed' in viewer.prompt
-    mouse(3,2,R.Picked,left=True);assert a.evalParm('places')==1                                                                    # the click arrives twice (Start and Picked): one instance
-    mouse(3,2,R.Changed,left=False);assert a.evalParm('places')==1
-    time.sleep(0.3);mouse(6,5,R.Start,left=True);assert a.evalParm('places')==2 and np.allclose(a.evalParmTuple('place_pos2'),[6,0,5],atol=1e-6) and a.evalParm('place_id2')==2
+    mouse(3,2,R.Start,left=True);assert a.evalParm('places')==0;mouse(3,2,R.Changed,left=False);assert a.evalParm('places')==1 and np.allclose(a.evalParmTuple('place_pos1'),[3,0,2],atol=1e-6) and a.evalParm('place_id1')==1 and '1 placed' in viewer.prompt
+    mouse(3,2,R.Picked,left=True);assert a.evalParm('places')==1                                                                    # the click arrives as Start, Changed and Picked: one instance
+    time.sleep(0.3);mouse(6,5,R.Start,left=True);mouse(6,5,R.Changed,left=False);assert a.evalParm('places')==2 and np.allclose(a.evalParmTuple('place_pos2'),[6,0,5],atol=1e-6) and a.evalParm('place_id2')==2
     time.sleep(0.3);mouse(3.01,2,R.Start,left=True,ctrl=True);assert a.evalParm('places')==1 and a.evalParm('place_id1')==2 and np.allclose(a.evalParmTuple('place_pos1'),[6,0,5],atol=1e-6)     # Ctrl-click deletes the one under the mouse
     time.sleep(0.3);mouse(0,9,R.Start,left=True,ctrl=True);assert a.evalParm('places')==1                                          # nothing there: nothing deleted
     # the settings in the viewport
@@ -194,12 +200,12 @@ def viewer_place():
         assert state.onKeyEvent({'ui_event':Event(Device(0,0,key=key),R.Changed)}) is True and abs(a.evalParm(parm)-value)<1e-9,(key,a.evalParm(parm))
     assert state.onKeyEvent({'ui_event':Event(Device(0,0,key='x'),R.Changed)}) is False and 'Esc' in viewer.prompt
     state.onKeyEvent({'ui_event':Event(Device(0,0,key='h'),R.Changed)});assert 'Esc' not in viewer.prompt and 'scale' in viewer.prompt
-    time.sleep(0.3);a.parm('place_def_proto').set(2);a.parm('place_def_scale').set(1.25);a.parm('place_def_yaw').set(40.0);mouse(1,1,R.Start,left=True)
+    time.sleep(0.3);a.parm('place_def_proto').set(2);a.parm('place_def_scale').set(1.25);a.parm('place_def_yaw').set(40.0);mouse(1,1,R.Start,left=True);mouse(1,1,R.Changed,left=False)
     assert a.evalParm('places')==2 and a.evalParm('place_proto2')==2 and np.allclose(a.evalParmTuple('place_scale2'),[1.25]*3) and np.allclose(a.evalParmTuple('place_rot2'),[0,40,0],atol=1e-6)
     assert a.evalParm('paint_data')==paint and a.evalParm('mode')==9                                                               # no painting, no mode change
     o=by_id(out(a));assert o['ids'].tolist()==[2,3] and np.allclose(o['pos'][0],[6,0,5],atol=1e-5)                                    # and the instancer follows the table
     # a slope: the tool places on the Place On prim and aligns to its normal
-    time.sleep(0.3);a.parm('place_target').set('/World/Ramp');a.parm('place_align').set(1.0);a.parm('places').set(0);state.onResume({'node':a});mouse(0,0,R.Start,left=True)
+    time.sleep(0.3);a.parm('place_target').set('/World/Ramp');a.parm('place_align').set(1.0);a.parm('places').set(0);state.onResume({'node':a});mouse(0,0,R.Start,left=True);mouse(0,0,R.Changed,left=False)
     pos=np.array(a.evalParmTuple('place_pos1'));assert abs(pos[1]-(5.0-pos[2])*0.5)<1e-6 and abs(pos[0])<1e-6,pos                                   # on the ramp y = (5 - z) / 2
     nrm=np.array([0.0,1.0,0.5])/np.linalg.norm([0.0,1.0,0.5]);assert np.allclose(quat_apply(m.place_quat(a.evalParmTuple('place_rot1')),np.array([0,1.0,0])),nrm,atol=1e-6)
     state.onExit({'node':a});assert not state.placing and viewer.prompt is None and not state.marker.shown
@@ -213,6 +219,7 @@ def with_other_stages():
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[9]=='Instance Place' and len(mode.menuLabels())==10
+    for name in ('place_snap','place_snap_rot','place_dragset','place_curve','place_curve_mode','place_curve_count','place_curve_spacing','place_curve_follow','place_curve_project','place_curve_go'):assert g.find(name) is not None,name
     for name in ('place_copies#','place_ctrans#','place_crot#','place_cscale#','place_cspace#','place_def_copies','place_def_ctrans','place_def_crot','place_def_cscale','place_def_cspace'):assert g.find(name) is not None,name
     for name in ('places','place_start','place_target','place_align','place_offset','place_def_scale','place_def_yaw','place_def_yawrand','place_def_proto','place_seed','place_info','place_fix','place_clear'):assert g.find(name) is not None,name
     place=g.find('place');assert place.conditionalType()==hou.parmCondType.HideWhen if hasattr(place,'conditionalType') else True
@@ -277,8 +284,56 @@ def array_tool():
     def mouse(xx,zz,reason,**kw):return state.onMouseEvent({'ui_event':Event(Device(float(xx)*10,float(zz)*10,**kw),reason)})
     assert mouse(8,8,R.Located) is True and state.placing
     time.sleep(0.3);mouse(arr['P'][k][0],arr['P'][k][2],R.Start,left=True,ctrl=True);assert a.evalParm('places')==0                                       # Ctrl-click on a copy deletes the whole array
-    time.sleep(0.3);mouse(5,5,R.Start,left=True);assert a.evalParm('places')==1 and a.evalParm('place_copies1')==4 and len(by_id(out(a))['ids'])==4
+    time.sleep(0.3);mouse(5,5,R.Start,left=True);mouse(5,5,R.Changed,left=False);assert a.evalParm('places')==1 and a.evalParm('place_copies1')==4 and len(by_id(out(a))['ids'])==4
     state.onExit({'node':a})
+
+def snap_and_drag():
+    R=hou.uiEventReason;st,sc=new_scene('snap');a=place_node(st,sc,[],place_snap=0.5,place_snap_rot=15.0);m=a.hdaModule();state,viewer=make_state()
+    def mouse(x,z,reason,**kw):return state.onMouseEvent({'ui_event':Event(Device(float(x)*10,float(z)*10,**kw),reason)})
+    a.setUserData('arraytron_place','1');state.onEnter({'node':a});mouse(3.2,2.3,R.Located);assert 'snap 0.5 / 15 deg' in viewer.prompt and state.marker.shown
+    assert np.allclose(state.place_hit[0],[3.0,0.0,2.5],atol=1e-9)                                                                 # the marker sits on the grid
+    mouse(3.2,2.3,R.Start,left=True);mouse(3.2,2.3,R.Changed,left=False);assert np.allclose(a.evalParmTuple('place_pos1'),[3.0,0.0,2.5],atol=1e-6) and np.allclose(a.evalParmTuple('place_rot1'),[0,0,0],atol=1e-6)
+    time.sleep(0.3);mouse(5,5,R.Start,left=True);assert a.evalParm('places')==1                                                       # the press only records the point
+    dyaw,k=m.place_drag_values(74,75);assert abs(dyaw-37.0)<1e-9 and abs(k-2**0.5)<1e-9
+    mouse(5+7.4,5-7.5,R.Active,left=True);assert 'drag: rotation +37 deg' in viewer.prompt and 'release' in viewer.prompt and state.place_drag is not None
+    mouse(5+7.4,5-7.5,R.Changed,left=False);assert a.evalParm('places')==2 and state.place_drag is None
+    assert np.allclose(a.evalParmTuple('place_pos2'),[5,0,5],atol=1e-6) and np.allclose(a.evalParmTuple('place_rot2'),[0,30,0],atol=1e-6) and np.allclose(a.evalParmTuple('place_scale2'),[2**0.5]*3,atol=1e-6)     # 37 degrees snapped to 30
+    mouse(5+7.4,5-7.5,R.Picked,left=True);assert a.evalParm('places')==2                                                              # the Picked that follows the release does not place again
+    a.parm('place_snap_rot').set(0.0);time.sleep(0.3);mouse(5,5,R.Start,left=True);mouse(5+7.4,5-7.5,R.Active,left=True);mouse(5+7.4,5-7.5,R.Changed,left=False);assert abs(a.evalParmTuple('place_rot3')[1]-37.0)<1e-6           # no rotation snap
+    a.parm('place_def_yaw').set(10.0);a.parm('place_def_scale').set(2.0);time.sleep(0.3);mouse(6,6,R.Start,left=True);mouse(6,6,R.Changed,left=False);assert abs(a.evalParmTuple('place_rot4')[1]-10.0)<1e-6 and np.allclose(a.evalParmTuple('place_scale4'),[2.0]*3)   # a click adds nothing to the settings
+    a.parm('place_dragset').set(0);time.sleep(0.3);mouse(7,7,R.Start,left=True);assert a.evalParm('places')==5                          # Drag Sets off: the press places
+    time.sleep(0.3);a.parm('place_dragset').set(1);mouse(8,1,R.Picked,left=True);assert a.evalParm('places')==6                          # a click that is only a Picked places at once
+    # the grid on a slope: X and Z are rounded, the point goes back on the ramp
+    a.parm('places').set(0);a.parm('place_target').set('/World/Ramp');state.onResume({'node':a});a.parm('place_snap').set(0.5);time.sleep(0.3);mouse(3.2,2.3,R.Start,left=True);mouse(3.2,2.3,R.Changed,left=False)
+    pos=np.array(a.evalParmTuple('place_pos1'));assert np.allclose(pos,[3.0,1.25,2.5],atol=1e-6),pos
+    state.onExit({'node':a})
+
+def along_curve():
+    st,sc=new_scene('curve');a=place_node(st,sc,[],place_curve='/World/Path',place_curve_count=5,place_def_scale=1.5,place_def_proto=2,protos=2);m=a.hdaModule();mutate(a)
+    P,H=m.place_curve_samples(a);assert np.allclose(P,[[0,.5,0],[2,.5,0],[4,.5,0],[4,.5,2],[4,.5,4]],atol=1e-9) and np.allclose(H,[90,90,0,0,0],atol=1e-9)         # by count, the ends included; +Z follows the tangent
+    assert m.place_along_curve(a)==5 and a.evalParm('places')==5
+    for i,(p,yaw) in enumerate(zip(P,H),1):
+        assert np.allclose(a.evalParmTuple('place_pos%d'%i),p,atol=1e-6) and np.allclose(a.evalParmTuple('place_rot%d'%i),[0,yaw,0],atol=1e-6) and np.allclose(a.evalParmTuple('place_scale%d'%i),[1.5]*3) and a.evalParm('place_proto%d'%i)==2 and a.evalParm('place_id%d'%i)==i
+    o=by_id(out(a));assert o['ids'].tolist()==[1,2,3,4,5] and np.allclose(o['pos'],P,atol=1e-5)
+    a.parm('place_curve_follow').set(0);a.parm('place_def_yaw').set(20.0);m.place_along_curve(a);assert a.evalParm('places')==10 and np.allclose(a.evalParmTuple('place_rot6'),[0,20,0],atol=1e-6) and a.evalParm('place_id6')==6   # appended, ids go on, no turning, New Rotation added
+    hou.undos.performUndo();assert a.evalParm('places')==5                                                                          # one undo step
+    b=place_node(st,sc,[],name='Spacing',place_curve='/World/Path',place_curve_mode=1,place_curve_spacing=3.0);bm=b.hdaModule();Q,_=bm.place_curve_samples(b);assert np.allclose(Q,[[0,.5,0],[3,.5,0],[4,.5,2],[4,.5,4]][:3],atol=1e-9) or np.allclose(Q[:3],[[0,.5,0],[3,.5,0],[4,.5,2]],atol=1e-9)
+    c=place_node(st,sc,[],name='Project',place_curve='/World/Path',place_curve_count=3,place_curve_project=1,place_target='/World/Ramp',place_align=0.0);cm=c.hdaModule();cm.place_along_curve(c);y=[c.evalParmTuple('place_pos%d'%i)[1] for i in (1,2,3)];z=[c.evalParmTuple('place_pos%d'%i)[2] for i in (1,2,3)]
+    assert np.allclose(y,[(5-v)/2 for v in z],atol=1e-6)                                                                            # on the ramp, not at the curve height
+    d=place_node(st,sc,[],name='NoPath')
+    try:d.hdaModule().place_along_curve(d)
+    except hou.NodeError as exc:assert 'Curve Prim is empty' in str(exc)
+    else:raise AssertionError('an empty curve prim must be an error')
+    d.parm('place_curve').set('/World/Props/Ball')
+    try:d.hdaModule().place_along_curve(d)
+    except hou.NodeError as exc:assert 'No BasisCurves' in str(exc)
+    else:raise AssertionError('a prim without curves must be an error')
+
+def cleanups():
+    st,sc=new_scene('clean');a=st.createNode(TYPE);assert a.name()=='arraytron1',a.name()                                       # not instancer1
+    b=st.createNode(TYPE,'y');b2=st.createNode(TYPE);c=st.createNode(TYPE);assert (b2.name(),c.name())==('arraytron2','arraytron3'),(b2.name(),c.name())
+    assert b.name()=='y'                                                                                                           # a name the user gave is kept
+    assert a.parmTemplateGroup().find('phys_on').label()=='Settle Instances'
 
 def main():
     for name,func in (('Maths: rotation convention, Euler round trip, id resolution, aiming at a normal',maths),
@@ -291,6 +346,9 @@ def main():
                       ('Arrays: Copy and Transform maths against 4x4 matrices (local, world), copy ids',array_maths),
                       ('Arrays on the node: ids, positions, scales, spirals, disabled and removed rows, Look tab scale, id limit, prototype row',array_node),
                       ('Arrays in the tool: new-copy settings, a copy belongs to its row, Ctrl-click deletes the array',array_tool),
+                      ('Tool extras: grid snap, rotation snap, press-drag-release, click variants, snapping on a slope',snap_and_drag),
+                      ('Place Along Curve: samples, headings, ids, spacing, projection, undo, errors',along_curve),
+                      ('Cleanups: the node is called arraytron1, the physics checkbox label',cleanups),
                       ('Contract: mode menu, parameters, layout, generator, VEX hook, no dollar signs',contract)):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}
     if not MUTATE:(ROOT/'tests'/('validation_place_%s.json'%versions.tag(VID))).write_text(json.dumps(result,indent=1))

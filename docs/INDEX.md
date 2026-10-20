@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.10.0)
+# Arraytron documentation index (v1.11.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 

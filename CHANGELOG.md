@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.11.0 - Place tool extras and cleanups
+* **Place tool:** press, drag, release (drag sideways to turn, up or down to scale the new instance; a heading line in the marker); **Snap Position** (grid, kept on the surface) and **Snap Rotation (deg)**; **Place Along Curve** (a BasisCurves prim, by count or spacing, following the curve, optionally projected on the surface).
+* **Cleanups:** a new Arraytron node is called `arraytron1` (not `instancer1`); the Physics Settle switch is called **Settle Instances**.
+* `tests/validate_place.py` now has 14 groups and 13 mutations; the Place demo gets stepping stones along a curve. Both builds.
+
 ## v1.10.0 - Instance Place arrays
 * **Copies:** any row of the Placed Instances table can make an array like the Copy and Transform SOP: *Copies*, *Step Translate*, *Step Rotate*, *Step Scale* and *Step Space* (Local follows the copy: spirals, fans, squares; World: straight rows). Copy 0 keeps the row id, the other copies get stable ids derived from it (`1000000000 + id * 10000 + k`); a row without copies is exactly as before.
 * The viewport tool places arrays too: new settings *New Copies*, *New Step Translate / Rotate / Scale / Space*; Ctrl+click on a copy deletes its whole row.

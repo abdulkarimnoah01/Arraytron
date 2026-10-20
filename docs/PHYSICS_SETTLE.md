@@ -2,12 +2,12 @@
 
 An optional system that lets a distribution *fall into place*: the points of any Line, Area, Grid or Circle distribution become rigid stones, Houdini's native Bullet solver (the `rbdbulletsolver` SOP) runs inside the HDA, and the settled positions and orientations replace the spawn state in the normal USD PointInstancer. It was built for the look of loose gravel (railway ballast): small stones resting against and on top of one another.
 
-Off by default. With **Physics Settle** off the output is bit-for-bit the v0.3.6 output (every array of every mode, tested against the real v0.3.6 HDA), and none of the physics nodes cook.
+Off by default. With **Settle Instances** (the Physics Settle switch) off the output is bit-for-bit the v0.3.6 output (every array of every mode, tested against the real v0.3.6 HDA), and none of the physics nodes cook.
 
 ## Workflow
 
 1. Build the distribution as usual. For a bed of stones use **Area**: *Size* is the spawn region, *Count* is the number of stones, **Randomize** (rotation 180 on all axes, a scale range) and the **Prototype Bank** give the variety. Nothing is duplicated in the Physics folder.
-2. Turn **Physics Settle** on. The stones now show their *spawn state*: lifted by **Drop Height** and stacked so that no two overlap. The viewport shows two extra guide outlines: **Drop** (the spawn bounds lifted by Drop Height) and **Ground** (the ground plane at Ground Height). The **Spawn** read-out says how many stones come from which distribution and the height range of the spawn.
+2. Turn **Settle Instances** (the Physics Settle switch) on. The stones now show their *spawn state*: lifted by **Drop Height** and stacked so that no two overlap. The viewport shows two extra guide outlines: **Drop** (the spawn bounds lifted by Drop Height) and **Ground** (the ground plane at Ground Height). The **Spawn** read-out says how many stones come from which distribution and the height range of the spawn.
 3. Press **Simulate & Cache**. A progress dialog (with Cancel) runs the simulation frame by frame; it stops as soon as the pile is at rest. The last frame is written to the cache folder.
 4. The settled pile now feeds the PointInstancer. Changing any setting keeps the old pile on screen marked **STALE** (status line, node warning, `arraytron:physics` state `stale` on the instancer prim) until you simulate again; changing the setting back makes it settled again without simulating. A change of the number of stones cannot reuse the old result and shows the spawn state ("Not simulated").
 

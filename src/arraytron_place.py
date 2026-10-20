@@ -68,6 +68,29 @@ def place_expand(pos,rot,scale,copies,step_translate,step_rotate,step_scale,spac
         q=q/np.linalg.norm(q);s=s*float(step_scale)
     return P,Q,S
 
+def place_snap_value(value,step):
+    """value rounded to the nearest multiple of step (step <= 0 leaves it alone)."""
+    return float(value) if step<=0 else float(np.round(float(value)/step)*step)
+
+def place_hit_at(surface,x,z,y_hint=0.0):
+    """The surface point straight below (x, y_hint + 1000, z) and its normal, or None when there is nothing there. Used to keep a snapped point on the surface."""
+    P,T,area,normals,vn=surface;t,j=ray_triangles(np.array([x,y_hint+1000.0,z]),np.array([0.0,-1.0,0.0]),P,T)
+    if j[0]<0:return None
+    n=normals[j[0]]
+    if n[1]<0:n=-n
+    return np.array([x,y_hint+1000.0-t[0],z]),n
+
+def place_snap_point(asset,surface,point,normal):
+    """The Snap Position grid applied to a surface point: X and Z are rounded to the grid, then the point is put back on the surface (Y and the normal come from it). Returns (point, normal)."""
+    g=asset.evalParm('place_snap')
+    if g<=0 or surface is None:return point,normal
+    x=place_snap_value(point[0],g);z=place_snap_value(point[2],g);hit=place_hit_at(surface,x,z,float(point[1]))
+    return (hit[0],hit[1]) if hit is not None else (point,normal)
+
+def place_drag_values(dx,dy,yaw_per_pixel=0.5,scale_pixels=150.0):
+    """What dragging after the press does: dx pixels to the right turn the new instance by dx * yaw_per_pixel degrees, dy pixels up scale it by 2 ** (dy / scale_pixels)."""
+    return float(dx)*yaw_per_pixel,2.0**(float(dy)/scale_pixels)
+
 # ---------------------------------------------------------------- the table
 def place_rows(asset):
     """The Placed Instances as a list of dicts in row order: on, id (as typed), pos, rot (degrees), scale (3), proto (bank row number, 0 = chosen by the Selection Mode),
@@ -128,14 +151,17 @@ def place_normalize(asset):
             if a!=b:asset.parm('place_id%d'%i).set(b)
     return sum(1 for a,b in zip([r['id'] for r in rows],real) if a!=b)
 
-def place_add(asset,position,normal=(0.0,1.0,0.0),scale=None,yaw=None,proto=None,id=None,rot=None):
+def place_add(asset,position,normal=(0.0,1.0,0.0),scale=None,yaw=None,proto=None,id=None,rot=None,yaw_add=0.0,scale_mult=1.0,snap_rot=None):
     """Add one instance row at a world position: rotation from the surface normal (Align To Surface) and the yaw, scale and prototype of the New Instance settings unless given
-    (rot: explicit degrees). Returns the new row number."""
+    (rot: explicit degrees); yaw_add and scale_mult come on top of them (the drag of the tool), snap_rot rounds the final yaw to a multiple of that many degrees. Returns the new row number."""
     place_normalize(asset)
     with hou.undos.group('Arraytron place instance'):
         rows=place_rows(asset);n=len(rows)+1;scale=asset.evalParm('place_def_scale') if scale is None else scale
         if yaw is None:
             yaw=asset.evalParm('place_def_yaw')+(asset.evalParm('place_def_yawrand')*(np.random.RandomState(int(n*7919+asset.evalParm('place_seed'))).rand()*2.0-1.0))
+        yaw=yaw+yaw_add
+        if snap_rot:yaw=place_snap_value(yaw,snap_rot)
+        scale=scale*scale_mult
         degrees=place_euler(place_aim(normal,asset.evalParm('place_align'),yaw)) if rot is None else rot
         pos=np.asarray(position,dtype=np.float64)+np.asarray(normal,dtype=np.float64)*asset.evalParm('place_offset')
         asset.parm('places').set(n);i=n
@@ -145,6 +171,35 @@ def place_add(asset,position,normal=(0.0,1.0,0.0),scale=None,yaw=None,proto=None
         asset.parm('place_copies%d'%i).set(asset.evalParm('place_def_copies'));asset.parmTuple('place_ctrans%d'%i).set(asset.evalParmTuple('place_def_ctrans'));asset.parmTuple('place_crot%d'%i).set(asset.evalParmTuple('place_def_crot'))
         asset.parm('place_cscale%d'%i).set(asset.evalParm('place_def_cscale'));asset.parm('place_cspace%d'%i).set(asset.evalParm('place_def_cspace'))
     return n
+
+def place_curve_samples(asset):
+    """Positions (n,3) and headings (n, degrees about up) along the BasisCurves under the Along Curve prim: by count or by spacing, ends included. The heading turns +Z onto the tangent."""
+    path=asset.evalParm('place_curve').strip()
+    if not path:raise hou.NodeError('Along Curve: the Curve Prim is empty. Pick a BasisCurves prim of the Scene Stream.')
+    P=[];H=[]
+    for poly,closed in stage_curves(asset,path):
+        L=arclength(poly)[-1];s=curve_parameters(L,closed,asset.evalParm('place_curve_mode'),asset.evalParm('place_curve_count'),asset.evalParm('place_curve_spacing'),np.arange(asset.evalParm('place_curve_count')),0)
+        pos,tan=sample_polyline(poly,s);P.append(pos);H.append(np.degrees(np.arctan2(tan[:,0],tan[:,2])))
+    return np.vstack(P),np.concatenate(H)
+
+def place_along_curve(asset):
+    """Along Curve button: add one instance per sample of the curve (appended to the table, one undo step). They are upright, turned to follow the curve when Follow Curve is on,
+    and put on the Place On surface when Project On Surface is on. Scale, rotation offset (New Rotation) and Prototype Row come from the New settings. Returns the number of rows added."""
+    P,H=place_curve_samples(asset);surface=place_surface(asset) if asset.evalParm('place_curve_project') else None
+    if len(P)>PLACE_MAX:raise hou.NodeError('Along Curve would place %d instances; the table holds at most %d.'%(len(P),PLACE_MAX))
+    place_normalize(asset)
+    with hou.undos.group('Arraytron place along curve'):
+        first=asset.evalParm('places');top=max([r['id'] for r in place_rows(asset)]+[0]);asset.parm('places').set(first+len(P))
+        for k,(p,h) in enumerate(zip(P,H),1):
+            n=np.array([0.0,1.0,0.0])
+            if surface is not None:
+                hit=place_hit_at(surface,float(p[0]),float(p[2]),float(p[1]))
+                if hit is not None:p,n=hit
+            yaw=(float(h) if asset.evalParm('place_curve_follow') else 0.0)+asset.evalParm('place_def_yaw');i=first+k
+            degrees=place_euler(place_aim(n,asset.evalParm('place_align'),yaw));pos=np.asarray(p,dtype=np.float64)+n*asset.evalParm('place_offset')
+            asset.parm('place_on%d'%i).set(1);asset.parm('place_id%d'%i).set(top+k);asset.parmTuple('place_pos%d'%i).set(tuple(float(v) for v in pos));asset.parmTuple('place_rot%d'%i).set(tuple(float(v) for v in degrees))
+            asset.parmTuple('place_scale%d'%i).set((float(asset.evalParm('place_def_scale')),)*3);asset.parm('place_proto%d'%i).set(asset.evalParm('place_def_proto'))
+    return len(P)
 
 def place_remove(asset,row):
     """Remove one row (the other rows keep their values and ids)."""
