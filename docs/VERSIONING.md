@@ -50,7 +50,8 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.8.0 | - | `arraytron::instancer::1.8.0` | Built-in LOD generator: reduced copies of the prototypes as LOD 1 / LOD 2 / Proxy; both builds |
 | v1.9.0 | - | `arraytron::instancer::1.9.0` | Instance Place: instances placed one at a time (table + viewport tool); both builds |
 | v1.10.0 | - | `arraytron::instancer::1.10.0` | Instance Place arrays: Copies with Copy and Transform style steps; both builds |
-| **v1.11.0** (current) | - | `arraytron::instancer::1.11.0` | Place tool extras (drag, snap, along curve), node name arraytron1, Settle Instances label; both builds |
+| v1.11.0 | - | `arraytron::instancer::1.11.0` | Place tool extras (drag, snap, along curve), node name arraytron1, Settle Instances label; both builds |
+| **v1.12.0** (current) | - | `arraytron::instancer::1.12.0` | Falloff: scale and density fade towards the edge of the layout, every Distribution Mode; both builds |
 
 Old releases keep the type names they shipped with, so scenes built with them still load. Their HDA files were moved bit-for-bit (checked by SHA-256 against the originals) to `dist/archive/`, except v0.3.0 and v0.3.5, which were rebuilt from their builders (v0.3.5 was then moved to the archive with `tools/archive_release.py`, its first real use). A scene of your own that contains old nodes records the old HDA path: install the archived HDA (Assets > Install Asset Library) if Houdini reports the type missing.
 

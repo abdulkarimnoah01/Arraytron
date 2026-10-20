@@ -2,6 +2,10 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.12.0 - Falloff
+* **Falloff** (Layout tab, section FALLOFF): the scatter is full size and densest in the centre and fades towards the edges, in scale and in density. Works with every Distribution Mode; Radial or Box shape (every edge of a rectangle fades), Linear / Smooth / Gaussian curve, a flat centre, an edge density and an edge scale, automatic or custom centre and reach, X and Z or X, Y and Z. After the Mask and the Field Stack (their results are kept), before the Variation. Off by default: the output is exactly v1.11.0.
+* New suite `tests/validate_falloff.py` (6 groups, 6 mutations) and a demo (plain, radial and box patches). Both builds. Documentation `docs/FALLOFF.md`.
+
 ## v1.11.0 - Place tool extras and cleanups
 * **Place tool:** press, drag, release (drag sideways to turn, up or down to scale the new instance; a heading line in the marker); **Snap Position** (grid, kept on the surface) and **Snap Rotation (deg)**; **Place Along Curve** (a BasisCurves prim, by count or spacing, following the curve, optionally projected on the surface).
 * **Cleanups:** a new Arraytron node is called `arraytron1` (not `instancer1`); the Physics Settle switch is called **Settle Instances**.

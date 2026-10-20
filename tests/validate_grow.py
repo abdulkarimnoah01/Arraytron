@@ -10,7 +10,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0'}[VID]
+PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_grow_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -105,7 +105,7 @@ def ui_tabs():
     # mode panels sit under headings and carry the mode condition; essential details are in collapsible sections
     for name,mode in (('line_axis',0),('area_sizex',1),('grid_count',2),('circle_radius',3),('curve_prim',4),('surface_prim',5)):assert g.find(name).conditionals()[hou.parmCondType.HideWhen].endswith('{ mode != %d }'%mode),name
     assert {t.label() for t in tabs[0].parmTemplates() if t.type()==hou.parmTemplateType.Folder}=={'Prototype Bank','Selection Details'}
-    sections=[f.label() for t in tabs for f in t.parmTemplates() if f.type()==hou.parmTemplateType.Folder and f.folderType()==hou.folderType.Collapsible];assert sections==['Selection Details','Pivot & Guide','Variation Details','Mask Details','Solver Settings','Material & Forces','Collision Settings','Cache Settings'],sections
+    sections=[f.label() for t in tabs for f in t.parmTemplates() if f.type()==hou.parmTemplateType.Folder and f.folderType()==hou.folderType.Collapsible];assert sections==['Selection Details','Pivot & Guide']+(['Falloff Details'] if a.parm('fall_on') is not None else [])+['Variation Details','Mask Details','Solver Settings','Material & Forces','Collision Settings','Cache Settings'],sections
     assert g.find('ui_pivot') and 'bound_p' in flat([g.find('ui_pivot')]) and 'show_bounds' in flat([g.find('ui_pivot')])
     # the viewport handle still binds the same 12 parameters
     text=hou.hda.definitionsInFile(str(versions.hda(VID)))[0].sections()['DialogScript'].contents();bound=re.findall(r'^\s*bindhandle (\w+) lopxform "Transformer" (\w+) ""',text,re.M);assert sorted(p for p,_ in bound)==sorted('bound_%s%s'%(t,x) for t in 'trsp' for x in 'xyz')

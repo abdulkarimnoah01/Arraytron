@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0'}[VID]
+PREVIOUS={'v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_fields_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
@@ -98,7 +98,7 @@ def ui_contract():
                  'field_image#','field_channel#','field_proj#','field_icenter#','field_isize#','field_ioutside#','field_dnear#','field_dfar#','field_daxes#','field_xmargin#','field_xfall#','field_minscale','field_seed','field_info'):assert g.find(name) is not None,name
     look=[t for t in g.entries() if t.label()=='Look'][0];names=[t.name() for t in look.parmTemplates()]
     assert names.index('fields')>names.index('mask_info') and 'FIELD STACK' in [t.columnLabels()[0] for t in look.parmTemplates() if t.name().startswith('ui_head')]
-    inner=a.node('USD_COMPILER');chain=['MASK_PROCESSOR','FIELD_STACK','VARIATION_PROCESSOR'];assert [inner.node(n).inputs()[0].name() for n in chain[1:]]==chain[:2]
+    inner=a.node('USD_COMPILER');chain=['MASK_PROCESSOR','FIELD_STACK']+(['FALLOFF'] if inner.node('FALLOFF') else [])+['VARIATION_PROCESSOR'];assert [inner.node(n).inputs()[0].name() for n in chain[1:]]==chain[:-1]
     old=hou.hda.definitionsInFile(str(versions.hda(PREVIOUS)))[0].parmTemplateGroup()
     def flat(group):
         res={}

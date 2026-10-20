@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.5.0':'v0.4.6','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0'}[VID]
+PREVIOUS={'v0.5.0':'v0.4.6','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_mask_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -127,7 +127,7 @@ def ui_contract():
     order=[];n=a.node('USD_COMPILER/VARIATION_PROCESSOR')
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
     fields=['FIELD_STACK'] if a.node('USD_COMPILER/FIELD_STACK') else []
-    assert order[:3+len(fields)]==['VARIATION_PROCESSOR']+fields+['MASK_PROCESSOR','DISTRIBUTION_GENERATOR'],order
+    fall=['FALLOFF'] if a.node('USD_COMPILER/FALLOFF') else [];assert order[:3+len(fields)+len(fall)]==['VARIATION_PROCESSOR']+fall+fields+['MASK_PROCESSOR','DISTRIBUTION_GENERATOR'],order
 
 def off_unchanged():
     """No mask: every output array equals the previous release, including Sequential selection with several prototypes."""
