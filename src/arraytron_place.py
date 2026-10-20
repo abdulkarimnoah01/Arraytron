@@ -7,6 +7,9 @@ import numpy as np
 
 PLACE_MAX=100000
 PLACE_ID_BASE=1
+PLACE_COPY_ID_BASE=1000000000          # the id space of the copies of a row (see place_copy_ids)
+PLACE_MAX_COPIES=9999
+PLACE_MAX_ROW_ID=99999                 # a row that makes copies needs an id below this
 
 # ---------------------------------------------------------------- pure functions
 def place_qmul(a,b):
@@ -43,21 +46,53 @@ def place_aim(normal,amount,yaw):
     """Quaternion of a new instance: the shortest rotation taking +Y onto the surface normal (blended by amount, 0 = upright), then a rotation of yaw degrees about its own up axis."""
     A=normal_alignment(np.asarray(normal,dtype=np.float64).reshape(1,3),amount)[0];Y=place_quat((0.0,yaw,0.0));return place_qmul(A,Y)
 
+def place_rotate(q,v):
+    """The vector v turned by the quaternion q (x, y, z, w)."""
+    q=np.asarray(q,dtype=np.float64);u=q[:3];v=np.asarray(v,dtype=np.float64);return v+2*q[3]*np.cross(u,v)+2*np.cross(u,np.cross(u,v))
+
+def place_copy_ids(row_id,copies):
+    """The ids of the copies of a row: copy 0 keeps the row id (so a row without copies is unchanged), copy k >= 1 gets 1000000000 + row id * 10000 + k. Stable when other rows come and go."""
+    row_id=int(row_id);return [row_id]+[PLACE_COPY_ID_BASE+row_id*10000+k for k in range(1,int(copies))]
+
+def place_expand(pos,rot,scale,copies,step_translate,step_rotate,step_scale,space=0):
+    """The copies of one row, like the Copy and Transform SOP: copy 0 is the row itself, every next copy is the previous one moved by one more step.
+    space 0 (Local): the step is applied in the frame of the previous copy, M(k+1) = M(k) * Step, so the translation turns and shrinks with it (spirals, stairs, fans).
+    space 1 (World): the translation is in world axes, the rotation turns the copy about its own position in world axes, the scale multiplies the copy.
+    Returns positions (n,3), quaternions (n,4) and scales (n,3). step_scale is a uniform multiplier per copy."""
+    n=int(copies);P=np.zeros((n,3));Q=np.zeros((n,4));S=np.zeros((n,3))
+    p=np.asarray(pos,dtype=np.float64).copy();q=place_quat(rot);s=np.asarray(scale,dtype=np.float64).copy();t=np.asarray(step_translate,dtype=np.float64);qs=place_quat(step_rotate)
+    for k in range(n):
+        P[k]=p;Q[k]=q;S[k]=s
+        if int(space)==0:p=p+place_rotate(q,s*t);q=place_qmul(q,qs)
+        else:p=p+t;q=place_qmul(qs,q)
+        q=q/np.linalg.norm(q);s=s*float(step_scale)
+    return P,Q,S
+
 # ---------------------------------------------------------------- the table
 def place_rows(asset):
-    """The Placed Instances as a list of dicts in row order: on, id (as typed), pos, rot (degrees), scale (3), proto (bank row number, 0 = chosen by the Selection Mode)."""
+    """The Placed Instances as a list of dicts in row order: on, id (as typed), pos, rot (degrees), scale (3), proto (bank row number, 0 = chosen by the Selection Mode),
+    and the copies of the row: copies, step_t (3), step_r (3, degrees), step_s (uniform multiplier), space (0 local, 1 world)."""
     rows=[]
     for i in range(1,asset.evalParm('places')+1):
         rows.append(dict(on=bool(asset.evalParm('place_on%d'%i)),id=asset.evalParm('place_id%d'%i),pos=np.array(asset.evalParmTuple('place_pos%d'%i),dtype=np.float64),rot=np.array(asset.evalParmTuple('place_rot%d'%i),dtype=np.float64),
-                         scale=np.array(asset.evalParmTuple('place_scale%d'%i),dtype=np.float64),proto=asset.evalParm('place_proto%d'%i)))
+                         scale=np.array(asset.evalParmTuple('place_scale%d'%i),dtype=np.float64),proto=asset.evalParm('place_proto%d'%i),copies=asset.evalParm('place_copies%d'%i),
+                         step_t=np.array(asset.evalParmTuple('place_ctrans%d'%i),dtype=np.float64),step_r=np.array(asset.evalParmTuple('place_crot%d'%i),dtype=np.float64),step_s=asset.evalParm('place_cscale%d'%i),space=asset.evalParm('place_cspace%d'%i)))
     return rows
 
 def place_arrays(asset):
-    """The enabled rows as arrays: ids (n,), P (n,3), orient (n,4), scale (n,3), proto (n,), and the row number of each (n,)."""
-    rows=place_rows(asset);ids=place_resolve_ids([r['id'] for r in rows]);keep=[k for k,r in enumerate(rows) if r['on']]
-    if not keep:return dict(ids=np.zeros(0,dtype=np.int64),P=np.zeros((0,3)),orient=np.zeros((0,4)),scale=np.zeros((0,3)),proto=np.zeros(0,dtype=np.int64),row=np.zeros(0,dtype=np.int64))
-    return dict(ids=np.array([ids[k] for k in keep],dtype=np.int64),P=np.array([rows[k]['pos'] for k in keep]),orient=np.array([place_quat(rows[k]['rot']) for k in keep]),
-                scale=np.maximum(np.array([rows[k]['scale'] for k in keep]),1e-4),proto=np.array([rows[k]['proto'] for k in keep],dtype=np.int64),row=np.array([k+1 for k in keep],dtype=np.int64))
+    """The enabled rows, copies included, as arrays: ids (n,), P (n,3), orient (n,4), scale (n,3), proto (n,), the row number (n,) and the copy number (n,) of each."""
+    rows=place_rows(asset);ids=place_resolve_ids([r['id'] for r in rows]);out=dict(ids=[],P=[],orient=[],scale=[],proto=[],row=[],copy=[])
+    for k,r in enumerate(rows):
+        if not r['on']:continue
+        n=max(1,min(int(r['copies']),PLACE_MAX_COPIES))
+        if n>1:
+            if ids[k]>PLACE_MAX_ROW_ID:raise hou.NodeError('Placed instance row %d makes copies, so its Id must be below %d (it is %d).'%(k+1,PLACE_MAX_ROW_ID+1,ids[k]))
+            P,Q,S=place_expand(r['pos'],r['rot'],r['scale'],n,r['step_t'],r['step_r'],r['step_s'],r['space']);cid=place_copy_ids(ids[k],n)
+        else:P,Q,S=r['pos'][None,:],place_quat(r['rot'])[None,:],r['scale'][None,:];cid=[ids[k]]
+        out['ids']+=cid;out['P'].append(P);out['orient'].append(Q);out['scale'].append(S);out['proto']+=[r['proto']]*n;out['row']+=[k+1]*n;out['copy']+=list(range(n))
+    if not out['ids']:return dict(ids=np.zeros(0,dtype=np.int64),P=np.zeros((0,3)),orient=np.zeros((0,4)),scale=np.zeros((0,3)),proto=np.zeros(0,dtype=np.int64),row=np.zeros(0,dtype=np.int64),copy=np.zeros(0,dtype=np.int64))
+    return dict(ids=np.array(out['ids'],dtype=np.int64),P=np.vstack(out['P']),orient=np.vstack(out['orient']),scale=np.maximum(np.vstack(out['scale']),1e-4),proto=np.array(out['proto'],dtype=np.int64),
+                row=np.array(out['row'],dtype=np.int64),copy=np.array(out['copy'],dtype=np.int64))
 
 def sop_place(geo,asset):
     """generate_place: one point per enabled row. P, the stable id, the placed rotation (align), the placed scale (srcscale) and the Prototype Row (place_proto, 0 = auto)."""
@@ -73,6 +108,8 @@ def place_info(asset):
     if not rows:return 'No instances yet. Press Place Instances in Viewport and click a surface, or add a row with the + button of the table.'
     ids=[r['id'] for r in rows];real=place_resolve_ids(ids);fixed=sum(1 for a,b in zip(ids,real) if a!=b);on=sum(1 for r in rows if r['on'])
     text='%d placed instance(s), %d enabled.'%(len(rows),on)
+    total=sum(max(1,min(int(r['copies']),PLACE_MAX_COPIES)) for r in rows if r['on'])
+    if total!=on:text='%d rows, %d enabled, %d instances with their copies.'%(len(rows),on,total)
     if fixed:text+=' %d row(s) have no unique id yet and get a temporary one: press Fix Ids.'%fixed
     return text
 
@@ -105,6 +142,8 @@ def place_add(asset,position,normal=(0.0,1.0,0.0),scale=None,yaw=None,proto=None
         asset.parm('place_on%d'%i).set(1);asset.parm('place_id%d'%i).set(max([r['id'] for r in rows]+[0])+1 if id is None else int(id))
         asset.parmTuple('place_pos%d'%i).set(tuple(float(v) for v in pos));asset.parmTuple('place_rot%d'%i).set(tuple(float(v) for v in degrees))
         asset.parmTuple('place_scale%d'%i).set((float(scale),)*3);asset.parm('place_proto%d'%i).set(asset.evalParm('place_def_proto') if proto is None else int(proto))
+        asset.parm('place_copies%d'%i).set(asset.evalParm('place_def_copies'));asset.parmTuple('place_ctrans%d'%i).set(asset.evalParmTuple('place_def_ctrans'));asset.parmTuple('place_crot%d'%i).set(asset.evalParmTuple('place_def_crot'))
+        asset.parm('place_cscale%d'%i).set(asset.evalParm('place_def_cscale'));asset.parm('place_cspace%d'%i).set(asset.evalParm('place_def_cspace'))
     return n
 
 def place_remove(asset,row):

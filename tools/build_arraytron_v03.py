@@ -34,7 +34,8 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.6.2':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True),     # v1.6.2: the same features, the Settle tab is called Physics
         'v1.7.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True),     # v1.7.0: the same features, plus Pick Instance (click an instance in the viewport to create its override row)
         'v1.8.0':dict(vex='vex_v050',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True),     # v1.8.0: the same features, plus the built-in LOD generator (Optimize tab)
-        'v1.9.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True)}     # v1.9.0: the same features, plus the Instance Place distribution mode
+        'v1.9.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True),     # v1.9.0: the same features, plus the Instance Place distribution mode
+        'v1.10.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True)}     # v1.10.0: the same features, plus Instance Place arrays (copies with steps)
 H205=False
 TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=LABEL=PHYS_TAB=None
 def configure(version):
@@ -185,13 +186,19 @@ def place_folder():
     tags=base.picker_tags()
     def callback(template,code):
         template.setScriptCallback(code);template.setScriptCallbackLanguage(hou.scriptLanguage.Python);return template
+    hide=lambda template,condition:(template.setConditional(hou.parmCondType.HideWhen,condition),template)[1]
     row=(
         hou.ToggleParmTemplate('place_on#','On',default_value=True,help='Switch this instance off without deleting its row.'),
         hou.IntParmTemplate('place_id#','Id',1,default_value=(0,),min=0,max=100000000,help='The stable id of this instance (Variation, Mask, Instance Overrides, primvars and Grow key on it). 0 or a repeated id gets the next free number: press Fix Ids to write them into the table. The viewport tool fills it in.'),
         hou.FloatParmTemplate('place_pos#','Position',3,default_value=(0,0,0),min=-100000,max=100000,help='World position of the instance.'),
         hou.FloatParmTemplate('place_rot#','Rotate (deg)',3,default_value=(0,0,0),min=-360,max=360,help='Rotation in degrees about X, then Y, then Z (fixed axes), the same convention as the Instance Overrides. Applied before the Look tab rotation.'),
         hou.FloatParmTemplate('place_scale#','Scale',3,default_value=(1,1,1),min=0.0001,max=1000,min_is_strict=True,help='Scale of the instance, multiplied by the Look tab scale and the Prototype Bank scale.'),
-        hou.IntParmTemplate('place_proto#','Prototype Row',1,default_value=(0,),min=0,max=1000,help='The Prototype Bank row this instance uses (its number in the bank). 0 lets the Selection Mode choose. A row that is not enabled is ignored.'))
+        hou.IntParmTemplate('place_proto#','Prototype Row',1,default_value=(0,),min=0,max=1000,help='The Prototype Bank row this instance uses (its number in the bank). 0 lets the Selection Mode choose. A row that is not enabled is ignored.'),
+        hou.IntParmTemplate('place_copies#','Copies',1,default_value=(1,),min=1,max=9999,help='Make an array like the Copy and Transform SOP: this many copies of the instance, each one moved by one more step (below). 1 is a single instance. The copies share the row: On, Prototype Row and the viewport Ctrl-click act on all of them; copy 0 keeps the row Id and the others get ids derived from it (a row that makes copies needs an Id below 100000).'),
+        hide(hou.FloatParmTemplate('place_ctrans#','Step Translate',3,default_value=(0,0,0),min=-1000,max=1000,help='How far each copy moves from the one before: X, Y, Z in the Step Space.'),'{ place_copies# <= 1 }'),
+        hide(hou.FloatParmTemplate('place_crot#','Step Rotate (deg)',3,default_value=(0,0,0),min=-360,max=360,help='How much each copy turns from the one before (degrees about X, then Y, then Z).'),'{ place_copies# <= 1 }'),
+        hide(hou.FloatParmTemplate('place_cscale#','Step Scale',1,default_value=(1.0,),min=0.0001,max=1000,min_is_strict=True,help='Each copy is this many times the size of the one before (1 keeps the size, 0.9 shrinks every copy by ten percent).'),'{ place_copies# <= 1 }'),
+        hide(hou.MenuParmTemplate('place_cspace#','Step Space',('0','1'),('Local (follows the copy)','World'),default_value=0,help='Local: every step is applied in the frame of the previous copy, like the Copy and Transform SOP, so a rotation makes spirals and fans and the translation turns and shrinks with the copy. World: the translation is along the world axes, the rotation turns the copy about its own position in world axes.'),'{ place_copies# <= 1 }'))
     table=hou.FolderParmTemplate('places','Placed Instances',folder_type=hou.folderType.MultiparmBlock,default_value=0,parm_templates=row)
     info=hou.StringParmTemplate('place_info','Placed',1,default_value=('',),tags={'editor':'1','editorlines':'2-3'},help='Read only. How many instances are placed.')
     info.setDefaultExpression(('hou.pwd().hdaModule().place_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
@@ -204,6 +211,11 @@ def place_folder():
         hou.FloatParmTemplate('place_def_yaw','New Rotation (deg)',1,default_value=(0.0,),min=-360,max=360,help='The rotation about the up axis a new instance gets (the wheel with Ctrl and the comma and period keys change it in the viewport).'),
         hou.FloatParmTemplate('place_def_yawrand','Random Rotation (+/- deg)',1,default_value=(0.0,),min=0,max=180,help='A random extra rotation about the up axis for every new instance, from minus to plus this many degrees.'),
         hou.IntParmTemplate('place_def_proto','New Prototype Row',1,default_value=(0,),min=0,max=1000,help='The Prototype Bank row a new instance uses; 0 lets the Selection Mode choose (the keys 0 to 9 set it in the viewport).'),
+        hou.IntParmTemplate('place_def_copies','New Copies',1,default_value=(1,),min=1,max=9999,help='Copies a new instance gets (1 = a single instance). More makes an array like the Copy and Transform SOP from every click.'),
+        hou.FloatParmTemplate('place_def_ctrans','New Step Translate',3,default_value=(0,0,0),min=-1000,max=1000,help='The step translation of a new instance that makes copies.'),
+        hou.FloatParmTemplate('place_def_crot','New Step Rotate (deg)',3,default_value=(0,0,0),min=-360,max=360,help='The step rotation of a new instance that makes copies.'),
+        hou.FloatParmTemplate('place_def_cscale','New Step Scale',1,default_value=(1.0,),min=0.0001,max=1000,min_is_strict=True,help='The step scale of a new instance that makes copies.'),
+        hou.MenuParmTemplate('place_def_cspace','New Step Space',('0','1'),('Local (follows the copy)','World'),default_value=0,help='Local or World steps for a new instance that makes copies.'),
         hou.IntParmTemplate('place_seed','Rotation Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random rotation of new instances.'),
         info,
         callback(hou.ButtonParmTemplate('place_fix','Fix Ids',help='Write a unique id into every row that has none or a repeated one (undoable).'),"kwargs['node'].hdaModule().place_normalize(kwargs['node'])"),
