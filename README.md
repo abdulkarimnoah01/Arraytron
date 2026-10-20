@@ -1,6 +1,6 @@
 # Arraytron
 
-> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.14.0**; v1.13.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
+> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.15.0**; v1.14.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
 
 
 # Get Arraytron
@@ -15,6 +15,8 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 | **Instance Place**: instances placed one at a time (table and viewport tool), arrays like Copy and Transform, along a curve. | **LOD generator**: reduced copies of the prototypes as LOD 1, LOD 2 and Proxy. |
 | ![Falloff: plain, radial and box patches of rocks, strokes, clusters, 3D grid](docs/images/falloff_demo.png) | ![Rows: a Line in straight, loose and staggered rows, a Circle as rings, a Curve in rows](docs/images/rows_demo.png) |
 | **Falloff**: scale and density fade from the centre to the edges of any scatter, following paint strokes, clusters and 3D grids. | **Rows**: the Line, Circle and Curve modes in several rows, optionally random. |
+| ![Biome: forest, stunted alpine firs, cliff rocks and shore stones on a terrain with a pond](docs/images/biome_demo.png) | |
+| **Biome**: rule based scatter on a terrain by elevation, slope, moisture and temperature, with soft borders between biomes. | |
 
 1. Download `Arraytron-<version>.zip` from the [latest release](https://github.com/abdulkarimnoah01/Arraytron/releases/latest).
 2. Unzip it and double-click **Install Arraytron.cmd** (no administrator rights; it prepares every Houdini 20.5, 21 and 22 on the PC).
@@ -22,9 +24,9 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 
 **Updating:** click **Check for Updates** on the *Arraytron* shelf in Houdini. It reads the latest release from GitHub, shows what is new and installs it after you say yes; nothing is checked in the background. Details, rollback and publishing a release: `INSTALL.md`.
 
-# Arraytron v1.14.0 (current)
+# Arraytron v1.15.0 (current)
 
-`dist/Arraytron_v1.14.0.hda` (type `arraytron::instancer::1.14.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.14.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
+`dist/Arraytron_v1.15.0.hda` (type `arraytron::instancer::1.15.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.15.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
 
 A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Nine tabs in workflow order: **Prototypes** (Prototype Bank, selection, LOD / proxy prims), **Layout** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**, **Instance Place**, and **Falloff**), **Variation** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Physics** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD generator, primvars), **Debugging** (instance overrides, debug views), **Export** (USD export, what the node stores).
 
@@ -51,14 +53,15 @@ A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInsta
 | v1.11.0 | **Place tool extras**: drag to turn and scale, snap, Place Along Curve; node name `arraytron1`; Settle Instances |
 | v1.12.0 | **Falloff**: scale and density fade towards the edge of any scatter (radial or box) |
 | v1.13.0 | **Falloff follows the mode** (clusters, paint strokes, 3D grid); tabs renamed (Prototypes, Variation, Debugging) and a new **Export** tab |
-| **v1.14.0** | **Rows**: Line, Circle and Curve in several rows, optionally randomised |
+| v1.14.0 | **Rows**: Line, Circle and Curve in several rows, optionally randomised |
+| **v1.15.0** | **Biome**: rule based scatter on a terrain by elevation, slope, moisture and temperature, with soft borders between biomes |
 
 What v1.0.0 and v1.1.0 guarantee (all tested, `tests/validate_production.py`): a saved scene reloads to the identical result; two separate processes give bit-identical output; every Distribution Mode gives unique, deterministic ids that rotation, scale, weights, selection and masks never change; random parameter fuzzing never produces a Python traceback; the exported USD passes `usdchecker`; every demo cooks.
 
 Rebuild and validate with `C:/Program Files/Side Effects Software/Houdini 22.0.368/bin/hython.exe` (the full command list is in `CLAUDE.md`):
 
 ```text
-tools/build_arraytron_v03.py v1.14.0
+tools/build_arraytron_v03.py v1.15.0
 tools/build_demo_v03.py v1.1.0 ; build_demo_grow_v052.py ; build_demo_overlap_v051.py ; build_demo_mask_v050.py ; build_demo_paint_v060.py ; build_demo_fields_v070.py ; build_demo_cluster_v080.py ; build_demo_camera_v090.py ; build_demo_finish_v100.py ; build_demo_physics.py railway|box ; build_demo_all.py
 tests/validate_v016.py v1.1.0 (39) ; validate_physics.py (19) ; validate_scatter.py (24) ; validate_mask.py (11) ; validate_overlap.py (6) ; validate_grow.py (8) ; validate_paint.py (16) ; validate_fields.py (16) ; validate_cluster.py (8) ; validate_avoid.py (7) ; validate_camera.py (9) ; validate_polish.py (9) ; validate_production.py (7)
 ```

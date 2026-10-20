@@ -39,14 +39,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.11.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True),     # v1.11.0: the same features, plus the Place tool extras (snap, drag, along curve) and the new node name
         'v1.12.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.12.0: the same features, plus Falloff (scale and density towards the edge of the layout)
         'v1.13.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.13.0: the same features, plus the mode-aware Falloff (paint strokes, clusters, 3D grid) and the renamed tabs with an Export tab
-        'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True)}     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
+        'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True),     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
+        'v1.15.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True)}     # v1.15.0: the same features, plus the Biome distribution mode
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -253,6 +254,57 @@ def rows_folder():
         hou.IntParmTemplate('rows_seed','Rows Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random offsets. They are keyed on the id of every point, so a point keeps its offset when other rows come and go.'),
         info))
 
+def biome_folder():
+    """Biome (v1.15.0): rule based scatter on a terrain by elevation, slope, moisture and temperature, one row per biome."""
+    tags=base.picker_tags()
+    def menu(name,label,items,**kw):
+        return hou.MenuParmTemplate(name,label,tuple(str(i) for i in range(len(items))),tuple(items),**kw)
+    def hide(template,condition):
+        template.setConditional(hou.parmCondType.HideWhen,condition);return template
+    rng=lambda name,label,default,lo,hi,help_:hou.FloatParmTemplate(name,label,2,default_value=default,min=lo,max=hi,help=help_)
+    edge=lambda name,label,help_:hou.FloatParmTemplate(name,label,1,default_value=(0.0,),min=0,max=1000000,help=help_)
+    row=(
+        hou.ToggleParmTemplate('biome_on#','On',default_value=True,help='Switch this biome off without deleting its row.'),
+        hou.StringParmTemplate('biome_name#','Name',1,default_value=('Biome',),help='A name for the read-out.'),
+        hou.FloatParmTemplate('biome_density#','Density (per 100 area)',1,default_value=(20.0,),min=0,max=100000,help='Candidates of this biome per 100 square scene units of terrain (at most 100,000 per biome). Where the conditions hold only partly the candidates are thinned out, so this is the density at full weight. A higher density only ever adds points.'),
+        hou.StringParmTemplate('biome_mix#','Prototype Mix',1,default_value=('1',),help='Which Prototype Bank rows this biome plants: bank row numbers with optional weights, separated by spaces, for example 1 2:3 4:0.5 (row 2 three times as often as row 1, row 4 half as often). A row that is not enabled is ignored.'),
+        rng('biome_hrange#','Elevation',(-100000.0,100000.0),-1000000,1000000,'The heights (world Y) where this biome grows: minimum and maximum. The defaults cover everything.'),
+        edge('biome_hedge#','Elevation Edge','Over this distance outside the elevation range the weight falls smoothly from 1 to 0 (an ecotone). 0 is a hard edge.'),
+        rng('biome_srange#','Slope (deg)',(0.0,180.0),0,180,'The slopes where this biome grows, in degrees from flat (0) to a wall (90).'),
+        edge('biome_sedge#','Slope Edge','Degrees outside the slope range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        rng('biome_mrange#','Moisture',(0.0,1.0),-1,2,'The moisture values (0 dry to 1 wet) where this biome grows.'),
+        edge('biome_medge#','Moisture Edge','Moisture outside the range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        rng('biome_trange#','Temperature',(-100.0,100.0),-1000,1000,'The temperatures (degrees) where this biome grows.'),
+        edge('biome_tedge#','Temperature Edge','Degrees outside the temperature range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        rng('biome_scale#','Scale Min / Max',(0.8,1.2),0.0001,1000,'Every instance gets a random scale between the two (keyed on its id). Multiplied with the Variation tab and Prototype Bank scales.'))
+    table=hou.FolderParmTemplate('biomes','Biomes',folder_type=hou.folderType.MultiparmBlock,default_value=0,parm_templates=row)
+    info=hou.StringParmTemplate('biome_info','Biomes',1,default_value=('',),tags={'editor':'1','editorlines':'3-8'},help='Read only. The points every biome made in the last cook.')
+    info.setDefaultExpression(('hou.pwd().hdaModule().biome_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
+    return hou.FolderParmTemplate('biome','Biome',folder_type=hou.folderType.Simple,parm_templates=(
+        hou.StringParmTemplate('biome_prim','Terrain',1,default_value=('/World/Terrain',),tags=tags,help='The terrain to scatter on: a prim in the Scene Stream (first input), a Mesh or a basic shape, or any prim whose subtree holds some. Elevation is the height (world Y), slope the angle of the surface from flat.'),
+        hou.IntParmTemplate('biome_seed','Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the candidates and of every random choice (survival, prototype, scale, noise).'),
+        menu('biome_normal','Normal',('Face','Smooth'),default_value=1,help='Face: the flat normal of the triangle. Smooth: the area-weighted vertex normals.'),
+        hou.FloatParmTemplate('biome_align','Align to Normal',1,default_value=(1.0,),min=0,max=1,help='0 keeps every instance upright, 1 tilts its up axis (+Y) fully onto the terrain normal.'),
+        hou.FloatParmTemplate('biome_offset','Offset',1,default_value=(0.0,),min=-10,max=10,help='Moves every instance along the terrain normal (negative sinks it).'),
+        menu('biome_moist_mode','Moisture From',('Constant','Noise','Distance To Water','Image'),default_value=1,help='Constant: one value everywhere. Noise: fractal noise. Distance To Water: 1 at a water mesh or curve prim, falling to 0 at the Reach. Image: a grey value image seen from above.'),
+        hide(hou.FloatParmTemplate('biome_moist_const','Moisture',1,default_value=(0.5,),min=0,max=1,help='The moisture everywhere.'),'{ biome_moist_mode != 0 }'),
+        hide(hou.StringParmTemplate('biome_water','Water Prim',1,default_value=('',),tags=tags,help='A mesh, shape or curve prim (or a hierarchy) of the Scene Stream that counts as water: a lake, a river.'),'{ biome_moist_mode != 2 }'),
+        hide(hou.FloatParmTemplate('biome_water_reach','Water Reach',1,default_value=(10.0,),min=0.001,max=100000,help='The distance from the water (measured on the ground plane) where the moisture has fallen to 0.'),'{ biome_moist_mode != 2 }'),
+        hide(hou.StringParmTemplate('biome_moist_image','Moisture Image',1,default_value=('',),string_type=hou.stringParmType.FileReference,tags={'filechooser_pattern':'*.exr,*.png,*.jpg,*.tif,*.tiff,*.tga,*.hdr'},help='A grey value image (the luminance) projected from above onto the terrain.'),'{ biome_moist_mode != 3 }'),
+        hide(hou.FloatParmTemplate('biome_moist_center','Image Centre (X, Z)',2,default_value=(0.0,0.0),min=-100000,max=100000,help='Where the middle of the image lies on the ground plane.'),'{ biome_moist_mode != 3 }'),
+        hide(hou.FloatParmTemplate('biome_moist_size','Image Size (X, Z)',2,default_value=(20.0,20.0),min=0.001,max=1000000,help='The width and depth the image covers.'),'{ biome_moist_mode != 3 }'),
+        hou.FloatParmTemplate('biome_moist_noise','Moisture Variation',1,default_value=(0.0,),min=0,max=1,help='Adds noise to the moisture (up to plus or minus this much), so the borders are not smooth contours.'),
+        hou.FloatParmTemplate('biome_moist_bias','Moisture Bias',1,default_value=(0.0,),min=-1,max=1,help='Added to the moisture (a wetter or drier world); the result is kept in 0 to 1.'),
+        hou.FloatParmTemplate('biome_temp','Temperature (base)',1,default_value=(15.0,),min=-1000,max=1000,help='The temperature in degrees at the Base Height.'),
+        hou.FloatParmTemplate('biome_temp_h','Base Height',1,default_value=(0.0,),min=-1000000,max=1000000,help='The height (world Y) where the temperature is the base temperature.'),
+        hou.FloatParmTemplate('biome_lapse','Lapse (deg per 100 units)',1,default_value=(10.0,),min=-1000,max=1000,help='How much colder it gets for every 100 scene units of height (the real atmosphere loses about 0.65 degrees per 100 metres; use more for a small stylised terrain).'),
+        hou.FloatParmTemplate('biome_temp_noise','Temperature Noise',1,default_value=(0.0,),min=0,max=1000,help='Noise added to the temperature, plus or minus this many degrees.'),
+        hou.FloatParmTemplate('biome_warm','Warm Facing (deg)',1,default_value=(0.0,),min=-1000,max=1000,help='Slopes that face the Warm Direction are warmer by up to this many degrees (and the opposite slopes colder), like a sunny and a shady hillside. 0 turns it off.'),
+        hou.FloatParmTemplate('biome_warm_dir','Warm Direction (deg)',1,default_value=(180.0,),min=-360,max=360,help='The direction the warm slopes face, in degrees in the XZ plane from +X towards +Z.'),
+        hide(hou.FloatParmTemplate('biome_noise_freq','Noise Frequency',1,default_value=(0.08,),min=0.0001,max=1000,help='Frequency of the noise used for moisture and temperature variation, in cycles per scene unit.'),'{ biome_moist_mode != 1 } { biome_moist_noise == 0 } { biome_temp_noise == 0 }'),
+        info,
+        table))
+
 def falloff_folder():
     """Falloff (v1.12.0): the scatter is full size and densest in the centre of its layout and fades towards the edges (scale and density)."""
     def menu(name,label,items,**kw):
@@ -375,6 +427,7 @@ def optimize_folder():
         hou.ToggleParmTemplate('pv_mask','Primvar: mask',default_value=False,help='Write primvars:mask, the Mask weight of every instance (1 without a mask).'),
         hou.ToggleParmTemplate('pv_density','Primvar: density',default_value=False,help='Write primvars:density, the Field Stack weight of every instance (1 without a stack).'),
         hou.ToggleParmTemplate('pv_cluster','Primvar: cluster',default_value=False,help='Write primvars:cluster, the cluster number of every instance (Cluster mode).'),
+        *((hou.ToggleParmTemplate('pv_biome','Primvar: biome',default_value=False,help='Write primvars:biome, the row of the Biome table every instance belongs to (Biome mode), for shaders, filtering and the like.'),) if BIOME else ()),
         *((hou.ToggleParmTemplate('pv_srcid','Primvar: source_id',default_value=False,help='Write primvars:source_id, the id the instance had in the imported source (Imported Points; its own id attribute, or the point number when it had none), for AOVs and matte ids.'),
           hou.StringParmTemplate('pv_copy','Copy Attributes As Primvars',1,default_value=('',),help='Imported Points: names of the source attributes (separated by spaces) that are written as primvars, for example Cd age temperature. They are copied by name; vectors and floats are supported.')) if IMPORTED else ()),
         hide(hou.ToggleParmTemplate('pv_lod','Primvar: arraytron_lod',default_value=False,help='Write primvars:arraytron_lod, the level of detail every instance uses (0 hero, 1 LOD 1, 2 LOD 2, 3 proxy). Needs Camera Optimisation.'),off),
@@ -421,7 +474,7 @@ def finish_folder():
         hou.ToggleParmTemplate('dbg_on','Debug Views',default_value=False,help='Show debug guides under the output prim (Debug). They are guide purpose: visible in the viewport, never rendered. Off by default.'),
         dbg('dbg_generated','Generated Points',True,'The points as the distribution generated them (white), before the Mask, Field Stack, Separation and Avoid Geometry.'),
         dbg('dbg_rejected','Rejected Points',True,'Generated points that are gone at the end: masked, thinned, separated or avoided (red).'),
-        hide(menu('dbg_color','Colour Final Points By',('Off','Prototype','Id','Weight'),help='Colour the final instance points: by prototype index, by a colour per id, or by weight (Mask x Field Stack: red 0 to green 1).'),'{ dbg_on == 0 }'),
+        hide(menu('dbg_color','Colour Final Points By',('Off','Prototype','Id','Weight')+(('Biome',) if BIOME else ()),help='Colour the final instance points: by prototype index, by a colour per id, by weight (Mask x Field Stack: red 0 to green 1) or by biome (Biome mode: one colour per row of the table).'),'{ dbg_on == 0 }'),
         dbg('dbg_axes','Axes',False,'The up (green) and forward (blue) axis of every instance.'),
         dbg('dbg_radius','Collision Radius',False,'The Separation sphere of every instance (a ring in the XZ plane).'),
         dbg('dbg_centres','Cluster Centres',False,'The cluster centres (Cluster mode).'),
@@ -655,7 +708,7 @@ def ui_layout(g):
         *heading('OUTPUT'),src['outputpath']]
     # ---- Layout
     layout=hint('Choose how the points are laid out, then move the whole layout.')+list(folders['distribution'].parmTemplates())
-    for index,(name,title) in enumerate((('line','LINE SETTINGS'),('area','AREA SETTINGS'),('grid','GRID SETTINGS'),('circle','CIRCLE SETTINGS'),('curve','CURVE SETTINGS'),('surface','SURFACE SETTINGS'),('paint','PAINT SETTINGS'),('cluster','CLUSTER SETTINGS'),('imported','IMPORTED POINTS'),('place','INSTANCE PLACE'))):
+    for index,(name,title) in enumerate((('line','LINE SETTINGS'),('area','AREA SETTINGS'),('grid','GRID SETTINGS'),('circle','CIRCLE SETTINGS'),('curve','CURVE SETTINGS'),('surface','SURFACE SETTINGS'),('paint','PAINT SETTINGS'),('cluster','CLUSTER SETTINGS'),('imported','IMPORTED POINTS'),('place','INSTANCE PLACE'),('biome','BIOME'))):
         if name not in folders:continue
         condition='{ mode != %d }'%index
         layout+=heading(title,condition)+[also_hide(t,condition) for t in folders[name].parmTemplates()]
@@ -698,7 +751,7 @@ def ui_layout(g):
         o2=content('optimize');optimize=hint('Hide or simplify instances by camera distance, and write extra data for shaders.')+heading('CAMERA')+[o2[n] for n in ('cam_on','cam_prim','cam_frustum','cam_margin','cam_behind','cam_behind_keep','cam_distcull','cam_maxdist','cam_densityon','cam_dnear','cam_dfar','cam_dmin','cam_seed')]
         optimize+=heading('LEVEL OF DETAIL')+[o2[n] for n in ('cam_lod','lod_by','lod_d1','lod_d2','lod_d3','lod_s1','lod_s2','lod_s3')]+[o2['cam_info'],o2['cam_frame']]
         if LODGEN:optimize+=heading('LOD GENERATOR')+[o2[n] for n in ('lodg_on','lodg_1','lodg_2','lodg_3','lodg_min','lodg_info')]
-        optimize+=heading('PRIMVARS')+[o2[n] for n in ('pv_id','pv_proto','pv_random','pv_mask','pv_density','pv_cluster')+(('pv_srcid','pv_copy') if IMPORTED else ())+('pv_lod','pv_seed')]
+        optimize+=heading('PRIMVARS')+[o2[n] for n in ('pv_id','pv_proto','pv_random','pv_mask','pv_density','pv_cluster')+(('pv_biome',) if BIOME else ())+(('pv_srcid','pv_copy') if IMPORTED else ())+('pv_lod','pv_seed')]
     finish=[];export=[]
     if FINISH:
         f2=content('finish');finish=hint('Fix single instances by hand and look inside the result.' if NEWTABS else 'Fix single instances by hand, look inside the result, and write it out.')+heading('INSTANCE OVERRIDES')+([f2['ovr_pick']] if PICK else [])+[f2['overrides'],f2['ovr_info'],f2['ovr_clear']]
@@ -726,7 +779,7 @@ def parms():
         circle=circle_folder();circle.setConditional(hou.parmCondType.HideWhen,'{ mode != 3 }')
         g.insertAfter('grid',circle)
     if CURVE:
-        names=['Line','Area','Grid / Matrix','Circle / Radial','Curve']+(['Surface'] if SURFACE else [])+(['Paint'] if PAINT else [])+(['Cluster'] if CLUSTER else [])+(['Imported Points'] if IMPORTED else [])+(['Instance Place'] if PLACE else [])
+        names=['Line','Area','Grid / Matrix','Circle / Radial','Curve']+(['Surface'] if SURFACE else [])+(['Paint'] if PAINT else [])+(['Cluster'] if CLUSTER else [])+(['Imported Points'] if IMPORTED else [])+(['Instance Place'] if PLACE else [])+(['Biome'] if BIOME else [])
         g.replace('distribution',hou.FolderParmTemplate('distribution','Distribution',folder_type=hou.folderType.Simple,parm_templates=(
             hou.MenuParmTemplate('mode','Distribution Mode',tuple(str(i) for i in range(len(names))),tuple(names)),)))
         curve=curve_folder();curve.setConditional(hou.parmCondType.HideWhen,'{ mode != 4 }');g.insertAfter('circle',curve)
@@ -740,6 +793,8 @@ def parms():
             imported=imported_folder();imported.setConditional(hou.parmCondType.HideWhen,'{ mode != 8 }');g.insertAfter('cluster',imported)
         if PLACE:
             place=place_folder();place.setConditional(hou.parmCondType.HideWhen,'{ mode != 9 }');g.insertAfter('imported',place)
+        if BIOME:
+            biome=biome_folder();biome.setConditional(hou.parmCondType.HideWhen,'{ mode != 10 }');g.insertAfter('place' if PLACE else 'imported',biome)
     if MASK:g.insertAfter('randomize',mask_folder())
     if FIELDS:g.insertAfter('mask',fields_folder())
     if OVERLAP:g.insertAfter('fieldstack' if FIELDS else 'mask',overlap_folder())
@@ -795,6 +850,7 @@ def module_text():
     if FIELDS:text+='\n\n# ---- Field Stack (src/arraytron_fields.py)\n'+(ROOT/'src/arraytron_fields.py').read_text()
     if FALLOFF:text+='\n\n# ---- Falloff (src/arraytron_falloff.py)\n'+(ROOT/'src/arraytron_falloff.py').read_text()
     if ROWS:text+='\n\n# ---- Rows (src/arraytron_rows.py)\n'+(ROOT/'src/arraytron_rows.py').read_text()
+    if BIOME:text+='\n\n# ---- Biome (src/arraytron_biome.py)\n'+(ROOT/'src/arraytron_biome.py').read_text()
     if CLUSTER:text+='\n\n# ---- Clustering (src/arraytron_cluster.py)\n'+(ROOT/'src/arraytron_cluster.py').read_text()
     if CAMERA:text+='\n\n# ---- Camera, LOD and primvars (src/arraytron_camera.py)\n'+(ROOT/'src/arraytron_camera.py').read_text()
     if LODGEN:text+='\n\n# ---- LOD generator (src/arraytron_lodgen.py)\n'+(ROOT/'src/arraytron_lodgen.py').read_text()
@@ -911,6 +967,7 @@ def build():
         source=inst.createNode('object_merge','imported_source');source.parm('numobj').set(1);source.parm('objpath1').setExpression("(lambda a:a.evalParm('imp_sop') if a.evalParm('imp_source')==0 else '')(hou.pwd().parent().parent())",hou.exprLanguage.Python)
         imported_sop=python_sop(inst,'generate_imported','sop_imported');imported_sop.setInput(0,source);generators.append(imported_sop)
     if PLACE:generators.append(python_sop(inst,'generate_place','sop_place'))
+    if BIOME:generators.append(python_sop(inst,'generate_biome','sop_biome'))
     switch=inst.createNode('switch','DISTRIBUTION_GENERATOR')
     for index,generator in enumerate(generators):switch.setInput(index,generator)
     switch.parm('input').setExpression('ch("../../mode")',hou.exprLanguage.Hscript)

@@ -43,6 +43,9 @@ if asset.evalParm('dbg_on'):
                     pi=np.array(final.pointIntAttribValues('protoindex'));palette=np.array([[0.2,0.6,1.0],[1.0,0.6,0.1],[0.3,0.9,0.3],[0.9,0.3,0.8],[0.9,0.9,0.2],[0.3,0.9,0.9]]);cols=palette[pi%len(palette)]
                 elif colour==2:
                     h=m.scatter_hash(fids,7,81);cols=np.column_stack([0.3+0.7*h,0.3+0.7*m.scatter_hash(fids,7,82),0.3+0.7*m.scatter_hash(fids,7,83)])
+                elif colour==4 and final.findPointAttrib('biome') is not None:
+                    bi=np.array(final.pointIntAttribValues('biome'));palette=np.array([[0.2,0.7,0.25],[0.95,0.8,0.2],[0.3,0.55,1.0],[0.85,0.3,0.25],[0.7,0.4,0.9],[0.3,0.85,0.8],[0.95,0.55,0.2],[0.6,0.6,0.6]]);cols=palette[(bi-1)%len(palette)]
+                elif colour==4:cols=np.tile([0.5,0.5,0.5],(len(fids),1))
                 else:
                     w=np.array(final.pointFloatAttribValues('mask'))*np.array(final.pointFloatAttribValues('density')) if final.findPointAttrib('mask') is not None and final.findPointAttrib('density') is not None else np.ones(len(fids))
                     cols=np.column_stack([1.0-w,w,0.1*np.ones(len(w))])

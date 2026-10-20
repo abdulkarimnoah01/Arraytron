@@ -12,7 +12,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0'}[VID]
+PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_polish_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -82,7 +82,7 @@ def ui_contract():
     assert [t.label() for t in g.entries()]==[TN['source'],'Layout',TN['look'],'Spacing',PHYSTAB,'Animate','Optimize',TN['finish']]+([TN['export']] if TN['export'] else [])
     ov=g.find('overrides');assert ov.folderType()==hou.folderType.MultiparmBlock and ov.defaultValue()==0
     for name in ('ovr_id#','ovr_delete#','ovr_move#','ovr_rot#','ovr_scale#','ovr_proto#','ovr_info','ovr_clear','dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size','export_path','export_usd','cache_info'):assert g.find(name) is not None,name
-    assert g.find('dbg_on').defaultValue() is False and g.find('dbg_color').menuLabels()==('Off','Prototype','Id','Weight') and '{ ovr_delete# == 1 }' in g.find('ovr_move#').conditionals()[hou.parmCondType.HideWhen]
+    assert g.find('dbg_on').defaultValue() is False and g.find('dbg_color').menuLabels()[:4]==('Off','Prototype','Id','Weight') and '{ ovr_delete# == 1 }' in g.find('ovr_move#').conditionals()[hou.parmCondType.HideWhen]
     assert g.find('paint_op').menuLabels()==('Add','Remove','Replace','Relax')
     heads=[t.columnLabels()[0] for t in g.entries()[7].parmTemplates() if t.name().startswith('ui_head')];assert heads==(['INSTANCE OVERRIDES','DEBUG'] if TN['export'] else ['INSTANCE OVERRIDES','DEBUG','EXPORT AND CACHE'])
     if TN['export']:eh=[t.columnLabels()[0] for t in g.entries()[8].parmTemplates() if t.name().startswith('ui_head')];assert g.entries()[8].label()=='Export' and eh==['EXPORT USD','CACHE'] and g.find('export_usd') is not None and g.find('cache_info') is not None and not any(t.name() in ('export_usd','export_path','cache_info') for t in g.entries()[7].parmTemplates())

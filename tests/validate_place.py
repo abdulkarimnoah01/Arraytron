@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0'}[VID]
+PREVIOUS={'v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_place_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -218,7 +218,7 @@ def with_other_stages():
     assert o1['ids'].tolist()==[10,30] and o2['ids'].tolist()==[30] and np.allclose(o1['scales'][1],o2['scales'][0],atol=1e-6)         # the random scale of an id does not change when another row goes
 
 def contract():
-    st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[9]=='Instance Place' and len(mode.menuLabels())==10
+    st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[9]=='Instance Place' and len(mode.menuLabels())==10+(1 if a.parm('biomes') is not None else 0)
     for name in ('place_snap','place_snap_rot','place_dragset','place_curve','place_curve_mode','place_curve_count','place_curve_spacing','place_curve_follow','place_curve_project','place_curve_go'):assert g.find(name) is not None,name
     for name in ('place_copies#','place_ctrans#','place_crot#','place_cscale#','place_cspace#','place_def_copies','place_def_ctrans','place_def_crot','place_def_cscale','place_def_cspace'):assert g.find(name) is not None,name
     for name in ('places','place_start','place_target','place_align','place_offset','place_def_scale','place_def_yaw','place_def_yawrand','place_def_proto','place_seed','place_info','place_fix','place_clear'):assert g.find(name) is not None,name

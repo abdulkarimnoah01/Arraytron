@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.15.0 - Biome
+* **New Distribution Mode: Biome** (Layout tab): rule based scatter on a terrain. A table of biomes; every row has its conditions (**elevation, slope, moisture, temperature**, each a range with a soft edge), a density, a **Prototype Mix** (bank rows with weights) and a scale range. Biomes blend at their borders (an ecotone): a candidate survives with the probability of the product of its four band weights, with the id keyed hash of the Mask, so a higher density only ever adds points and biomes never move each other's points.
+* **Fields:** elevation, slope (face or smooth normals), moisture (constant, noise, distance to a water mesh or curve, an image; with variation and bias) and temperature (base minus a lapse rate, noise, a warm facing). **Primvar: biome**, a **Biome** colour for the debug view, a per-biome read-out.
+* New suite `tests/validate_biome.py` (7 groups, 6 mutations) and a demo (forest, alpine firs, cliff rocks, shore stones on a hilly terrain with a pond). Both builds. Documentation `docs/BIOME.md`.
+
 ## v1.14.0 - Rows
 * **Rows** (Layout tab, section ROWS; Line, Circle / Radial and Curve): the path is laid out in several parallel rows (next to each other, concentric rings, copies of the curve pushed to the side) with *Row Spacing*, *Centre The Rows*, *Random Offset* (across), *Random Shift Along*, *Stagger Rows* and a seed. The count of the mode is the points of one row. Row 0 keeps its ids; the other rows get derived ids, so changing the number of rows never renames a point. It runs right after the distribution, so the Mask, Field Stack, Falloff, Variation and everything after it work on every row. Off by default: the output is exactly v1.13.0.
 * The Curve generator writes the direction of the path (`pathdir`) on its points. New suite `tests/validate_rows.py` (6 groups, 6 mutations) and a demo. Both builds. Documentation `docs/ROWS.md`.

@@ -49,9 +49,10 @@ VERSIONS={
  'v1.12.0':dict(old='-',type='arraytron::instancer::1.12.0',h205=True),     # Falloff: scale and density fade towards the edge of the layout
  'v1.13.0':dict(old='-',type='arraytron::instancer::1.13.0',h205=True),     # mode-aware Falloff (paint strokes, clusters, 3D grid); tabs Prototypes / Variation / Debugging / Export
  'v1.14.0':dict(old='-',type='arraytron::instancer::1.14.0',h205=True),     # Rows for the Line, Circle and Curve modes
+ 'v1.15.0':dict(old='-',type='arraytron::instancer::1.15.0',h205=True),     # the Biome distribution mode
  'v1.1.0':dict(old='-',type='arraytron::instancer::1.1.0',h205=True),     # adds the Houdini 20.5 / 21 build (otls_h205/); see docs/PORT_HOUDINI_205.md
 }
-CURRENT='v1.14.0'
+CURRENT='v1.15.0'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',

@@ -5,7 +5,7 @@
 import numpy as np
 
 LOD_LEVELS=('LOD 1','LOD 2','Proxy')
-PRIMVAR_TOGGLES=(('pv_id','arraytron_id'),('pv_proto','prototype_id'),('pv_random','random'),('pv_mask','mask'),('pv_density','density'),('pv_cluster','cluster'),('pv_srcid','source_id'))
+PRIMVAR_TOGGLES=(('pv_id','arraytron_id'),('pv_proto','prototype_id'),('pv_random','random'),('pv_mask','mask'),('pv_density','density'),('pv_cluster','cluster'),('pv_biome','biome'),('pv_srcid','source_id'))
 
 # ---------------------------------------------------------------- LOD prototypes (bank rows)
 def lod_entries(asset):
