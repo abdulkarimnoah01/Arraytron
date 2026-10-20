@@ -1,0 +1,19 @@
+name: tests
+
+# The HDAs need Houdini to build, so CI runs the plain-Python checks only (the updater).
+# Releases are built locally with tools/make_update_zip.py and uploaded with the GitHub CLI (INSTALL.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  updater:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Updater tests
+        run: python -m unittest tests.test_updater -v
