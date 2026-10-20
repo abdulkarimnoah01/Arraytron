@@ -32,7 +32,7 @@ class PaintState(object):
     def __init__(self,state_name,scene_viewer):
         self.state_name=state_name;self.scene_viewer=scene_viewer
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
-        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None);self.place_drag=None
+        self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None);self.place_drag=None;self.stroke=[];self.stroke_radius=0.0
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
         self.preview=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_paint_points')
@@ -122,8 +122,12 @@ class PaintState(object):
         elif kind=='replace':
             self.data,added,removed=m.brush_replace(self.data,pos,nrm,r,density,spacing,fall,strength,seed,m.make_projector(self.surface,pos,r,True));count=added+removed
         else:self.data,count=m.brush_add(self.data,pos,nrm,r,density,spacing,fall,strength,seed,m.make_projector(self.surface,pos,r,True))
+        if kind in ('add','replace'):self.stroke.append(np.array(pos,dtype=float));self.stroke_radius=float(r)                  # the path of the stroke, kept for the Falloff
         if count:self.dirty=True;self._draw_points()
     def _commit(self):
+        if self.stroke and self.data is not None:
+            self.data=self._m().paint_stroke_add(self.data,self.stroke,self.stroke_radius);self.dirty=True
+        self.stroke=[]
         if self.dirty:
             self._m().paint_apply(self.node,self.data);self.dirty=False
     def status(self):

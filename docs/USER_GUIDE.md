@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.12.0)
+# Arraytron user guide (v1.13.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.12.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.13.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -12,18 +12,19 @@ Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.12.0`, that scatter
 
 That is a working scatter. Everything else is optional and stays out of the way until you open its tab.
 
-## 2. The eight tabs
+## 2. The nine tabs
 
 | Tab | What it is for |
 | --- | --- |
-| **Source** | The Prototype Bank (the models, their weights, scale, LOD / proxy prims), how each point picks a model, the output prim path. |
+| **Prototypes** | The Prototype Bank (the models, their weights, scale, LOD / proxy prims), how each point picks a model, the output prim path. |
 | **Layout** | Where the points go. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
-| **Look** | Per-instance rotation and scale, **Randomize**, the **Mask** (noise, image, mesh primvar) and the **Field Stack** (Height, Slope, Noise, Image, Distance, Exclusion). |
+| **Variation** | Per-instance rotation and scale, **Randomize**, the **Mask** (noise, image, mesh primvar) and the **Field Stack** (Height, Slope, Noise, Image, Distance, Exclusion). |
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
 | **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |
 | **Optimize** | **Camera optimisation** (frustum, distance, density, behind-camera), **LOD / proxy** switching, **primvars** for shaders. **Generate LODs** writes reduced copies of the prototypes (`docs/CAMERA_LOD_PRIMVARS.md`). |
-| **Finish** | **Instance overrides** by id, **debug views**, **USD export**. |
+| **Debugging** | **Instance overrides** by id (and **Pick Instance**), **debug views**. |
+| **Export** | **Export USD** (a self-contained instances file) and what this node stores (the cache read-out). |
 
 ## 3. Choosing a distribution
 
@@ -75,7 +76,7 @@ Press **Start Painting** (or select the node and press Enter in the viewport). D
 
 The values live in the node's parameters (Brush Radius, Strength, Density, Operation, Falloff), so every shortcut also moves the sliders. Painted points are stored in the node and keep their ids. See `docs/PAINT_BRUSH.md`.
 
-## 7. Overrides (Finish tab)
+## 7. Overrides (Export tab)
 
 To fix one instance by hand add a row to **Instance Overrides**: give the **Instance Id** (the easy way: press **Pick Instance in Viewport** and click the instance; Ctrl+click also ticks Delete, Esc finishes. Or read the *Arraytron Id* primvars or the *Id* debug colours), then tick **Delete**, or set **Move**, **Rotate**, **Scale** or **Prototype Row**. Overrides are applied last (after the physics, before Grow), keep working when other settings change, and removing the rows brings the generated instances back. Python: `hou.pwd().hdaModule().override_set(node, id, move=(0,1,0))`, `override_delete_ids(node, [ids])`, `override_clear(node)`.
 
@@ -89,7 +90,7 @@ Wire a Camera LOP before Arraytron and pick it. **Frustum**, **distance** and **
 
 ## 10. Output and export
 
-The node outputs one PointInstancer at the *Output Prim Path* (default `/World/Arraytron`) with its prototypes under `/Prototypes`. **Export USD** (Finish tab) writes that result, self-contained, to a file for caching or hand-over (`docs/CACHING_AND_PIPELINE.md`).
+The node outputs one PointInstancer at the *Output Prim Path* (default `/World/Arraytron`) with its prototypes under `/Prototypes`. **Export USD** (Export tab) writes that result, self-contained, to a file for caching or hand-over (`docs/CACHING_AND_PIPELINE.md`).
 
 ## 11. Where to go next
 

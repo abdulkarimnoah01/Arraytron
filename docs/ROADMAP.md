@@ -70,3 +70,5 @@ Status 2026-10-20 (latest): v1.10.0 adds Instance Place arrays (Copies and steps
 Status 2026-10-20 (latest): v1.11.0 adds the Place tool extras and the cleanups.
 
 Status 2026-10-20 (latest): v1.12.0 adds Falloff (scale and density). Next: the biome sector.
+
+Status 2026-10-20 (latest): v1.13.0 makes the Falloff follow the mode and renames the tabs. Next: the biome sector.

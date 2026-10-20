@@ -1,6 +1,6 @@
 # Arraytron
 
-> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.12.0**; v1.11.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
+> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.13.0**; v1.12.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
 
 
 # Get Arraytron
@@ -22,11 +22,11 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 
 **Updating:** click **Check for Updates** on the *Arraytron* shelf in Houdini. It reads the latest release from GitHub, shows what is new and installs it after you say yes; nothing is checked in the background. Details, rollback and publishing a release: `INSTALL.md`.
 
-# Arraytron v1.12.0 (current)
+# Arraytron v1.13.0 (current)
 
-`dist/Arraytron_v1.12.0.hda` (type `arraytron::instancer::1.12.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.12.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
+`dist/Arraytron_v1.13.0.hda` (type `arraytron::instancer::1.13.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.13.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
 
-A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Eight tabs in workflow order: **Source** (Prototype Bank, selection, LOD / proxy prims), **Layout** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**), **Look** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Settle** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD, primvars), **Finish** (instance overrides, debug views, USD export).
+A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Nine tabs in workflow order: **Prototypes** (Prototype Bank, selection, LOD / proxy prims), **Layout** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**, **Instance Place**, and **Falloff**), **Variation** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Physics** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD generator, primvars), **Debugging** (instance overrides, debug views), **Export** (USD export, what the node stores).
 
 | Version | Added |
 | --- | --- |
@@ -49,14 +49,15 @@ A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInsta
 | v1.9.0 | **Instance Place**: place instances one at a time (table and viewport tool), like Copy and Transform |
 | v1.10.0 | **Instance Place arrays**: Copies with Copy and Transform style steps (rows, spirals, fans) |
 | v1.11.0 | **Place tool extras**: drag to turn and scale, snap, Place Along Curve; node name `arraytron1`; Settle Instances |
-| **v1.12.0** | **Falloff**: scale and density fade towards the edge of any scatter (radial or box) |
+| v1.12.0 | **Falloff**: scale and density fade towards the edge of any scatter (radial or box) |
+| **v1.13.0** | **Falloff follows the mode** (clusters, paint strokes, 3D grid); tabs renamed (Prototypes, Variation, Debugging) and a new **Export** tab |
 
 What v1.0.0 and v1.1.0 guarantee (all tested, `tests/validate_production.py`): a saved scene reloads to the identical result; two separate processes give bit-identical output; every Distribution Mode gives unique, deterministic ids that rotation, scale, weights, selection and masks never change; random parameter fuzzing never produces a Python traceback; the exported USD passes `usdchecker`; every demo cooks.
 
 Rebuild and validate with `C:/Program Files/Side Effects Software/Houdini 22.0.368/bin/hython.exe` (the full command list is in `CLAUDE.md`):
 
 ```text
-tools/build_arraytron_v03.py v1.12.0
+tools/build_arraytron_v03.py v1.13.0
 tools/build_demo_v03.py v1.1.0 ; build_demo_grow_v052.py ; build_demo_overlap_v051.py ; build_demo_mask_v050.py ; build_demo_paint_v060.py ; build_demo_fields_v070.py ; build_demo_cluster_v080.py ; build_demo_camera_v090.py ; build_demo_finish_v100.py ; build_demo_physics.py railway|box ; build_demo_all.py
 tests/validate_v016.py v1.1.0 (39) ; validate_physics.py (19) ; validate_scatter.py (24) ; validate_mask.py (11) ; validate_overlap.py (6) ; validate_grow.py (8) ; validate_paint.py (16) ; validate_fields.py (16) ; validate_cluster.py (8) ; validate_avoid.py (7) ; validate_camera.py (9) ; validate_polish.py (9) ; validate_production.py (7)
 ```
@@ -244,7 +245,7 @@ tests/validate_v016.py v0.3.5
 
 **Cluster (v0.8.0)** is a Distribution Mode (groups of instances around centres on a surface); the Spacing tab is now **Separation & Collision**: Remove / Push Apart with a Priority, and Avoid Geometry that keeps instances out of a mesh, shape or curve, see `docs/CLUSTER_AND_SEPARATION.md`.
 
-**Field Stack (v0.7.0):** the Look tab holds rows of fields (Height, Slope, Noise, Image, Distance, Exclusion) combined into one weight per point, see `docs/FIELD_STACK.md`.
+**Field Stack (v0.7.0):** the Variation tab holds rows of fields (Height, Slope, Noise, Image, Distance, Exclusion) combined into one weight per point, see `docs/FIELD_STACK.md`.
 
 **Inputs.** Four. **1: Scene Stream (terrain, curve, models)** - the scene with the surfaces and curves to scatter on and any models picked by prim path; **2, 3, 4: extra prototype (optional)** - one extra model each, merged into the stream. A curve is a prim in input 1, not a separate input. **Paint (v0.6.0):** Distribution Mode Paint and the Start Painting button give a viewport brush (Add, Ctrl-drag Remove, `[` `]` radius), see `docs/PAINT_BRUSH.md`.
 

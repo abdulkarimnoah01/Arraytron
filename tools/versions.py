@@ -47,9 +47,10 @@ VERSIONS={
  'v1.10.0':dict(old='-',type='arraytron::instancer::1.10.0',h205=True),     # Instance Place arrays (Copy and Transform steps)
  'v1.11.0':dict(old='-',type='arraytron::instancer::1.11.0',h205=True),     # Place tool extras (snap, drag, along curve), node name arraytron1, Settle Instances label
  'v1.12.0':dict(old='-',type='arraytron::instancer::1.12.0',h205=True),     # Falloff: scale and density fade towards the edge of the layout
+ 'v1.13.0':dict(old='-',type='arraytron::instancer::1.13.0',h205=True),     # mode-aware Falloff (paint strokes, clusters, 3D grid); tabs Prototypes / Variation / Debugging / Export
  'v1.1.0':dict(old='-',type='arraytron::instancer::1.1.0',h205=True),     # adds the Houdini 20.5 / 21 build (otls_h205/); see docs/PORT_HOUDINI_205.md
 }
-CURRENT='v1.12.0'
+CURRENT='v1.13.0'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',
@@ -130,3 +131,8 @@ except ImportError:pass
 if __name__=='__main__':
     for vid,meta in VERSIONS.items():
         print(vid,('(was v'+meta['old']+')') if meta['old']!='-' else '','type',meta['type'],'->',hda(vid).relative_to(ROOT))
+
+def tab_names(vid):
+    """The labels of the tabs that were renamed in v1.13.0: Source > Prototypes, Look > Variation, Finish > Debugging, plus the Export tab (None before v1.13.0)."""
+    new=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,13,0)
+    return dict(source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None)

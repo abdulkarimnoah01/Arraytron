@@ -1,10 +1,10 @@
-# Arraytron documentation index (v1.12.0)
+# Arraytron documentation index (v1.13.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
 ## For artists
 
-* `USER_GUIDE.md` - a two-minute quick start, the eight tabs, recipes.
+* `USER_GUIDE.md` - a two-minute quick start, the nine tabs, recipes.
 * `PHYSICS_FOR_ARTISTS.md` - Physics Settle explained simply (the railway ballast and the box demos).
 * `TROUBLESHOOTING.md` - the common errors and what to do.
 * `CACHING_AND_PIPELINE.md` - what is stored where, which cache to use, export, version migration.

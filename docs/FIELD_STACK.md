@@ -1,6 +1,6 @@
 # Field Stack (v0.7.0)
 
-A Field Stack is an ordered list of **fields**. Each field gives every point a number from 0 to 1; the rows are combined into one weight per point, and that weight removes points (Density), shrinks them (Scale), or both. It works on every Distribution Mode (Line, Area, Grid, Circle, Curve, Surface, Paint) and sits in the **Look** tab under FIELD STACK, after the Mask. The older Mask is untouched and still works; when both are used their scales multiply.
+A Field Stack is an ordered list of **fields**. Each field gives every point a number from 0 to 1; the rows are combined into one weight per point, and that weight removes points (Density), shrinks them (Scale), or both. It works on every Distribution Mode (Line, Area, Grid, Circle, Curve, Surface, Paint) and sits in the **Variation** tab under FIELD STACK, after the Mask. The older Mask is untouched and still works; when both are used their scales multiply.
 
 ## The fields
 

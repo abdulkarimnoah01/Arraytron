@@ -9,11 +9,11 @@ Distribution Mode **Instance Place** (Layout tab) places instances **one at a ti
 | On | Switch the instance off without deleting its row. |
 | Id | The stable id (Variation, Mask, Instance Overrides, primvars and Grow key on it). The viewport tool fills it in. A row with no id yet (0) or a repeated id gets a temporary one at cook time; press **Fix Ids** to write the real ones. Removing a row never renames the others. |
 | Position | World position. |
-| Rotate (deg) | Rotation about X, then Y, then Z (fixed axes), the same convention as the Instance Overrides. Applied before the Look tab rotation. |
-| Scale | Scale (x, y, z), multiplied by the Look tab scale and the Prototype Bank scale. |
+| Rotate (deg) | Rotation about X, then Y, then Z (fixed axes), the same convention as the Instance Overrides. Applied before the Variation tab rotation. |
+| Scale | Scale (x, y, z), multiplied by the Variation tab scale and the Prototype Bank scale. |
 | Prototype Row | The Prototype Bank row this instance uses (0 lets the Selection Mode choose; a row that is not enabled is ignored). |
 
-The Look tab still applies on top (Randomize is off by default), and so do Mask, Field Stack, Separation, Physics Settle, Instance Overrides, Grow, camera optimisation and the primvars.
+The Variation tab still applies on top (Randomize is off by default), and so do Mask, Field Stack, Separation, Physics Settle, Instance Overrides, Grow, camera optimisation and the primvars.
 
 ## The viewport tool
 
@@ -53,12 +53,12 @@ Any row can make an **array**: set **Copies** above 1 and the steps appear. Copy
 | Step Scale | Each copy is this many times the size of the one before (1 keeps the size, 0.9 shrinks every copy by ten percent). |
 | Step Space | **Local (follows the copy)**: every step is applied in the frame of the previous copy, M(k+1) = M(k) * Step, like the Copy and Transform SOP, so a rotation makes spirals and fans and the translation turns and shrinks with the copy. **World**: the translation is along the world axes and the rotation turns the copy about its own position in world axes (straight rows, stairs, grids of steps). |
 
-Examples: a row of fence posts = Copies 10, Step Translate (2, 0, 0); a square = Copies 4, Step Translate (1, 0, 0), Step Rotate (0, 90, 0), Local; a spiral staircase = Copies 24, Step Translate (0.5, 0.2, 0), Step Rotate (0, 15, 0), Local; a shrinking spiral = Local with Step Scale 0.93. A non-uniform base Scale stays in the instance's own axes (no shear), and the Look tab and the Prototype Bank scales multiply every copy.
+Examples: a row of fence posts = Copies 10, Step Translate (2, 0, 0); a square = Copies 4, Step Translate (1, 0, 0), Step Rotate (0, 90, 0), Local; a spiral staircase = Copies 24, Step Translate (0.5, 0.2, 0), Step Rotate (0, 15, 0), Local; a shrinking spiral = Local with Step Scale 0.93. A non-uniform base Scale stays in the instance's own axes (no shear), and the Variation tab and the Prototype Bank scales multiply every copy.
 
 **Ids.** Copy 0 keeps the row Id, so a row without copies is exactly what it was. Copy k of a row gets `1000000000 + Id * 10000 + k`: unique, and stable when other rows are added or removed. A row that makes copies needs an Id below 100000 (the cook says so otherwise). A copy is an ordinary instance for Instance Overrides, Pick Instance, Mask and the rest; in the viewport tool a Ctrl-click on a copy deletes its whole row. The **On** switch, the Prototype Row and the viewport settings (**New Copies**, **New Step Translate / Rotate / Scale / Space**: every click of the tool then places an array) work on the row.
 
 ## Evidence and limits
 
-`tests/validate_place.py` (14 groups, 13 mutations; the arrays are checked against 4x4 matrix products, spirals and rows on the node and the copy ids; snap, drag, along-curve samples and the node name on the real node and the stand-in viewport): the rotation convention against rotation matrices, the Euler round trip, id resolution, the table on the node (ids, positions, rotations, scales, disabled and removed rows, Look tab scale), the Prototype Row per instance, other modes and the previous release unchanged, the tool functions (alignment on a slope, random yaw, nearest, remove, clear, undo), the viewer tool through a stand-in viewport, Instance Overrides and Variation, and the interface. How the tool feels in a real viewport (the click events, the marker) is for the user to judge. Positions are world space, so a Bounds Transform does not move placed instances. The table holds at most 100,000 instances.
+`tests/validate_place.py` (14 groups, 13 mutations; the arrays are checked against 4x4 matrix products, spirals and rows on the node and the copy ids; snap, drag, along-curve samples and the node name on the real node and the stand-in viewport): the rotation convention against rotation matrices, the Euler round trip, id resolution, the table on the node (ids, positions, rotations, scales, disabled and removed rows, Variation tab scale), the Prototype Row per instance, other modes and the previous release unchanged, the tool functions (alignment on a slope, random yaw, nearest, remove, clear, undo), the viewer tool through a stand-in viewport, Instance Overrides and Variation, and the interface. How the tool feels in a real viewport (the click events, the marker) is for the user to judge. Positions are world space, so a Bounds Transform does not move placed instances. The table holds at most 100,000 instances.
 
 Demo: `dist/Arraytron_v1.9.0_place_demo.hip` (render `renders/arraytron_v1.9.0_place_demo_xpu.png`): a pyramid of crates, an arc of rocks growing in size and three single rocks and two arrays (a spiral of 14 rocks and a fence of 5 crates) and a path of stepping stones made with Place Along Curve, made by the same functions the tool calls.

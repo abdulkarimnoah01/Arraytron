@@ -41,6 +41,12 @@ def cluster_points(surface,count,per,radius,falloff,jitter,seed,smooth=True):
 # ---------------------------------------------------------------- Houdini side
 import hou
 
+def cluster_regions(surface,count,per,radius,jitter,seed,smooth=True):
+    """The centre (m,3) and the radius (m,) of every cluster, the same numbers cluster_points used: the Falloff fades every cluster to its own boundary (v1.13.0)."""
+    P,T,area,normals,vn=surface;centres,cn,_=surface_points(P,T,area,normals,vn,count,seed,smooth,0.0,180.0,0.0,0.0)
+    if not len(centres):return np.zeros((0,3)),np.zeros(0)
+    members,rf=cluster_shape(len(centres),per,jitter,seed);return centres,radius*rf
+
 def cluster_surface(asset):
     if asset.evalParm('cluster_prim').strip():return stage_surface(asset,'cluster_prim')
     hx,hz=(v*0.5 for v in asset.evalParmTuple('cluster_area'));return plane_rect(hx,hz,0.0)
@@ -49,9 +55,12 @@ def sop_cluster(geo,asset):
     """generate_cluster: the cluster members with the normal alignment in p@align and the cluster number in i@cluster."""
     pos,nrm,ids,cl=cluster_points(cluster_surface(asset),asset.evalParm('cluster_count'),asset.evalParm('cluster_per'),asset.evalParm('cluster_radius'),asset.evalParm('cluster_falloff'),asset.evalParm('cluster_jitter'),asset.evalParm('cluster_seed'),asset.evalParm('cluster_normal')==1)
     pos=pos+nrm*asset.evalParm('cluster_offset');geo.clear();geo.addAttrib(hou.attribType.Point,'id',0);geo.addAttrib(hou.attribType.Point,'align',(0.0,0.0,0.0,1.0));geo.addAttrib(hou.attribType.Point,'cluster',0)
+    geo.addAttrib(hou.attribType.Point,'ccentre',(0.0,0.0,0.0));geo.addAttrib(hou.attribType.Point,'cradius',1.0)                      # the cluster the member belongs to: its centre and radius (the Falloff fades to this boundary)
     if not len(pos):return
     geo.createPoints([tuple(v) for v in pos.tolist()]);geo.setPointIntAttribValues('id',ids.tolist());geo.setPointIntAttribValues('cluster',cl.tolist())
     geo.setPointFloatAttribValues('align',normal_alignment(nrm,asset.evalParm('cluster_align')).ravel().tolist())
+    centres,radii=cluster_regions(cluster_surface(asset),asset.evalParm('cluster_count'),asset.evalParm('cluster_per'),asset.evalParm('cluster_radius'),asset.evalParm('cluster_jitter'),asset.evalParm('cluster_seed'),asset.evalParm('cluster_normal')==1)
+    geo.setPointFloatAttribValues('ccentre',centres[cl].ravel().tolist());geo.setPointFloatAttribValues('cradius',radii[cl].tolist())
 
 def cluster_info(asset):
     try:

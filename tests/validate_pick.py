@@ -11,7 +11,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
+TN=versions.tab_names(VID)
+PREVIOUS={'v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0'}[VID]
 TYPE=versions.type_name(VID)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_pick_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -155,7 +156,7 @@ def viewer_pick():
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();b=g.find('ovr_pick');assert b is not None and b.label()=='Pick Instance in Viewport'
     assert 'pick_start' in b.scriptCallback() and b.scriptCallbackLanguage()==hou.scriptLanguage.Python
-    finish=[t for t in g.entries() if t.label()=='Finish'][0];names=[t.name() for t in finish.parmTemplates()];assert names.index('ovr_pick')<names.index('overrides')               # the button sits above the table
+    finish=[t for t in g.entries() if t.label()==TN['finish']][0];names=[t.name() for t in finish.parmTemplates()];assert names.index('ovr_pick')<names.index('overrides')               # the button sits above the table
     m=a.hdaModule();assert all(hasattr(m,n) for n in ('pick_instances','pick_nearest','pick_add','pick_row','pick_start','pick_state_name'))
     assert b.help() and 'Ctrl-click' in b.help()
     src=a.type().definition().sections()['ViewerStateModule'].contents();assert 'arraytron_pick' in src and '_pick_mouse' in src and "'$'" not in src

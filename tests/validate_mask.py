@@ -11,7 +11,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.5.0':'v0.4.6','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
+TN=versions.tab_names(VID)
+PREVIOUS={'v0.5.0':'v0.4.6','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_mask_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -110,7 +111,7 @@ def mutate(a):
 # ------------------------------------------------------------------ groups
 def ui_contract():
     st,a=grid_scene();g=a.parmTemplateGroup()
-    if g.find('ui_mask'):assert [e.label() for e in g.entries()][2]=='Look' and g.find('mask_source') and g.find('ui_mask').label()=='Mask Details'
+    if g.find('ui_mask'):assert [e.label() for e in g.entries()][2]==TN['look'] and g.find('mask_source') and g.find('ui_mask').label()=='Mask Details'
     else:
         names=[t.name() for t in g.entries()];assert names.index('mask')==names.index('randomize')+1,names
         f=[t for t in g.entries() if t.name()=='mask'][0];assert f.label()=='Mask'

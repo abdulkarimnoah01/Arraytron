@@ -1,35 +1,69 @@
 # Viewport brush (v0.6.0): stroke storage, brush maths and the Paint generator. Appended to the PythonModule after the scatter module (it uses
 # scatter_hash, normal_alignment, stage_surface and _emit). The pure functions take and return numpy arrays and are tested without a viewport;
 # the interactive part (mouse, drawing) lives in src/arraytron_paint_state.py (the Python Viewer State) and only calls these functions.
-import base64, zlib
+import base64, struct, zlib
 import numpy as np
 
 PAINT_MAX=20000                  # painted points per node (the string parm stays a few hundred kB)
 PAINT_COLUMNS=7                  # x y z nx ny nz id
+PAINT_MAX_STROKES=2000           # stroke paths kept for the Falloff (v1.13.0)
+PAINT_STROKE_CENTRES=400         # dab centres kept per stroke
 FALLOFFS=('Linear','Smooth','Gaussian','Hard')
 
 # ---------------------------------------------------------------- storage
 def paint_empty():
-    return {'pts':np.zeros((0,PAINT_COLUMNS)),'dab':0,'next':0}
+    return {'pts':np.zeros((0,PAINT_COLUMNS)),'dab':0,'next':0,'strokes':[]}
 
 def paint_encode(data):
-    """Compact text for the hidden parm: 'p1:' + base64(zlib(float32 table)) + counters. Positions keep float32 precision (about 1e-6 relative)."""
+    """Compact text for the hidden parm: 'p1:' + base64(zlib(float32 table)) + counters. Positions keep float32 precision (about 1e-6 relative). When the data holds stroke paths (the viewport
+    tool records them for the Falloff) the format is 'p2:' (the same table followed by the strokes: per stroke its brush radius, its number of centres and the centres); without strokes the text is
+    exactly the p1 text, so painted scenes that never used a stroke are unchanged."""
     pts=np.asarray(data['pts'],dtype=np.float64)
     ids=pts[:,6].astype(np.int64).astype(np.float64)
-    blob=zlib.compress(np.ascontiguousarray(pts[:,:6],dtype=np.float32).tobytes()+np.ascontiguousarray(ids,dtype=np.int64).tobytes(),6)
-    return 'p1:%d:%d:%d:%s'%(len(pts),data['dab'],data['next'],base64.b64encode(blob).decode('ascii'))
+    raw=np.ascontiguousarray(pts[:,:6],dtype=np.float32).tobytes()+np.ascontiguousarray(ids,dtype=np.int64).tobytes()
+    strokes=data.get('strokes') or []
+    if not strokes:
+        blob=zlib.compress(raw,6);return 'p1:%d:%d:%d:%s'%(len(pts),data['dab'],data['next'],base64.b64encode(blob).decode('ascii'))
+    parts=[raw]
+    for radius,centres in strokes[-PAINT_MAX_STROKES:]:
+        centres=np.ascontiguousarray(np.asarray(centres,dtype=np.float32).reshape(-1,3));parts.append(struct.pack('<fi',float(radius),len(centres)));parts.append(centres.tobytes())
+    blob=zlib.compress(b''.join(parts),6);return 'p2:%d:%d:%d:%d:%s'%(len(pts),data['dab'],data['next'],min(len(strokes),PAINT_MAX_STROKES),base64.b64encode(blob).decode('ascii'))
 
 def paint_decode(text):
     text=(text or '').strip()
     if not text:return paint_empty()
-    head=text.split(':',4)
-    if len(head)!=5 or head[0]!='p1':raise ValueError('Paint data is not in the p1 format (clear the paint to start again).')
-    count,dab,nxt=int(head[1]),int(head[2]),int(head[3])
-    raw=zlib.decompress(base64.b64decode(head[4]))
-    if len(raw)!=count*(6*4+8):raise ValueError('Paint data is damaged (size does not match the point count).')
+    head=text.split(':',5 if text.startswith('p2:') else 4)
+    if head[0]=='p1' and len(head)==5:
+        count,dab,nxt=int(head[1]),int(head[2]),int(head[3]);nstrokes=0;payload=head[4]
+    elif head[0]=='p2' and len(head)==6:
+        count,dab,nxt,nstrokes=int(head[1]),int(head[2]),int(head[3]),int(head[4]);payload=head[5]
+    else:raise ValueError('Paint data is not in the p1 format (clear the paint to start again).')
+    raw=zlib.decompress(base64.b64decode(payload));need=count*(6*4+8)
+    if len(raw)<need or (head[0]=='p1' and len(raw)!=need):raise ValueError('Paint data is damaged (size does not match the point count).')
     xyz=np.frombuffer(raw[:count*24],dtype=np.float32).reshape(count,6).astype(np.float64)
-    ids=np.frombuffer(raw[count*24:],dtype=np.int64).astype(np.float64)
-    return {'pts':np.column_stack([xyz,ids]) if count else np.zeros((0,PAINT_COLUMNS)),'dab':dab,'next':nxt}
+    ids=np.frombuffer(raw[count*24:need],dtype=np.int64).astype(np.float64);strokes=[];at=need
+    try:
+        for _ in range(nstrokes):
+            radius,n=struct.unpack_from('<fi',raw,at);at+=8;centres=np.frombuffer(raw[at:at+n*12],dtype=np.float32).reshape(n,3).astype(np.float64);at+=n*12;strokes.append((float(radius),centres))
+    except (struct.error,ValueError):raise ValueError('Paint data is damaged (the stroke paths are cut off).')
+    return {'pts':np.column_stack([xyz,ids]) if count else np.zeros((0,PAINT_COLUMNS)),'dab':dab,'next':nxt,'strokes':strokes}
+
+def paint_thin(centres,radius):
+    """The dab centres of one stroke thinned for storage: no two closer than a quarter of the radius (the last one always kept), at most PAINT_STROKE_CENTRES."""
+    c=np.asarray(centres,dtype=np.float64).reshape(-1,3)
+    if len(c)<=2:return c
+    keep=[0];last=c[0]
+    for k in range(1,len(c)-1):
+        if np.linalg.norm(c[k]-last)>=0.25*radius:keep.append(k);last=c[k]
+    keep.append(len(c)-1);c=c[keep]
+    if len(c)>PAINT_STROKE_CENTRES:c=c[np.unique(np.round(np.linspace(0,len(c)-1,PAINT_STROKE_CENTRES)).astype(int))]
+    return c
+
+def paint_stroke_add(data,centres,radius):
+    """The data with one more stroke path (the dab centres of an Add or Replace stroke and the brush radius): what the Falloff follows. The input is not modified."""
+    new=dict(data);strokes=list(data.get('strokes') or []);c=paint_thin(centres,radius)
+    if len(c):strokes.append((float(radius),c))
+    new['strokes']=strokes[-PAINT_MAX_STROKES:];return new
 
 # ---------------------------------------------------------------- brush
 def falloff_weight(t,kind):
@@ -64,7 +98,7 @@ def brush_add(data,center,normal,radius,density,spacing,falloff,strength,seed,pr
     so painting more never renames the points that are already there. Returns the new data (the input is not modified) and the number added."""
     pts=data['pts'];dab=data['dab']
     cand,t=dab_candidates(center,normal,radius,density,seed,dab)
-    new={'pts':pts,'dab':dab+1,'next':data['next']}
+    new={'pts':pts,'dab':dab+1,'next':data['next'],'strokes':data.get('strokes',[])}
     if not len(cand):return new,0
     pos,nrm,valid=project(cand,normal)
     keep=valid&(scatter_hash(np.arange(len(cand))+dab*100003,seed,12)<strength*falloff_weight(t,falloff)-1e-12)
@@ -85,7 +119,7 @@ def brush_add(data,center,normal,radius,density,spacing,falloff,strength,seed,pr
 
 def brush_remove(data,center,radius,falloff,strength,seed):
     """One Remove dab: a point inside the radius is removed when the hash of its id and this dab is below strength * falloff weight."""
-    pts=data['pts'];dab=data['dab'];new={'pts':pts,'dab':dab+1,'next':data['next']}
+    pts=data['pts'];dab=data['dab'];new={'pts':pts,'dab':dab+1,'next':data['next'],'strokes':data.get('strokes',[])}
     if not len(pts):return new,0
     t=np.linalg.norm(pts[:,:3]-np.asarray(center,dtype=np.float64),axis=1)/radius
     gone=(t<=1.0)&(scatter_hash(pts[:,6].astype(np.int64),seed,13+dab%1000)<strength*falloff_weight(t,falloff)-1e-12)
@@ -100,7 +134,7 @@ def brush_relax(data,center,radius,falloff,strength,spacing,project,iterations=6
     """Relax (smooth): spread the painted points inside the brush towards an even spacing. Pairs closer than the target distance (Min Spacing, or the mean
     nearest-neighbour distance when that is 0) are pushed apart along the line between them by strength x falloff x half of the shortfall, for a few
     iterations, then every moved point is projected back onto the surface (a point that cannot be projected stays where it was). Ids never change. Returns (data, moved)."""
-    pts=data['pts'].copy();c=np.asarray(center,dtype=np.float64);new={'pts':pts,'dab':data['dab']+1,'next':data['next']}
+    pts=data['pts'].copy();c=np.asarray(center,dtype=np.float64);new={'pts':pts,'dab':data['dab']+1,'next':data['next'],'strokes':data.get('strokes',[])}
     if len(pts)<2:return new,0
     inside=np.nonzero(np.linalg.norm(pts[:,:3]-c,axis=1)<=radius)[0]
     if len(inside)<2:return new,0

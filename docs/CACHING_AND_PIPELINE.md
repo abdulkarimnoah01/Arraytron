@@ -1,4 +1,4 @@
-# Caching strategy and pipeline use (v1.12.0)
+# Caching strategy and pipeline use (v1.13.0)
 
 Arraytron is **procedural and deterministic**: the same settings, scene and Houdini version give bit-identical instances (tested across two separate processes). That makes caching a choice, not a necessity. This page says what is stored where and which cache to use when.
 
@@ -17,7 +17,7 @@ The **Stored On This Node** read-out (Finish tab) summarises these.
 
 1. **Interactive work:** nothing to do. Cooks are quick up to tens of thousands of instances (the production suite measures a 20,000 point cook with variation, mask, field, separation and primvars in a few seconds).
 2. **Physics:** always Simulate & Cache before a render farm job; ship the cache folder with the hip (the demos use a path relative to the hip).
-3. **Hand-over or farm:** **Export USD** (Finish tab) writes the final instances (positions, orientations, scales, ids, prototype indices, hidden ids, primvars and the prototypes) to a self-contained layer. Reference or sublayer it in a downstream stage; the debug guides are not exported. It exports the current frame's data, including time samples that exist (Grow, animated camera culling: export per frame or use a USD ROP over a frame range for animation).
+3. **Hand-over or farm:** **Export USD** (Export tab) writes the final instances (positions, orientations, scales, ids, prototype indices, hidden ids, primvars and the prototypes) to a self-contained layer. Reference or sublayer it in a downstream stage; the debug guides are not exported. It exports the current frame's data, including time samples that exist (Grow, animated camera culling: export per frame or use a USD ROP over a frame range for animation).
 4. **Whole stage:** a regular USD ROP / Karma render ROP on the stage works as for any LOP; the Arraytron output is plain USD.
 5. **Shot consistency:** keep the seeds, the scene and the Houdini version fixed, and check the `production_<version>.json` determinism result. The stable ids make downstream FX and overrides survive edits.
 

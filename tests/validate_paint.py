@@ -4,6 +4,7 @@ force; the Paint mode is checked end to end through the real HDA (PointInstancer
 other stages on top). The Python Viewer State is exercised headlessly with a stand-in for the viewport (stub drawables, scripted mouse events).
 What this does NOT show: the look and feel of the tool in a real Scene Viewer (see STATUS.md). Env ARRAYTRON_MUTATE=<name> breaks the module; the suite must FAIL."""
 from pathlib import Path
+import base64, zlib
 import ast, hou, json, math, os, sys, tempfile, time, types
 import numpy as np
 from pxr import Usd, UsdGeom, Gf
@@ -11,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0'}[VID]
+PREVIOUS={'v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_paint_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
@@ -60,7 +61,7 @@ def mutate(a):
         good=g['dab_candidates'];g['dab_candidates']=lambda c,n,r,d,seed,dab:good(c,n,r,d,1,dab)
     elif MUTATE=='paint_ids':
         good=g['brush_add'];g['brush_add']=lambda *a,**k:(lambda new,c:(dict(new,pts=np.column_stack([new['pts'][:,:6],np.arange(len(new['pts']))*2.0]) if len(new['pts']) else new['pts'],next=new['next']),c))(*good(*a,**k))
-    elif MUTATE in ('paint_resize','paint_wheel','paint_shift'):pass                                                    # applied to the viewer state source in brush_shortcuts()
+    elif MUTATE in ('paint_resize','paint_wheel','paint_shift','paint_strokes','paint_p1'):pass                                                    # applied to the viewer state source in brush_shortcuts()
     else:raise SystemExit('unknown mutation '+MUTATE)
 def all_errors(node):
     out=list(node.errors())
@@ -350,6 +351,40 @@ def brush_shortcuts():
     class Alt(Device):
         def isAltKey(self):return True
     assert mouse(Alt(30,20,left=True),R.Start) is False
+def stroke_paths():
+    """v1.13.0: the stroke paths the viewport tool records for the Falloff: the p2 text, p1 unchanged without strokes, strokes carried through the brush, thinned, damaged data, the tool."""
+    st,sc=new_scene('strokes');a=arraytron(st,sc,mode=6,paint_prim='',paint_radius=0.5,paint_density=200.0,paint_spacing=0.0,paint_falloff=3,paint_strength=1.0);m=a.hdaModule()
+    if MUTATE=='paint_p1':
+        good=m.paint_encode.__globals__['paint_encode'];m.paint_encode.__globals__['paint_encode']=lambda d:good(dict(d,strokes=[]))                                                      # strokes never stored
+    d=m.paint_empty();assert d['strokes']==[] and m.paint_decode('')['strokes']==[]
+    flat,_=m.brush_add(d,np.zeros(3),np.array([0.0,1.0,0.0]),0.5,200.0,0.0,3,1.0,1,flat_project);assert m.paint_encode(flat).startswith('p1:') and m.paint_decode(m.paint_encode(flat))['strokes']==[]               # no strokes: the same p1 text as before
+    path=[np.array([x,0.0,0.0]) for x in np.linspace(-2,2,41)];withs=m.paint_stroke_add(flat,path,0.5);dec=m.paint_decode(m.paint_encode(withs));assert m.paint_encode(withs).startswith('p2:') and len(dec['strokes'])==1 and dec['strokes'][0][0]==0.5
+    thin=dec['strokes'][0][1];assert len(thin)<41 and np.allclose(thin[0],path[0]) and np.allclose(thin[-1],path[-1]) and all(np.linalg.norm(thin[k+1]-thin[k])>=0.5*0.25-1e-6 for k in range(len(thin)-2))    # thinned to a quarter radius, ends kept
+    assert np.array_equal(dec['pts'],m.paint_decode(m.paint_encode(flat))['pts']) and dec['dab']==flat['dab'] and dec['next']==flat['next']                                                       # the points are the same with or without the strokes
+    more,_=m.brush_add(withs,np.array([1.5,0.0,0.0]),np.array([0.0,1.0,0.0]),0.5,200.0,0.0,3,1.0,2,flat_project);assert len(more['strokes'])==1 and len(m.paint_decode(m.paint_encode(more))['strokes'])==1                      # the brush keeps them
+    gone,_=m.brush_remove(more,np.zeros(3),1.0,3,1.0,1);rel,_=m.brush_relax(more,np.zeros(3),1.0,3,1.0,0.05,flat_project);assert len(gone['strokes'])==1 and len(rel['strokes'])==1
+    rep,_,_=m.brush_replace(more,np.zeros(3),np.array([0.0,1.0,0.0]),1.0,100.0,0.0,3,1.0,3,flat_project);assert len(rep['strokes'])==1
+    two=m.paint_stroke_add(withs,[np.array([5.0,0.0,5.0])],0.3);d2=m.paint_decode(m.paint_encode(two));assert len(d2['strokes'])==2 and d2['strokes'][1][0]-0.3<1e-6 and len(d2['strokes'][1][1])==1                       # a single dab is a stroke
+    long=[np.array([x*0.01,0.0,0.0]) for x in range(3000)];assert len(m.paint_thin(long,5.0))<=400 and len(m.paint_thin(long,0.001))<=400
+    text=m.paint_encode(withs);head=text.split(':',5);cut=':'.join(head[:5])+':'+base64.b64encode(zlib.compress(zlib.decompress(base64.b64decode(head[5]))[:-9],6)).decode()
+    try:m.paint_decode(cut);raise AssertionError('cut off strokes must be an error')
+    except ValueError as exc:assert 'stroke' in str(exc) or 'damaged' in str(exc)
+    # the viewer tool records the path of an Add or Replace stroke, not of Remove or Relax
+    ns=types.SimpleNamespace(**{k:getattr(hou,k) for k in ('Vector4','Vector3','Geometry','drawableGeometryType','uiEventReason','promptMessageType','Error','lopNodeTypeCategory','ViewerStateTemplate')});ns.GeometryDrawable=StubDrawable
+    text=(ROOT/'src/arraytron_paint_state.py').read_text().replace('import hou'+chr(10),'',1)
+    if MUTATE=='paint_strokes':text=text.replace("if kind in ('add','replace'):self.stroke.append","if kind=='remove':self.stroke.append")
+    glob={'hou':ns,'np':np};exec(compile(text,'arraytron_paint_state.py','exec'),glob);glob['STRICT']=True;viewer=StubViewer();state=glob['PaintState']('strokes',viewer);R=hou.uiEventReason;state.onEnter({'node':a})
+    def mouse(x,reason,**kw):return state.onMouseEvent({'ui_event':Event(Device(x*10.0,20.0,**kw),reason)})
+    mouse(0.0,R.Start,left=True)
+    for x in np.linspace(0.1,3.0,30):mouse(x,R.Active,left=True)
+    mouse(3.0,R.Changed,left=False);data=m.paint_decode(a.evalParm('paint_data'));assert len(data['strokes'])==1 and abs(data['strokes'][0][0]-0.5)<1e-6 and len(data['strokes'][0][1])>=5
+    c=data['strokes'][0][1];assert np.allclose(c[0][[0,2]],[0.0,2.0],atol=1e-6) and np.allclose(c[-1][[0,2]],[3.0,2.0],atol=1e-6) and np.allclose(c[:,2],2.0,atol=1e-6)                                  # the dab centres along the mouse path
+    mouse(1.0,R.Start,left=True,ctrl=True);mouse(1.2,R.Active,left=True,ctrl=True);mouse(1.2,R.Changed,left=False);assert len(m.paint_decode(a.evalParm('paint_data'))['strokes'])==1                    # Ctrl-drag (erase) records nothing
+    mouse(2.0,R.Start,left=True,shift=True);mouse(2.2,R.Active,left=True,shift=True);mouse(2.2,R.Changed,left=False);assert len(m.paint_decode(a.evalParm('paint_data'))['strokes'])==1                    # Shift-drag (relax) records nothing
+    a.parm('paint_radius').set(0.3);mouse(6.0,R.Picked,left=True);d3=m.paint_decode(a.evalParm('paint_data'));assert len(d3['strokes'])==2 and abs(d3['strokes'][1][0]-0.3)<1e-6 and len(d3['strokes'][1][1])==1  # a click is a stroke of one dab
+    a.parm('paint_op').set(2);a.parm('paint_radius').set(0.5);mouse(0.0,R.Start,left=True);mouse(0.5,R.Active,left=True);mouse(0.5,R.Changed,left=False);assert len(m.paint_decode(a.evalParm('paint_data'))['strokes'])==3                     # Replace is a stroke too
+    m.paint_clear(a);assert a.evalParm('paint_data')=='' and m.paint_decode(a.evalParm('paint_data'))['strokes']==[]                                                                                          # Clear Paint clears the paths
+
 def all_features():
     # Add and Remove through the node's own Operation menu: op=Remove inverts a plain drag
     st,sc=new_scene('op');a=arraytron(st,sc,mode=6,paint_prim='',paint_op=1);m=a.hdaModule()
@@ -379,6 +414,7 @@ def main():
                       ('Same strokes give identical stored text',stable_text),
                       ('Viewer state: stroke, drag, commit once on release, hover, Ctrl erase, bracket keys, miss, exit (stub viewport)',viewer_state),
                       ('Viewer state source and module entry points (static)',state_static),
+                      ('Stroke paths for the Falloff: p2 text, p1 unchanged without strokes, carried by the brush, thinned, damaged data, recorded by the tool',stroke_paths),
                       ('Brush shortcuts: Ctrl+Shift drag, wheel, keys, live prompt, Shift relax, Ctrl erase, colours and the strength ring',brush_shortcuts),
                       ('Operation = Remove inverts a plain drag',all_features),
                       ('Damaged paint data gives a readable error',corrupt)):check(name,func)

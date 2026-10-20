@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else 'v0.1.6')     # new id (v0.3.5) or old tag (v035)
+TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
 TAG=VID
 versions.ensure_installed(VID)          # Houdini 20.5 / 21 demo scenes do not record the HDA: it comes from here
@@ -17,7 +18,7 @@ SCALEINST=a.parm('bound_scale_instances') is not None
 BANK=a.parm('protos') is not None
 CIRCLE=a.parm('circle_radius') is not None
 VAREXTRAS=a.parm('yaw_random') is not None
-assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
+assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
 COMPILER='USD_COMPILER' if BANK else 'build_pointinstancer'
 VARIATION='VARIATION_PROCESSOR' if BANK else 'modify_point_transforms'
 ASSIGNMENT='PROTOTYPE_ASSIGNMENT'
@@ -106,7 +107,7 @@ def ui_contract():
     for name in ('line_spacing_out','line_count_out','line_span_out'):
         assert g.find(name).conditionals()[hou.parmCondType.DisableWhen]=='{ mode >= 0 }',name
     labels=[e.label() for e in g.entries()]
-    if NEWUI:assert labels==['Source','Layout','Look','Spacing',PHYSTAB,'Animate']+(['Optimize'] if a.parm('cam_on') is not None else [])+(['Finish'] if a.parm('dbg_on') is not None else []),labels
+    if NEWUI:assert labels==[TN['source'],'Layout',TN['look'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if a.parm('cam_on') is not None else [])+([TN['finish']] if a.parm('dbg_on') is not None else [])+([TN['export']] if TN['export'] and a.parm('export_usd') is not None else []),labels
     else:assert labels==['Source','Distribution','Line','Area']+(['Grid'] if GRID else [])+(['Circle'] if CIRCLE else [])+(['Curve'] if a.parm('curve_prim') is not None else [])+(['Surface'] if a.parm('surface_prim') is not None else [])+['Bounds Transform','Instance Transform','Randomize']+(['Mask'] if a.parm('mask_source') is not None else [])+(['No Overlap'] if a.parm('overlap_mode') is not None else [])+(['Physics Settle'] if a.parm('phys_on') is not None else []),labels
     names_in=lambda prefix:[n for n in flat(g.entries()) if n.startswith(prefix)]
     assert (names_in('line_') if NEWUI else [t.name() for t in g.find('line').parmTemplates()])==['line_axis','line_direction','line_spacemode','line_count','line_length','line_spacing','line_center','line_spacing_out','line_count_out','line_span_out']

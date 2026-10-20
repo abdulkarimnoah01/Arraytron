@@ -1,16 +1,16 @@
-# Installing Arraytron (v1.12.0)
+# Installing Arraytron (v1.13.0)
 
-Arraytron v1.12.0 works with **Houdini 22.0** (built and tested on 22.0.368) and with **Houdini 20.5 and 21** (built on 20.5.445, tested on 20.5.445 and 21.0.440) on Windows. The release carries two builds of the same node, one for Houdini 22 and one for Houdini 20.5 / 21 (Houdini 22 has a Point Instancer LOP that the older versions lack, so the older build uses their Instancer LOP; the output is the same, see `docs/PORT_HOUDINI_205.md`). The installer picks the right one for each Houdini it finds. No administrator rights are needed and nothing is copied into Houdini's own folders.
+Arraytron v1.13.0 works with **Houdini 22.0** (built and tested on 22.0.368) and with **Houdini 20.5 and 21** (built on 20.5.445, tested on 20.5.445 and 21.0.440) on Windows. The release carries two builds of the same node, one for Houdini 22 and one for Houdini 20.5 / 21 (Houdini 22 has a Point Instancer LOP that the older versions lack, so the older build uses their Instancer LOP; the output is the same, see `docs/PORT_HOUDINI_205.md`). The installer picks the right one for each Houdini it finds. No administrator rights are needed and nothing is copied into Houdini's own folders.
 
 ## Artists: install
 
-1. Unpack **Arraytron_v1.12.0_Release.rar** anywhere (WinRAR or 7-Zip).
+1. Unpack **Arraytron_v1.13.0_Release.rar** anywhere (WinRAR or 7-Zip).
 2. Double-click **Install Arraytron.cmd**.
 3. Restart Houdini. In a Solaris (LOPs) network press Tab and type **Arraytron**.
 
 The installer finds every Houdini 20.5, 21 and 22 you have used (their preferences folders in Documents) and sets Arraytron up for all of them at once, each with its own build. If it says it found none, start Houdini once so that it creates its preferences folder, then run it again.
 
-The demos are installed too: open **`%LOCALAPPDATA%\Arraytron\versions\1.12.0\demos\Arraytron_v1.12.0_all_demos.hip`** in Houdini 22, or **`%LOCALAPPDATA%\Arraytron\versions\1.12.0\demos_h205\Arraytron_v1.12.0_H205_all_demos.hip`** in Houdini 20.5 / 21 (every demo as a separate network in one scene; click the display flag of the chain you want to see). The documentation is in the `docs` folder next to them; start with `docs\USER_GUIDE.md`.
+The demos are installed too: open **`%LOCALAPPDATA%\Arraytron\versions\1.13.0\demos\Arraytron_v1.13.0_all_demos.hip`** in Houdini 22, or **`%LOCALAPPDATA%\Arraytron\versions\1.13.0\demos_h205\Arraytron_v1.13.0_H205_all_demos.hip`** in Houdini 20.5 / 21 (every demo as a separate network in one scene; click the display flag of the chain you want to see). The documentation is in the `docs` folder next to them; start with `docs\USER_GUIDE.md`.
 
 **Houdini 20.5 / 21: restart Houdini after updating or removing Arraytron.** Those versions cannot load the same node type a second time in one session if a scene library recorded it (the node would come back without parameters); the installed package avoids this in normal work, and the demos are saved without a library record for the same reason. See `docs/TROUBLESHOOTING.md`.
 
@@ -39,7 +39,7 @@ The package file adds the plugin's `h22` (Houdini 22) or `h205` (Houdini 20.5 / 
 
 ## Continuing development on another PC (Claude or a person)
 
-Unpack **Arraytron_v1.12.0_DevKit.rar**. It holds the sources, build tools, test suites, documents, the built release files (both builds) and a copy of the Claude memory. Read `HANDOFF.md` first; it explains the state, the environment, how to continue and what is not verified. Check the setup with `python tools/check_docs.py`, `hython tests/validate_v016.py v1.12.0` (Houdini 22) and the same command with hython 20.5 for the other build (`docs/PORT_HOUDINI_205.md`).
+Unpack **Arraytron_v1.13.0_DevKit.rar**. It holds the sources, build tools, test suites, documents, the built release files (both builds) and a copy of the Claude memory. Read `HANDOFF.md` first; it explains the state, the environment, how to continue and what is not verified. Check the setup with `python tools/check_docs.py`, `hython tests/validate_v016.py v1.13.0` (Houdini 22) and the same command with hython 20.5 for the other build (`docs/PORT_HOUDINI_205.md`).
 
 ## Whoever supplies Arraytron: build a release
 

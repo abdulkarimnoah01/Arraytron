@@ -1,7 +1,7 @@
 """v1.12.0 Falloff in real Houdini: hython tests/validate_falloff.py [version]
 The Layout tab FALLOFF: the scatter is full size and densest in the centre and fades towards the edges (scale and density), for every Distribution Mode. Expected values come from independent
 re-implementations of the curves and of the distance (the survival of a point uses the same id-keyed hash as the Mask, so it is checked statistically and as a subset). Env
-ARRAYTRON_MUTATE=fall_curve|fall_scale|fall_density|fall_shape|fall_axes|fall_inner breaks the module; the suite must FAIL."""
+ARRAYTRON_MUTATE=fall_curve|fall_scale|fall_density|fall_shape|fall_axes|fall_inner|fall_region|fall_cluster|fall_stroke|fall_grid breaks the module; the suite must FAIL."""
 from pathlib import Path
 import hou, json, math, os, sys, tempfile, time
 import numpy as np
@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.12.0':'v1.11.0'}[VID]
+PREVIOUS={'v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.13.0':'v1.12.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_falloff_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -56,6 +56,12 @@ def mutate(a=None):
         good=g['falloff_axes'];g['falloff_axes']=lambda P,axes:good(P,1)
     elif MUTATE=='fall_inner':
         good=g['falloff_curve'];g['falloff_curve']=lambda t,kind,inner=0.0:good(t,kind,0.0)
+    elif MUTATE=='fall_region':g['falloff_method']=lambda asset,geo:(0,None)                                                              # always the whole layout
+    elif MUTATE=='fall_cluster':
+        good=g['falloff_distance_regions'];g['falloff_distance_regions']=lambda P,axes,shape,centres,radii:good(P,axes,shape,np.tile(np.asarray(P).mean(axis=0),(len(P),1)),radii)     # one centre for all clusters
+    elif MUTATE=='fall_stroke':
+        good=g['falloff_distance_strokes'];g['falloff_distance_strokes']=lambda P,axes,strokes,chunk=2000:good(P,axes,[(r*2.0,c) for r,c in strokes],chunk)
+    elif MUTATE=='fall_grid':g['falloff_axes_value']=lambda asset:asset.evalParm('fall_axes')
     elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
 def check(name,func):
     t=time.time();func();checks.append(name);print('PASS %s (%.1fs)'%(name,time.time()-t));sys.stdout.flush()
@@ -143,11 +149,12 @@ def with_mask_and_defaults():
     n=by_id(out(scatter(st,sc,name='Off',**base)));o2=by_id(out(scatter(st,sc,name='Old',typ=OLD_TYPE,**base)))                          # Falloff off reproduces the previous release
     assert np.array_equal(n['ids'],o2['ids']) and np.allclose(n['pos'],o2['pos']) and np.allclose(n['scales'],o2['scales']) and np.array_equal(n['proto'],o2['proto'])
     a=scatter(st,sc,name='Defaults');assert a.evalParm('fall_on')==0 and a.evalParm('fall_shape')==0 and a.evalParm('fall_curve')==1 and a.evalParm('fall_inner')==0 and a.evalParm('fall_density')==0 and abs(a.evalParm('fall_scale')-0.2)<1e-9
-    assert a.evalParm('fall_axes')==0 and a.evalParm('fall_center_mode')==0 and a.evalParm('fall_radius_mode')==0 and 'Off' in a.hdaModule().falloff_info(a)
+    assert a.evalParm('fall_axes')==0 and a.evalParm('fall_region')==0 and a.evalParm('fall_center_mode')==0 and a.evalParm('fall_radius_mode')==0 and 'Off' in a.hdaModule().falloff_info(a)
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
-    for name in ('fall_on','fall_shape','fall_curve','fall_inner','fall_density','fall_scale','fall_axes','fall_center_mode','fall_center','fall_radius_mode','fall_radius','fall_seed','fall_info'):assert g.find(name) is not None,name
+    assert g.find('fall_axes').menuItems()==('0','1') and g.find('fall_region').menuLabels()==('Automatic (follows the mode)','Whole layout')
+    for name in ('fall_on','fall_region','fall_shape','fall_curve','fall_inner','fall_density','fall_scale','fall_axes','fall_center_mode','fall_center','fall_radius_mode','fall_radius','fall_seed','fall_info'):assert g.find(name) is not None,name
     layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('fall_on')>names.index('bound_t') and names.index('fall_info')>names.index('fall_scale')
     assert g.find('fall_shape').menuLabels()==('Radial (circle)','Box (every edge)') and g.find('fall_curve').menuLabels()==('Linear','Smooth','Gaussian') and g.find('fall_axes').menuLabels()==('X and Z (ground plane)','X, Y and Z')
     compiler=a.node('USD_COMPILER');chain=[];n=compiler.node('PROTOTYPE_ASSIGNMENT')
@@ -155,12 +162,97 @@ def contract():
     assert chain[:4]==['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR','FALLOFF','FIELD_STACK'] and 'MASK_PROCESSOR' in chain and chain.index('FIELD_STACK')<chain.index('MASK_PROCESSOR'),chain      # after the Mask and the Field Stack, before Variation
     assert '$' not in a.type().definition().sections()['PythonModule'].contents().split('# ---- Falloff')[1].split('# ----')[0] and g.find('fall_on').help() and 'every Distribution Mode' in g.find('fall_on').help()
 
+def seg_distance(p,a,b):
+    ab=b-a;L2=float(ab@ab)
+    if L2<=1e-18:return float(np.linalg.norm(p-a))
+    u=min(max(float((p-a)@ab)/L2,0.0),1.0);return float(np.linalg.norm(p-(a+u*ab)))
+def stroke_t(P,strokes,axes=0):
+    """Independent distance of every point to the nearest stroke path, divided by that stroke's radius."""
+    out=[]
+    for p in P:
+        q=p[[0,2]] if axes==0 else p;best=np.inf
+        for radius,c in strokes:
+            c2=c[:,[0,2]] if axes==0 else c
+            d=float(np.linalg.norm(q-c2[0])) if len(c2)==1 else min(seg_distance(q,c2[k],c2[k+1]) for k in range(len(c2)-1))
+            best=min(best,d/radius)
+        out.append(best)
+    return np.array(out)
+def paint_scene(a,strokes_spec,record=True,extra=()):
+    """Paint with the brush functions: strokes_spec = [(polyline points, radius)]; extra = unrecorded dabs (centre, radius)."""
+    m=a.hdaModule();surface=m.paint_surface(a);data=m.paint_empty()
+    for pts,radius in strokes_spec:
+        pts=[np.array(v,dtype=float) for v in pts];steps=[]
+        for k in range(len(pts)-1):
+            n=max(2,int(np.linalg.norm(pts[k+1]-pts[k])/(0.3*radius)));steps+=[pts[k]+(pts[k+1]-pts[k])*t for t in np.linspace(0,1,n,endpoint=False)]
+        steps.append(pts[-1])
+        for c in steps:data,_=m.brush_add(data,c,np.array([0.0,1.0,0.0]),radius,60.0,0.0,3,1.0,1,m.make_projector(surface,c,radius,True))
+        if record:data=m.paint_stroke_add(data,steps,radius)
+    for c,radius in extra:data,_=m.brush_add(data,np.array(c,dtype=float),np.array([0.0,1.0,0.0]),radius,60.0,0.0,3,1.0,1,m.make_projector(surface,np.array(c,dtype=float),radius,True))
+    m.paint_apply(a,data);return data
+
+def region_cluster():
+    st,sc=new_scene('cluster');kw=dict(mode=7,cluster_prim='',cluster_count=5,cluster_per=80,cluster_radius=1.4,cluster_falloff=0.3,cluster_jitter=0.4,cluster_seed=4,cluster_area=(14.0,14.0))
+    b=by_id(out(scatter(st,sc,name='Base',**kw)));f=dict(fall_on=1,fall_curve=0,fall_density=100.0,fall_scale=0.2,fall_shape=0)
+    a=scatter(st,sc,name='Cluster',**kw,**f);o=by_id(out(a));m=a.hdaModule();g=m.cluster_points.__globals__;stride=g['CLUSTER_ID_STRIDE']
+    centres,radii=m.cluster_regions(m.cluster_surface(a),5,80,1.4,0.4,4,True);assert len(centres)==5 and len(np.unique(radii))>1                                       # every cluster has its own radius (jitter)
+    c=(o['ids']//stride).astype(int);t=np.linalg.norm(o['pos'][:,[0,2]]-centres[c][:,[0,2]],axis=1)/radii[c];assert t.max()<=1.0+1e-6
+    assert len(o['ids'])==len(b['ids']) and np.allclose(o['scales'][:,0],b['scales'][:,0]*(0.2+0.8*(1-t)),atol=1e-4)                                              # every member fades to ITS cluster's boundary
+    for k in range(5):
+        sel=c==k;assert sel.sum()>10 and o['scales'][sel][:,0].max()>0.85*b['scales'][sel][:,0].max() and o['scales'][sel][:,0].min()<0.5*b['scales'][sel][:,0].max(),k          # every cluster has a full size centre
+    whole=by_id(out(scatter(st,sc,name='Whole',fall_region=1,**kw,**f)));assert not np.allclose(whole['scales'],o['scales'],atol=1e-3)                                          # the whole layout region treats the clusters as one blob
+    far=np.argmax(np.linalg.norm(centres[:,[0,2]]-centres[:,[0,2]].mean(axis=0),axis=1));sel=c==far;assert o['scales'][sel][:,0].max()>0.85*b['scales'][sel][:,0].max() and whole['scales'][sel][:,0].max()<0.7*b['scales'][sel][:,0].max()   # the outermost cluster is full size in its own centre, not at the edge of the blob
+    d=scatter(st,sc,name='Dens',fall_on=1,fall_curve=0,fall_density=0.0,fall_scale=1.0,fall_shape=0,**kw);od=by_id(out(d));assert set(od['ids'].tolist())<=set(b['ids'].tolist()) and len(od['ids'])<len(b['ids'])
+    cd=(od['ids']//stride).astype(int);td=np.linalg.norm(od['pos'][:,[0,2]]-centres[cd][:,[0,2]],axis=1)/radii[cd];cb=(b['ids']//stride).astype(int);tb=np.linalg.norm(b['pos'][:,[0,2]]-centres[cb][:,[0,2]],axis=1)/radii[cb]
+    kept=np.isin(b['ids'],od['ids']);assert kept[tb<0.15].mean()>0.8 and kept[tb>0.85].mean()<0.3                                                                          # the density thins out towards each cluster's edge
+    box=by_id(out(scatter(st,sc,name='Box',**{**kw,**f,'fall_shape':1})));tbx=np.max(np.abs(o['pos'][:,[0,2]]-centres[c][:,[0,2]]),axis=1)/radii[c];assert np.allclose(box['scales'][:,0],b['scales'][:,0]*(0.2+0.8*(1-tbx)),atol=1e-4)      # a square of the cluster radius
+    assert 'Every cluster to its own boundary' in a.hdaModule().falloff_info(a)
+
+def region_grid():
+    st,sc=new_scene('grid');flat=dict(mode=2,grid_countx=9,grid_county=1,grid_countz=7);deep=dict(mode=2,grid_countx=8,grid_county=6,grid_countz=8);f=dict(fall_on=1,fall_shape=1,fall_curve=0,fall_density=100.0,fall_scale=0.2)
+    bd=by_id(out(scatter(st,sc,name='DeepBase',**deep)));assert np.ptp(bd['pos'][:,1])>0.5                                                                                  # a 3D matrix
+    auto=by_id(out(scatter(st,sc,name='Auto',**deep,**f)));xyz=by_id(out(scatter(st,sc,name='XYZ',fall_axes=1,**deep,**f)));xz=by_id(out(scatter(st,sc,name='XZ',fall_axes=0,fall_region=1,**deep,**f)))
+    t3=t_of(bd['pos'],1,1);assert np.allclose(auto['scales'][:,0],bd['scales'][:,0]*(0.2+0.8*(1-t3)),atol=1e-4) and np.allclose(auto['scales'],xyz['scales'],atol=1e-6) and not np.allclose(auto['scales'],xz['scales'],atol=1e-3)   # Automatic: all three axes for a 3D grid
+    ring=(np.abs(bd['pos'][:,1])>=bd['pos'][:,1].max()-1e-6);assert auto['scales'][ring][:,0].max()<=0.2*bd['scales'][:,0].max()*1.0001+1e-6                                  # the top layer is at the boundary: edge scale
+    assert xz['scales'][ring][:,0].max()>0.4*bd['scales'][:,0].max()                                                                                                           # the XZ falloff ignores the layers
+    bf=by_id(out(scatter(st,sc,name='FlatBase',**flat)));af=by_id(out(scatter(st,sc,name='FlatAuto',**flat,**f)));xzf=by_id(out(scatter(st,sc,name='FlatXZ',fall_axes=0,**flat,**f)))
+    assert np.allclose(af['scales'],xzf['scales'],atol=1e-6) and np.allclose(af['scales'][:,0],bf['scales'][:,0]*(0.2+0.8*(1-t_of(bf['pos'],1,0))),atol=1e-4)                       # one layer: the ground plane, as before
+    a=scatter(st,sc,name='Info',**deep,**f);out(a);assert 'Whole layout' in a.hdaModule().falloff_info(a)
+
+def region_paint():
+    st,sc=new_scene('paint');kw=dict(mode=6,paint_prim='',paint_radius=1.0,paint_density=60.0);f=dict(fall_on=1,fall_curve=0,fall_density=100.0,fall_scale=0.2,fall_shape=0)
+    a=scatter(st,sc,name='Strokes',**kw,**f);data=paint_scene(a,[([(-4,0,0),(4,0,0)],1.0),([(0,0,-3),(0,0,3)],1.0)]);m=a.hdaModule();dec=m.paint_decode(a.evalParm('paint_data'));assert len(dec['strokes'])==2 and dec['strokes'][0][0]==1.0 and a.evalParm('paint_data').startswith('p2:')
+    base=scatter(st,sc,name='Base',fall_on=0,**kw);paint_scene(base,[([(-4,0,0),(4,0,0)],1.0),([(0,0,-3),(0,0,3)],1.0)]);b=by_id(out(base));o=by_id(out(a));assert np.array_equal(b['ids'],o['ids']) and len(b['ids'])>300
+    t=np.minimum(stroke_t(b['pos'],dec['strokes']),1.0);assert np.allclose(o['scales'][:,0],b['scales'][:,0]*(0.2+0.8*(1-t)),atol=1e-4),(o['scales'][:3,0],(0.2+0.8*(1-t))[:3])               # across the width of the nearest stroke, full size on the path
+    on_path=t<0.1;assert on_path.sum()>50 and o['scales'][on_path][:,0].min()>0.85*b['scales'][on_path][:,0].min() and o['scales'][t>0.85][:,0].max()<0.4*b['scales'][:,0].max()
+    whole=by_id(out(scatter(st,sc,name='Whole',fall_region=1,**{**kw,**f})))
+    paint_scene(hou.node(a.parent().path()+'/Whole'),[([(-4,0,0),(4,0,0)],1.0),([(0,0,-3),(0,0,3)],1.0)]);whole=by_id(out(hou.node(a.parent().path()+'/Whole')));assert not np.allclose(whole['scales'],o['scales'],atol=1e-3)         # the whole layout region ignores the paths
+    assert 'Along the stroke paths' in a.hdaModule().falloff_info(a)
+    dens=scatter(st,sc,name='Dens',mode=6,paint_prim='',paint_radius=1.0,paint_density=60.0,fall_on=1,fall_curve=0,fall_density=0.0,fall_scale=1.0,fall_shape=0);paint_scene(dens,[([(-4,0,0),(4,0,0)],1.0),([(0,0,-3),(0,0,3)],1.0)]);od=by_id(out(dens));kept=np.isin(b['ids'],od['ids'])
+    assert set(od['ids'].tolist())<=set(b['ids'].tolist()) and kept[t<0.15].mean()>0.8 and kept[t>0.85].mean()<0.35                                                                    # the density thins towards the edge of the stroke
+    old=scatter(st,sc,name='Old',mode=6,paint_prim='',paint_radius=1.0,paint_density=60.0,fall_on=1,fall_curve=0,fall_density=100.0,fall_scale=0.2,fall_shape=0);paint_scene(old,[([(-4,0,0),(4,0,0)],1.0)],record=False)         # painted without recorded strokes (an older scene)
+    oo=by_id(out(old));assert old.evalParm('paint_data').startswith('p1:') and 'Whole layout' in old.hdaModule().falloff_info(old) and oo['scales'][:,0].min()<0.5*oo['scales'][:,0].max()
+    mixed=scatter(st,sc,name='Mixed',mode=6,paint_prim='',paint_radius=1.0,paint_density=60.0,fall_on=1,fall_curve=0,fall_density=100.0,fall_scale=0.2,fall_shape=0);paint_scene(mixed,[([(-4,0,0),(4,0,0)],1.0)],extra=[((0.0,0.0,6.0),0.8)])   # a dab nobody recorded
+    mo=by_id(out(mixed));far=mo['pos'][:,2]>4.5;assert far.sum()>5 and np.allclose(mo['scales'][far][:,0],mo['scales'][:,0].max(),atol=0.35*mo['scales'][:,0].max()) and 'not made by a recorded stroke' in mixed.hdaModule().falloff_info(mixed)
+    one=scatter(st,sc,name='One',mode=6,paint_prim='',paint_radius=1.0,paint_density=60.0,fall_on=1,fall_curve=0,fall_density=100.0,fall_scale=0.2,fall_shape=0);paint_scene(one,[([(2,0,2)],0.8)]);oo1=by_id(out(one));d1=np.linalg.norm(oo1['pos'][:,[0,2]]-np.array([2.0,2.0]),axis=1)/0.8
+    assert len(oo1['ids'])>30 and oo1['scales'][d1<0.2][:,0].max()>0.85*oo1['scales'][:,0].max()                                                                                        # a single dab is a stroke with one centre
+
+def whole_layout_is_v1120():
+    st,sc=new_scene('v1120');cases=(dict(mode=1,area_count=900,area_sizex=10.0,area_sizez=7.0,area_seed=2),dict(mode=2,grid_countx=8,grid_county=4,grid_countz=8),dict(mode=7,cluster_prim='',cluster_count=4,cluster_per=50,cluster_radius=1.2,cluster_area=(12.0,12.0),cluster_seed=3))
+    f=dict(fall_on=1,fall_shape=1,fall_curve=2,fall_inner=20.0,fall_density=30.0,fall_scale=0.3)
+    for i,kw in enumerate(cases):
+        old=scatter(st,sc,name='Old%d'%i,typ=OLD_TYPE,**{**kw,**f});new=scatter(st,sc,name='New%d'%i,fall_region=1,**{**kw,**f});o,n=by_id(out(old)),by_id(out(new))
+        assert np.array_equal(o['ids'],n['ids']) and np.allclose(o['pos'],n['pos']) and np.allclose(o['scales'],n['scales'],atol=1e-6),i                                                    # Whole layout (and XZ for the grid) is exactly v1.12.0
+
 def main():
     for name,func in (('Curves, flat centre, radial / box / XYZ distance, custom centre and reach, id keyed survival, scale multiplier',curves_and_distance),
                       ('Area: scale and density fall from the centre (formula, subset, survivors fixed, density follows the weight, density only / scale only, flat centre, Gaussian)',node_area),
                       ('Box shape fades every edge of a rectangle; radial differs',node_box),
                       ('Line, Grid, Circle and Surface (custom centre and reach in world space), larger reach only adds points, read-out',other_modes),
                       ('Works with the Mask (scales multiply, removals stay); off reproduces the previous release; defaults',with_mask_and_defaults),
+                      ('Cluster: every cluster fades to its own boundary (radial and box), density per cluster, the outermost cluster is full size in its centre',region_cluster),
+                      ('Grid: Region Automatic uses all three axes for a 3D matrix, the ground plane for one layer',region_grid),
+                      ('Paint: across the width of every stroke path, density, nearest of several strokes, no recorded strokes fall back, unrecorded dabs keep full size, single dab',region_paint),
+                      ('Region Whole layout reproduces v1.12.0 for Area, Grid and Cluster',whole_layout_is_v1120),
                       ('Contract: parameters, Layout tab, stage order after Mask and Field Stack, no dollar signs',contract)):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}
     if not MUTATE:(ROOT/'tests'/('validation_falloff_%s.json'%versions.tag(VID))).write_text(json.dumps(result,indent=1))

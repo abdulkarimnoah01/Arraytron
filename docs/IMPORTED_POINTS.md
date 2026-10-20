@@ -24,7 +24,7 @@ A USD prim is read in **world space** (its parents' transforms are applied) at t
 
 * **Use Percent Of Points** (+ seed): a percentage of the source points. Each id has its own fixed random number, so raising the percentage only ever **adds** points and the others keep their prototype and look.
 * **Instance Ids**: **From Source Attribute** (default `id`, a POP simulation's id) keeps a particle's prototype, random variation and overrides for as long as it lives; **Point Number** uses the point order. A missing or non-unique attribute falls back to the point number with a warning, and the read-out says which was used.
-* **Scale**: Off, or From Attribute (`pscale`, a radius, or a vector `scale`; the default name finds `scale` on a PointInstancer source) times the **Scale Multiplier**. It multiplies the Look tab scale and the bank row scales. Scale Off with a multiplier scales every instance.
+* **Scale**: Off, or From Attribute (`pscale`, a radius, or a vector `scale`; the default name finds `scale` on a PointInstancer source) times the **Scale Multiplier**. It multiplies the Variation tab scale and the bank row scales. Scale Off with a multiplier scales every instance.
 * **Orientation**: Upright, **From Orient Attribute** (quaternion), **Along Velocity** (+Z follows `v`; a point that is not moving stays upright) or **From Normal** (+Y follows `N`). Look > Randomize turns the instance in its own frame afterwards.
 * **Copy Attributes**: names of source attributes to keep on the points (for example `Cd age temperature`).
 

@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.13.0 - Falloff follows the mode, renamed tabs, Export tab
+* **Falloff respects the other modes** (*Region: Automatic*): **Cluster** fades every cluster to its own boundary (centre and radius of each cluster, not the box or circle around all of them); **Paint** fades across the width of every stroke (the viewport brush now records the path of each Add / Replace stroke, stored in the Paint Data as `p2`; scenes painted earlier fall back to the whole layout); **Grid** uses all three axes when it has layers in Y (a 3D matrix), so its top and bottom boundaries count too. *Whole layout* keeps the v1.12.0 behaviour.
+* **Tabs renamed:** Source -> **Prototypes**, Look -> **Variation**, Finish -> **Debugging**; **Export USD** and the cache read-out moved to a new **Export** tab (nine tabs). Parameter names did not change.
+* New suite groups: falloff 10 groups / 10 mutations, paint 18 groups / 5 more mutations (stroke paths). Both builds. Documentation `docs/FALLOFF.md`.
+
 ## v1.12.0 - Falloff
 * **Falloff** (Layout tab, section FALLOFF): the scatter is full size and densest in the centre and fades towards the edges, in scale and in density. Works with every Distribution Mode; Radial or Box shape (every edge of a rectangle fades), Linear / Smooth / Gaussian curve, a flat centre, an edge density and an edge scale, automatic or custom centre and reach, X and Z or X, Y and Z. After the Mask and the Field Stack (their results are kept), before the Variation. Off by default: the output is exactly v1.11.0.
 * New suite `tests/validate_falloff.py` (6 groups, 6 mutations) and a demo (plain, radial and box patches). Both builds. Documentation `docs/FALLOFF.md`.
