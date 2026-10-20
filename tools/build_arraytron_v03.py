@@ -40,7 +40,8 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.12.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.12.0: the same features, plus Falloff (scale and density towards the edge of the layout)
         'v1.13.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.13.0: the same features, plus the mode-aware Falloff (paint strokes, clusters, 3D grid) and the renamed tabs with an Export tab
         'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True),     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
-        'v1.15.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True)}     # v1.15.0: the same features, plus the Biome distribution mode
+        'v1.15.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True),     # v1.15.0: the same features, plus the Biome distribution mode
+        'v1.16.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True)}     # v1.16.0: the same features, plus an Effect per condition in every biome row
 H205=False
 TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
@@ -263,6 +264,7 @@ def biome_folder():
         template.setConditional(hou.parmCondType.HideWhen,condition);return template
     rng=lambda name,label,default,lo,hi,help_:hou.FloatParmTemplate(name,label,2,default_value=default,min=lo,max=hi,help=help_)
     edge=lambda name,label,help_:hou.FloatParmTemplate(name,label,1,default_value=(0.0,),min=0,max=1000000,help=help_)
+    effect=lambda name,label,what:hou.FloatParmTemplate(name,label,1,default_value=(1.0,),min=0,max=1,help='How much %s counts for this biome: 1 is the condition as set, 0 ignores it completely (the weight is 1 everywhere), in between it only partly counts. Use it when this biome should follow some conditions and not others (a prototype that follows the elevation but not the temperature: effect 0 for the temperature).'%what)
     row=(
         hou.ToggleParmTemplate('biome_on#','On',default_value=True,help='Switch this biome off without deleting its row.'),
         hou.StringParmTemplate('biome_name#','Name',1,default_value=('Biome',),help='A name for the read-out.'),
@@ -270,12 +272,16 @@ def biome_folder():
         hou.StringParmTemplate('biome_mix#','Prototype Mix',1,default_value=('1',),help='Which Prototype Bank rows this biome plants: bank row numbers with optional weights, separated by spaces, for example 1 2:3 4:0.5 (row 2 three times as often as row 1, row 4 half as often). A row that is not enabled is ignored.'),
         rng('biome_hrange#','Elevation',(-100000.0,100000.0),-1000000,1000000,'The heights (world Y) where this biome grows: minimum and maximum. The defaults cover everything.'),
         edge('biome_hedge#','Elevation Edge','Over this distance outside the elevation range the weight falls smoothly from 1 to 0 (an ecotone). 0 is a hard edge.'),
+        effect('biome_heffect#','Elevation Effect','the elevation'),
         rng('biome_srange#','Slope (deg)',(0.0,180.0),0,180,'The slopes where this biome grows, in degrees from flat (0) to a wall (90).'),
         edge('biome_sedge#','Slope Edge','Degrees outside the slope range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        effect('biome_seffect#','Slope Effect','the slope'),
         rng('biome_mrange#','Moisture',(0.0,1.0),-1,2,'The moisture values (0 dry to 1 wet) where this biome grows.'),
         edge('biome_medge#','Moisture Edge','Moisture outside the range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        effect('biome_meffect#','Moisture Effect','the moisture'),
         rng('biome_trange#','Temperature',(-100.0,100.0),-1000,1000,'The temperatures (degrees) where this biome grows.'),
         edge('biome_tedge#','Temperature Edge','Degrees outside the temperature range over which the weight falls from 1 to 0. 0 is a hard edge.'),
+        effect('biome_teffect#','Temperature Effect','the temperature'),
         rng('biome_scale#','Scale Min / Max',(0.8,1.2),0.0001,1000,'Every instance gets a random scale between the two (keyed on its id). Multiplied with the Variation tab and Prototype Bank scales.'))
     table=hou.FolderParmTemplate('biomes','Biomes',folder_type=hou.folderType.MultiparmBlock,default_value=0,parm_templates=row)
     info=hou.StringParmTemplate('biome_info','Biomes',1,default_value=('',),tags={'editor':'1','editorlines':'3-8'},help='Read only. The points every biome made in the last cook.')

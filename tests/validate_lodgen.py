@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_lodgen_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 spec=importlib.util.spec_from_file_location('lodgen_src',str(ROOT/'src/arraytron_lodgen.py'));LG=importlib.util.module_from_spec(spec);spec.loader.exec_module(LG)   # the pure functions, no Houdini needed

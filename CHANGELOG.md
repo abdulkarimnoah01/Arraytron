@@ -2,6 +2,10 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.16.0 - Biome effect
+* **Effect per condition** in every Biome row (Layout tab, Biomes table): *Elevation / Slope / Moisture / Temperature Effect* (0 to 1, default 1). 1 is the condition as set, 0 ignores it completely, in between it only partly counts (`weight = 1 - effect * (1 - band)`), so a biome can follow the elevation but not the temperature. Defaults reproduce v1.15.0 exactly.
+* `tests/validate_biome.py` now has 8 groups and 7 mutations (`biome_effect`). The demo uses the Effect on the Shore stones. Both builds. Documentation `docs/BIOME.md`.
+
 ## v1.15.0 - Biome
 * **New Distribution Mode: Biome** (Layout tab): rule based scatter on a terrain. A table of biomes; every row has its conditions (**elevation, slope, moisture, temperature**, each a range with a soft edge), a density, a **Prototype Mix** (bank rows with weights) and a scale range. Biomes blend at their borders (an ecotone): a candidate survives with the probability of the product of its four band weights, with the id keyed hash of the Mask, so a higher density only ever adds points and biomes never move each other's points.
 * **Fields:** elevation, slope (face or smooth normals), moisture (constant, noise, distance to a water mesh or curve, an image; with variation and bias) and temperature (base minus a lapse rate, noise, a warm facing). **Primvar: biome**, a **Biome** colour for the debug view, a per-biome read-out.

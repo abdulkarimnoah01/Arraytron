@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.15.0)
+# Arraytron user guide (v1.16.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.15.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.16.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 

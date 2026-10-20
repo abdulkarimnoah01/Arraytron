@@ -1,4 +1,4 @@
-"""Build the Biome demo (v1.15.0): hython tools/build_demo_biome_v1150.py
+"""Build the Biome demo (v1.15.0, Effects in v1.16.0): hython tools/build_demo_biome_v1150.py
 A hilly terrain with a pond (written once as test_assets/biome_terrain.usda and biome_pond.usda) and four biomes in one Biome node: a Forest of firs on the mid slopes near water (elevation, slope,
 moisture and temperature bands with soft edges), stunted Alpine firs where it is cold (high up), Cliff rocks on the steep faces and Shore stones around the pond. The moisture is the distance to the pond,
 the temperature falls with the height (a stylised lapse rate). primvars:biome is written and the Biome debug colours are available. Writes dist/Arraytron_<version>_biome_demo.hip or the 20.5 / 21 equivalent."""
@@ -43,12 +43,14 @@ biome.parm('biome_temp').set(18.0);biome.parm('biome_temp_h').set(0.0);biome.par
 rows=[dict(name='Forest',density=60.0,mix='1',h=(0.4,7.0),he=1.2,s=(0.0,32.0),se=8.0,m=(0.28,1.0),me=0.12,t=(7.0,40.0),te=3.0,scale=(0.8,1.3)),
       dict(name='Alpine (stunted firs)',density=45.0,mix='1',h=(-100.0,100.0),he=0.0,s=(0.0,50.0),se=8.0,m=(0.0,1.0),me=0.0,t=(-50.0,7.0),te=3.0,scale=(0.35,0.7)),
       dict(name='Cliffs (rocks)',density=40.0,mix='2',h=(-100.0,100.0),he=0.0,s=(28.0,90.0),se=8.0,m=(0.0,1.0),me=0.0,t=(-100.0,100.0),te=0.0,scale=(0.6,1.5)),
-      dict(name='Shore (stones)',density=130.0,mix='3',h=(-100.0,100.0),he=0.0,s=(0.0,40.0),se=6.0,m=(0.72,1.0),me=0.15,t=(-100.0,100.0),te=0.0,scale=(0.6,1.4))]
+      dict(name='Shore (stones)',density=130.0,mix='3',h=(-100.0,100.0),he=0.0,s=(0.0,40.0),se=6.0,m=(0.72,1.0),me=0.15,t=(-100.0,100.0),te=0.0,scale=(0.6,1.4),he_=0.0,te_=0.0)]     # the shore stones ignore the elevation and the temperature
 biome.parm('biomes').set(len(rows))
 for i,r in enumerate(rows,1):
     biome.parm('biome_name%d'%i).set(r['name']);biome.parm('biome_density%d'%i).set(r['density']);biome.parm('biome_mix%d'%i).set(r['mix'])
     biome.parmTuple('biome_hrange%d'%i).set(r['h']);biome.parm('biome_hedge%d'%i).set(r['he']);biome.parmTuple('biome_srange%d'%i).set(r['s']);biome.parm('biome_sedge%d'%i).set(r['se'])
     biome.parmTuple('biome_mrange%d'%i).set(r['m']);biome.parm('biome_medge%d'%i).set(r['me']);biome.parmTuple('biome_trange%d'%i).set(r['t']);biome.parm('biome_tedge%d'%i).set(r['te']);biome.parmTuple('biome_scale%d'%i).set(r['scale'])
+    for key,parm in (('he_','biome_heffect'),('se_','biome_seffect'),('me_','biome_meffect'),('te_','biome_teffect')):
+        if key in r:biome.parm('%s%d'%(parm,i)).set(r[key])
 biome.setComment('BIOME - four biomes on one terrain (Layout tab, Distribution Mode Biome): Forest (mid elevation, gentle slope, near water, not too cold), stunted Alpine firs (cold = high), Cliff rocks (steep slopes) and Shore stones (wet, around the pond). Every condition is a range with a soft edge, so the biomes blend at their borders. Moisture = distance to the pond, temperature falls with height. Debugging tab: Debug Views, Colour Final Points By Biome.')
 biome.setGenericFlag(hou.nodeFlag.DisplayComment,True)
 camera=stage.createNode('camera','render_camera');camera.setInput(0,biome)

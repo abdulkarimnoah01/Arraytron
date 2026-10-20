@@ -82,3 +82,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-20: v1.13.0 Falloff follows Paint / Grid / Cluster, tabs renamed, Export tab (user request); v1.12.0 archived.
 - 2026-10-21: v1.14.0 Rows for Line / Circle / Curve (user request); v1.13.0 archived.
 - 2026-10-21: v1.15.0 Biome distribution mode, first slice of the biome sector (user request); v1.14.0 archived.
+- 2026-10-21: v1.16.0 Biome Effect per condition (user request); v1.15.0 archived.

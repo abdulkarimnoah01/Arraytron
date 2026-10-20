@@ -44,10 +44,15 @@ def biome_temperature(P,normals,base,base_height,lapse,noise_amount,noise_values
         facing=np.where(h>1e-9,(n[:,0]*d[0]+n[:,2]*d[1])/np.maximum(h,1e-12),0.0);t=t+warm*np.sin(np.radians(biome_slope(n)))*facing
     return t
 
+def biome_effect(w,effect):
+    """Blend a band weight with 1 by the effect of its condition: effect 1 is the band as it is, 0 ignores the condition (weight 1 everywhere), in between the condition only partly counts."""
+    return 1.0-float(effect)*(1.0-np.asarray(w,dtype=np.float64))
+
 def biome_weights(P,normals,moisture,temperature,row):
-    """Weight in [0, 1] of one biome row at every point: the product of the elevation, slope, moisture and temperature bands (1 inside the range, a smoothstep to 0 over the edge outside it)."""
-    return (band(P[:,1],row['h'][0],row['h'][1],row['h_edge'])*band(biome_slope(normals),row['s'][0],row['s'][1],row['s_edge'])
-            *band(moisture,row['m'][0],row['m'][1],row['m_edge'])*band(temperature,row['t'][0],row['t'][1],row['t_edge']))
+    """Weight in [0, 1] of one biome row at every point: the product of the elevation, slope, moisture and temperature bands (1 inside the range, a smoothstep to 0 over the edge outside it), each
+    blended with 1 by its Effect (rows without an effect count as 1)."""
+    return (biome_effect(band(P[:,1],row['h'][0],row['h'][1],row['h_edge']),row.get('h_effect',1.0))*biome_effect(band(biome_slope(normals),row['s'][0],row['s'][1],row['s_edge']),row.get('s_effect',1.0))
+            *biome_effect(band(moisture,row['m'][0],row['m'][1],row['m_edge']),row.get('m_effect',1.0))*biome_effect(band(temperature,row['t'][0],row['t'][1],row['t_edge']),row.get('t_effect',1.0)))
 
 # ---------------------------------------------------------------- the fields (Houdini side)
 def biome_rows(asset):
@@ -58,7 +63,7 @@ def biome_rows(asset):
         rows.append(dict(index=i,name=asset.evalParm('biome_name%d'%i).strip() or 'Biome %d'%i,density=asset.evalParm('biome_density%d'%i),mix=asset.evalParm('biome_mix%d'%i),
                          h=asset.evalParmTuple('biome_hrange%d'%i),h_edge=asset.evalParm('biome_hedge%d'%i),s=asset.evalParmTuple('biome_srange%d'%i),s_edge=asset.evalParm('biome_sedge%d'%i),
                          m=asset.evalParmTuple('biome_mrange%d'%i),m_edge=asset.evalParm('biome_medge%d'%i),t=asset.evalParmTuple('biome_trange%d'%i),t_edge=asset.evalParm('biome_tedge%d'%i),
-                         scale=asset.evalParmTuple('biome_scale%d'%i)))
+                         scale=asset.evalParmTuple('biome_scale%d'%i),h_effect=asset.evalParm('biome_heffect%d'%i),s_effect=asset.evalParm('biome_seffect%d'%i),m_effect=asset.evalParm('biome_meffect%d'%i),t_effect=asset.evalParm('biome_teffect%d'%i)))
     return rows
 
 def biome_noise(asset,P,stream):

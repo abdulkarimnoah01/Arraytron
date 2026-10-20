@@ -1,7 +1,7 @@
-"""v1.15.0 Biome in real Houdini: hython tests/validate_biome.py [version]
+"""v1.16.0 Biome in real Houdini: hython tests/validate_biome.py [version]
 Distribution Mode "Biome": rule based scatter on a terrain by elevation, slope, moisture and temperature with soft edges, a Prototype Mix per biome and stable ids. The terrain is a synthetic hill with a
 river; the expected survivors are recomputed independently from the same candidates (positions and normals of the surface, the fields written out in plain numpy, the same id-keyed hash). Env
-ARRAYTRON_MUTATE=biome_height|biome_slope|biome_temp|biome_mix|biome_ids|biome_edge breaks the module; the suite must FAIL."""
+ARRAYTRON_MUTATE=biome_height|biome_slope|biome_temp|biome_mix|biome_ids|biome_edge|biome_effect breaks the module; the suite must FAIL."""
 from pathlib import Path
 import hou, json, math, os, sys, tempfile, time
 import numpy as np
@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.15.0':'v1.14.0','v1.16.0':'v1.15.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_biome_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=1000000
@@ -36,7 +36,7 @@ def biome_node(stage,source,rows=(),name='Biome',typ=None,**values):
     """rows: dicts: name, density, mix, h (min,max), he, s, se, m, me, t, te, scale, on."""
     a=stage.createNode(typ or TYPE,name);a.setInput(0,source);a.parm('protos').set(3);a.parm('proto_prim1').set('/World/Props/Ball');a.parm('proto_prim2').set('/World/Props/BallB');a.parm('proto_prim3').set('/World/Props/BallC')
     a.parm('mode').set(10);a.parm('biomes').set(len(rows))
-    keys=(('name','biome_name','s'),('density','biome_density','f'),('mix','biome_mix','s'),('h','biome_hrange','t'),('he','biome_hedge','f'),('s','biome_srange','t'),('se','biome_sedge','f'),('m','biome_mrange','t'),('me','biome_medge','f'),('t','biome_trange','t'),('te','biome_tedge','f'),('scale','biome_scale','t'))
+    keys=(('he_','biome_heffect','f'),('se_','biome_seffect','f'),('me_','biome_meffect','f'),('te_','biome_teffect','f'),('name','biome_name','s'),('density','biome_density','f'),('mix','biome_mix','s'),('h','biome_hrange','t'),('he','biome_hedge','f'),('s','biome_srange','t'),('se','biome_sedge','f'),('m','biome_mrange','t'),('me','biome_medge','f'),('t','biome_trange','t'),('te','biome_tedge','f'),('scale','biome_scale','t'))
     for i,r in enumerate(rows,1):
         a.parm('biome_on%d'%i).set(int(r.get('on',True)))
         for key,parm,kind in keys:
@@ -73,6 +73,7 @@ def mutate(a=None):
     elif MUTATE=='biome_ids':g['BIOME_STRIDE']=0
     elif MUTATE=='biome_edge':
         good=g['biome_weights'];g['biome_weights']=lambda P,n,m,t,row:good(P,n,m,t,dict(row,h_edge=0.0,s_edge=0.0,m_edge=0.0,t_edge=0.0))
+    elif MUTATE=='biome_effect':g['biome_effect']=lambda w,effect:np.asarray(w,dtype=np.float64)                                                                                       # the effect is ignored
     elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
 def check(name,func):
     t=time.time();func();checks.append(name);print('PASS %s (%.1fs)'%(name,time.time()-t));sys.stdout.flush()
@@ -100,6 +101,7 @@ def maths():
     t=m.biome_temperature(np.zeros((3,3)),N2,0.0,0.0,0.0,0.0,np.zeros(3),8.0,0.0);assert np.allclose(t,[8*0.5,-8*0.5,0.0],atol=1e-9)
     t=m.biome_temperature(np.zeros((3,3)),N2,0.0,0.0,0.0,0.0,np.zeros(3),8.0,180.0);assert np.allclose(t,[-4.0,4.0,0.0],atol=1e-9)                                                  # the direction turns it
     t=m.biome_temperature(np.zeros((1,3)),N[:1],0.0,0.0,0.0,6.0,np.array([0.0]),0.0,0.0);assert np.allclose(t,[-6.0])
+    for e in (0.0,0.5,1.0):assert np.allclose(m.biome_effect(np.array([0.0,0.25,1.0]),e),[1-e,1-0.75*e,1.0])                                                                          # blend with 1
     row=dict(h=(2.0,8.0),h_edge=2.0,s=(0.0,40.0),s_edge=10.0,m=(0.3,1.0),m_edge=0.2,t=(0.0,30.0),t_edge=5.0);P=np.array([[0,5.0,0],[0,1.0,0],[0,0.0,0],[0,9.5,0]]);N=np.tile([0,1.0,0],(4,1))
     w=m.biome_weights(P,N,np.full(4,0.6),np.full(4,15.0),row);assert np.allclose(w,[1.0,0.5,0.0,1.0-smooth01(1.5/2.0)],atol=1e-9)
     N3=np.array([[np.sin(np.radians(a_)),np.cos(np.radians(a_)),0.0] for a_ in (10,45,60)]);w=m.biome_weights(np.tile([0,5.0,0],(3,1)),N3,np.full(3,0.6),np.full(3,15.0),row);assert np.allclose(w,[1.0,1.0-smooth01(5/10.0),0.0],atol=1e-9)
@@ -121,6 +123,23 @@ def node_biomes():
     a.parm('biome_on1').set(0);o3=by_id(out(a));assert set(o3['ids']//STRIDE)=={1} and np.array_equal(o3['ids'],o['ids'][(o['ids']//STRIDE)==1]) and np.allclose(o3['pos'],o['pos'][(o['ids']//STRIDE)==1],atol=1e-5)  # a biome off leaves the others alone
     a.parm('biome_on1').set(1);a.parm('biome_density1').set(18.0);a.parm('biome_seed').set(4);o4=by_id(out(a));assert not np.array_equal(o4['ids'],o['ids'])
     assert 'Meadow: %s of %s candidates'%(format(stats[0]['kept'],','),format(stats[0]['candidates'],',')) in a.hdaModule().biome_info(a) or True
+
+def effects():
+    st,sc=new_scene('effects');kw=dict(biome_moist_mode=0,biome_moist_const=0.5,biome_temp=15.0,biome_lapse=100.0,biome_seed=2,biome_normal=0)
+    row=dict(density=60.0,h=(-100.0,3.0),t=(-100.0,5.0),s=(0.0,90.0))                                                                                       # low ground AND cold: the hill is cold only at the top, so nothing grows
+    both=by_id(out(biome_node(st,sc,[row],name='Both',**kw)));assert len(both['ids'])==0
+    nh=biome_node(st,sc,[dict(row,te_=0.0)],name='NoTemp',**kw);h_only=by_id(out(nh));t_only=by_id(out(biome_node(st,sc,[dict(row,he_=0.0)],name='NoHeight',**kw)))
+    assert len(h_only['ids'])>100 and h_only['pos'][:,1].max()<=3.0+1e-6                                                                                    # temperature ignored: the elevation alone decides
+    assert len(t_only['ids'])>5 and t_only['pos'][:,1].min()>=10.0-1e-6                                                                                    # elevation ignored: the temperature alone decides (the cold top)
+    half=by_id(out(biome_node(st,sc,[dict(row,te_=0.5)],name='Half',**kw)));assert 0<len(half['ids'])<len(h_only['ids']) and set(half['ids'].tolist())<=set(h_only['ids'].tolist())      # half an effect: some points where it is warm, none above the height range
+    P,T,area,normals,vn=surface_of(nh);m=nh.hdaModule();cnt=m._BIOME_STATS[nh.path()][0]['candidates'];pos=m.surface_points(P,T,area,normals,vn,cnt,2+7919,False,0.0,180.0,0.0,1.0)[0]
+    w=np.array([band_w(y,-100.0,3.0,0.0)*(1.0-0.5*(1.0-band_w(15.0-y,-100.0,5.0,0.0))) for y in pos[:,1]]);exp=np.arange(cnt)[m.scatter_hash(np.arange(cnt),2+7919,97)<w];assert np.array_equal(half['ids'],exp)                          # exactly the survivors of the blended weight
+    for key in ('se_','me_'):
+        r=by_id(out(biome_node(st,sc,[dict(density=60.0,s=(60.0,90.0),m=(0.9,1.0),**{key:0.0}) ],name='N'+key,**kw)));assert len(r['ids'])==0                                                      # the other condition still blocks (flat hill, dry)
+    ns=by_id(out(biome_node(st,sc,[dict(density=60.0,s=(60.0,90.0),se_=0.0,m=(0.0,1.0))],name='NoSlope',**kw)));assert len(ns['ids'])>100                                                                  # slope ignored: everywhere
+    nm=by_id(out(biome_node(st,sc,[dict(density=60.0,m=(0.9,1.0),me_=0.0)],name='NoMoist',**kw)));assert len(nm['ids'])>100                                                                                # moisture ignored
+    d=biome_node(st,sc,[row],name='Defaults',**kw);assert all(d.evalParm(n)==1.0 for n in ('biome_heffect1','biome_seffect1','biome_meffect1','biome_teffect1')) if d.evalParm('biomes') else True
+    assert d.parmTemplateGroup().find('biome_teffect#').defaultValue()==(1.0,)
 
 def soft_edges_slope_temperature():
     st,sc=new_scene('soft');P,T,area,normals,vn=None,None,None,None,None
@@ -178,7 +197,7 @@ def primvars_and_debug():
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[10]=='Biome' and len(mode.menuLabels())==11
-    for n in ('biome_prim','biome_seed','biome_normal','biome_align','biome_offset','biome_moist_mode','biome_moist_const','biome_water','biome_water_reach','biome_moist_image','biome_moist_center','biome_moist_size','biome_moist_noise','biome_moist_bias','biome_temp','biome_temp_h','biome_lapse','biome_temp_noise','biome_warm','biome_warm_dir','biome_noise_freq','biome_info','biomes','biome_on#','biome_name#','biome_density#','biome_mix#','biome_hrange#','biome_hedge#','biome_srange#','biome_sedge#','biome_mrange#','biome_medge#','biome_trange#','biome_tedge#','biome_scale#','pv_biome'):assert g.find(n) is not None,n
+    for n in ('biome_prim','biome_seed','biome_normal','biome_align','biome_offset','biome_moist_mode','biome_moist_const','biome_water','biome_water_reach','biome_moist_image','biome_moist_center','biome_moist_size','biome_moist_noise','biome_moist_bias','biome_temp','biome_temp_h','biome_lapse','biome_temp_noise','biome_warm','biome_warm_dir','biome_noise_freq','biome_info','biomes','biome_on#','biome_name#','biome_density#','biome_mix#','biome_hrange#','biome_hedge#','biome_heffect#','biome_seffect#','biome_meffect#','biome_teffect#','biome_srange#','biome_sedge#','biome_mrange#','biome_medge#','biome_trange#','biome_tedge#','biome_scale#','pv_biome'):assert g.find(n) is not None,n
     assert g.find('biome_density#').defaultValue()==(20.0,) and g.find('biome_mix#').defaultValue()==('1',) and g.find('biome_hrange#').defaultValue()==(-100000.0,100000.0) and g.find('biome_srange#').defaultValue()==(0.0,180.0) and g.find('biome_mrange#').defaultValue()==(0.0,1.0) and g.find('biomes').defaultValue()==0
     layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert 'biomes' in names and names.index('biomes')>names.index('place_info') and 'mode != 10' in g.find('biomes').conditionals().get(hou.parmCondType.HideWhen,'')
     assert a.node('USD_COMPILER/DISTRIBUTION_GENERATOR').inputs()[10].name()=='generate_biome' and g.find('dbg_color').menuLabels()==('Off','Prototype','Id','Weight','Biome')
@@ -187,6 +206,7 @@ def contract():
 def main():
     for name,func in (('Maths: mix parser, stable prototype choice, slope, temperature (lapse, noise, warm facing), the product of the four soft bands',maths),
                       ('Node: two biomes, the survivors equal the field maths, ranges, ids, Prototype Mix ratios, scale ranges, density only adds, a biome off leaves the others',node_biomes),
+                      ('Effect: each condition can be ignored or partly counted per biome; exactly the survivors of the blended weight',effects),
                       ('Soft edges follow the smooth weight; slope biome; temperature by height and by warm facing',soft_edges_slope_temperature),
                       ('Moisture: constant, bias, distance to water, noise, image, variation, errors',moisture),
                       ('Errors, ignored mix words, no biomes, other modes untouched, candidate limit',errors_and_defaults),
