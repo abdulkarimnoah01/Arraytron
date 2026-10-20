@@ -72,3 +72,5 @@ Status 2026-10-20 (latest): v1.11.0 adds the Place tool extras and the cleanups.
 Status 2026-10-20 (latest): v1.12.0 adds Falloff (scale and density). Next: the biome sector.
 
 Status 2026-10-20 (latest): v1.13.0 makes the Falloff follow the mode and renames the tabs. Next: the biome sector.
+
+Status 2026-10-21 (latest): v1.14.0 adds Rows for the linear modes. Next: the biome sector.

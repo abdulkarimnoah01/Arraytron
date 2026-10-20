@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.13.0':'v1.12.0'}[VID]
+PREVIOUS={'v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_falloff_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -240,7 +240,9 @@ def whole_layout_is_v1120():
     st,sc=new_scene('v1120');cases=(dict(mode=1,area_count=900,area_sizex=10.0,area_sizez=7.0,area_seed=2),dict(mode=2,grid_countx=8,grid_county=4,grid_countz=8),dict(mode=7,cluster_prim='',cluster_count=4,cluster_per=50,cluster_radius=1.2,cluster_area=(12.0,12.0),cluster_seed=3))
     f=dict(fall_on=1,fall_shape=1,fall_curve=2,fall_inner=20.0,fall_density=30.0,fall_scale=0.3)
     for i,kw in enumerate(cases):
-        old=scatter(st,sc,name='Old%d'%i,typ=OLD_TYPE,**{**kw,**f});new=scatter(st,sc,name='New%d'%i,fall_region=1,**{**kw,**f});o,n=by_id(out(old)),by_id(out(new))
+        old=scatter(st,sc,name='Old%d'%i,typ=OLD_TYPE,**{**kw,**f})
+        if old.parm('fall_region') is not None:old.parm('fall_region').set(1)                                                                                          # the previous release has Region too from v1.13.0: compare Whole layout with Whole layout
+        new=scatter(st,sc,name='New%d'%i,fall_region=1,**{**kw,**f});o,n=by_id(out(old)),by_id(out(new))
         assert np.array_equal(o['ids'],n['ids']) and np.allclose(o['pos'],n['pos']) and np.allclose(o['scales'],n['scales'],atol=1e-6),i                                                    # Whole layout (and XZ for the grid) is exactly v1.12.0
 
 def main():

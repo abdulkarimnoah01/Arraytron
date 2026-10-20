@@ -169,12 +169,12 @@ def stage_curves(asset,path=None):
     return out
 
 def curve_points(asset):
-    """Positions (N,3), quaternions (N,4), curve number (N,), parameter 0..1 (N,) for the Curve distribution."""
+    """Positions (N,3), quaternions (N,4), curve number (N,), parameter 0..1 (N,) and the unit tangent (N,3) of every point for the Curve distribution."""
     mode=asset.evalParm('curve_spacemode');count=asset.evalParm('curve_count');spacing=asset.evalParm('curve_spacing');seed=asset.evalParm('curve_seed')
     align=asset.evalParm('curve_align');up=np.array(asset.evalParmTuple('curve_up')) if asset.evalParm('curve_upmode')==1 else np.array([0.0,1.0,0.0])
     if np.linalg.norm(up)<1e-6:up=np.array([0.0,1.0,0.0])
     roll=asset.evalParm('curve_roll');rev=asset.evalParm('curve_reverse')
-    P=[];Q=[];C=[];U=[];total=0
+    P=[];Q=[];C=[];U=[];T=[];total=0
     for k,(poly,closed) in enumerate(stage_curves(asset)):
         L=arclength(poly)[-1]
         if mode==1:n_est=int(L/max(spacing,1e-3))+2
@@ -185,8 +185,9 @@ def curve_points(asset):
         if rev:s=L-s
         pos,tan=sample_polyline(poly,s)
         if rev:tan=-tan
+        T.append(tan)
         P.append(pos);Q.append(frames_from_tangent(tan,up,roll) if align else np.tile([0.0,0.0,0.0,1.0],(len(s),1)));C.append(np.full(len(s),k));U.append(s/L if L>0 else np.zeros(len(s)));total+=len(s)
-    return np.vstack(P),np.vstack(Q),np.concatenate(C),np.concatenate(U)
+    return np.vstack(P),np.vstack(Q),np.concatenate(C),np.concatenate(U),np.vstack(T)
 
 def stage_surface(asset,parm='surface_prim',path=None):
     """Triangles of every mesh or basic shape under the Surface Prim, in world space (see triangles_world)."""
@@ -227,7 +228,8 @@ def _emit(geo,pos,quat,extra=None):
 
 def sop_curve(geo,asset):
     """generate_curve: points along the Curve Prim with the tangent alignment in p@align."""
-    pos,quat,curve,u=curve_points(asset);_emit(geo,pos,quat,{'curve':('int',curve),'curveu':('float',u)})
+    pos,quat,curve,u,tan=curve_points(asset);_emit(geo,pos,quat,{'curve':('int',curve),'curveu':('float',u)})
+    if len(pos):geo.addAttrib(hou.attribType.Point,'pathdir',(0.0,0.0,1.0));geo.setPointFloatAttribValues('pathdir',tan.ravel().tolist())                    # the direction of the path: Rows offsets sideways from it
 
 def sop_surface(geo,asset):
     """generate_surface: stable scatter on the Surface Prim with the normal alignment in p@align."""

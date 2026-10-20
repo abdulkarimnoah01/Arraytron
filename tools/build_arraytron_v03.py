@@ -38,14 +38,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.10.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True),     # v1.10.0: the same features, plus Instance Place arrays (copies with steps)
         'v1.11.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True),     # v1.11.0: the same features, plus the Place tool extras (snap, drag, along curve) and the new node name
         'v1.12.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.12.0: the same features, plus Falloff (scale and density towards the edge of the layout)
-        'v1.13.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True)}     # v1.13.0: the same features, plus the mode-aware Falloff (paint strokes, clusters, 3D grid) and the renamed tabs with an Export tab
+        'v1.13.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.13.0: the same features, plus the mode-aware Falloff (paint strokes, clusters, 3D grid) and the renamed tabs with an Export tab
+        'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True)}     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -235,6 +236,22 @@ def place_folder():
         callback(hou.ButtonParmTemplate('place_fix','Fix Ids',help='Write a unique id into every row that has none or a repeated one (undoable).'),"kwargs['node'].hdaModule().place_normalize(kwargs['node'])"),
         callback(hou.ButtonParmTemplate('place_clear','Clear Placed Instances',help='Remove every placed instance (undoable).'),"kwargs['node'].hdaModule().place_clear(kwargs['node'])"),
         table))
+
+def rows_folder():
+    """Rows (v1.14.0): the linear modes (Line, Circle, Curve) scatter in several parallel rows, optionally randomised."""
+    def hide(template,condition):
+        template.setConditional(hou.parmCondType.HideWhen,condition);return template
+    info=hou.StringParmTemplate('rows_info','Rows',1,default_value=('',),tags={'editor':'1','editorlines':'2-3'},help='Read only. How many rows and points the Rows stage made.')
+    info.setDefaultExpression(('hou.pwd().hdaModule().rows_info(hou.pwd())',));info.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
+    return hou.FolderParmTemplate('rows','Rows',folder_type=hou.folderType.Simple,parm_templates=(
+        hou.IntParmTemplate('rows_count','Rows',1,default_value=(1,),min=1,max=50,help='How many parallel rows the path is laid out in. 1 is the path alone, exactly as before. Line: rows next to each other; Circle: concentric rings; Curve: copies of the curve pushed to the side. The Count / Spacing of the mode is the number of points of ONE row, so the total is Rows times that. Row 0 keeps its ids and every other row gets ids derived from them, so changing the number of rows never renames a point.'),
+        hou.FloatParmTemplate('rows_spacing','Row Spacing',1,default_value=(0.5,),min=0,max=100000,help='The distance between two rows, sideways from the path (horizontal and perpendicular to it; for a Circle in its plane, radially).'),
+        hou.ToggleParmTemplate('rows_center','Centre The Rows',default_value=True,help='On: the rows are spread around the path (the middle one is on it when the number of rows is odd). Off: the path is the first row and the others follow on one side (a Circle: outwards).'),
+        hou.FloatParmTemplate('rows_random','Random Offset',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point sideways by up to this fraction of half the Row Spacing, so the rows are not straight lines. 0 keeps them straight. Works with one row too (a rough band along the path).'),
+        hou.FloatParmTemplate('rows_shift','Random Shift Along',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point along the path by up to this fraction of half the gap between neighbours, so the points of the rows do not line up. 0 keeps them in step.'),
+        hou.ToggleParmTemplate('rows_stagger','Stagger Rows',default_value=False,help='Shift every second row along the path by half the gap between neighbours (a brick pattern).'),
+        hou.IntParmTemplate('rows_seed','Rows Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random offsets. They are keyed on the id of every point, so a point keeps its offset when other rows come and go.'),
+        info))
 
 def falloff_folder():
     """Falloff (v1.12.0): the scatter is full size and densest in the centre of its layout and fades towards the edges (scale and density)."""
@@ -642,6 +659,8 @@ def ui_layout(g):
         if name not in folders:continue
         condition='{ mode != %d }'%index
         layout+=heading(title,condition)+[also_hide(t,condition) for t in folders[name].parmTemplates()]
+    if 'rows' in folders:
+        r=content('rows');rcond='{ mode != 0 mode != 3 mode != 4 }';layout+=heading('ROWS',rcond)+[also_hide(r[n],rcond) for n in ('rows_count','rows_spacing','rows_center','rows_random','rows_shift','rows_stagger','rows_seed','rows_info')]
     bounds=content('bounds')
     layout+=heading('MOVE THE LAYOUT')+pick('bounds','bound_t','bound_r','bound_s','bound_scale_instances')+[bounds['reset_bounds'],details('ui_pivot','Pivot & Guide',[bounds['bound_p'],bounds['show_bounds']])]
     if 'falloff' in folders:
@@ -725,6 +744,7 @@ def parms():
     if FIELDS:g.insertAfter('mask',fields_folder())
     if OVERLAP:g.insertAfter('fieldstack' if FIELDS else 'mask',overlap_folder())
     if FALLOFF:g.append(falloff_folder())
+    if ROWS:g.append(rows_folder())
     if PHYSICS:g.append(physics_folder())
     if CAMERA:g.append(optimize_folder())
     if FINISH:g.append(finish_folder())
@@ -774,6 +794,7 @@ def module_text():
     if PAINT:text+='\n\n# ---- Viewport brush (src/arraytron_paint.py)\n'+(ROOT/'src/arraytron_paint.py').read_text()
     if FIELDS:text+='\n\n# ---- Field Stack (src/arraytron_fields.py)\n'+(ROOT/'src/arraytron_fields.py').read_text()
     if FALLOFF:text+='\n\n# ---- Falloff (src/arraytron_falloff.py)\n'+(ROOT/'src/arraytron_falloff.py').read_text()
+    if ROWS:text+='\n\n# ---- Rows (src/arraytron_rows.py)\n'+(ROOT/'src/arraytron_rows.py').read_text()
     if CLUSTER:text+='\n\n# ---- Clustering (src/arraytron_cluster.py)\n'+(ROOT/'src/arraytron_cluster.py').read_text()
     if CAMERA:text+='\n\n# ---- Camera, LOD and primvars (src/arraytron_camera.py)\n'+(ROOT/'src/arraytron_camera.py').read_text()
     if LODGEN:text+='\n\n# ---- LOD generator (src/arraytron_lodgen.py)\n'+(ROOT/'src/arraytron_lodgen.py').read_text()
@@ -894,7 +915,10 @@ def build():
     for index,generator in enumerate(generators):switch.setInput(index,generator)
     switch.parm('input').setExpression('ch("../../mode")',hou.exprLanguage.Hscript)
     after=switch
-    if MASK:after=python_sop(inst,'MASK_PROCESSOR','sop_mask');after.setInput(0,switch)         # removes points / writes f@maskscale; ids of the survivors are untouched
+    if ROWS:
+        rows=python_sop(inst,'ROWS','sop_linerows');rows.setInput(0,switch);after=rows                      # Line / Circle / Curve: several rows (after the generator, before everything else)
+    if MASK:
+        mask_node=python_sop(inst,'MASK_PROCESSOR','sop_mask');mask_node.setInput(0,after);after=mask_node         # removes points / writes f@maskscale; ids of the survivors are untouched
     if FIELDS:
         stack=python_sop(inst,'FIELD_STACK','sop_fields');stack.setInput(0,after);after=stack         # after the Mask, before Variation: removes points / multiplies f@maskscale; ids of the survivors are untouched
     if FALLOFF:

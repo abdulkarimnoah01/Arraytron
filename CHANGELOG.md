@@ -2,6 +2,10 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.14.0 - Rows
+* **Rows** (Layout tab, section ROWS; Line, Circle / Radial and Curve): the path is laid out in several parallel rows (next to each other, concentric rings, copies of the curve pushed to the side) with *Row Spacing*, *Centre The Rows*, *Random Offset* (across), *Random Shift Along*, *Stagger Rows* and a seed. The count of the mode is the points of one row. Row 0 keeps its ids; the other rows get derived ids, so changing the number of rows never renames a point. It runs right after the distribution, so the Mask, Field Stack, Falloff, Variation and everything after it work on every row. Off by default: the output is exactly v1.13.0.
+* The Curve generator writes the direction of the path (`pathdir`) on its points. New suite `tests/validate_rows.py` (6 groups, 6 mutations) and a demo. Both builds. Documentation `docs/ROWS.md`.
+
 ## v1.13.0 - Falloff follows the mode, renamed tabs, Export tab
 * **Falloff respects the other modes** (*Region: Automatic*): **Cluster** fades every cluster to its own boundary (centre and radius of each cluster, not the box or circle around all of them); **Paint** fades across the width of every stroke (the viewport brush now records the path of each Add / Replace stroke, stored in the Paint Data as `p2`; scenes painted earlier fall back to the whole layout); **Grid** uses all three axes when it has layers in Y (a 3D matrix), so its top and bottom boundaries count too. *Whole layout* keeps the v1.12.0 behaviour.
 * **Tabs renamed:** Source -> **Prototypes**, Look -> **Variation**, Finish -> **Debugging**; **Export USD** and the cache read-out moved to a new **Export** tab (nine tabs). Parameter names did not change.
