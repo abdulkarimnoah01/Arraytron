@@ -84,3 +84,5 @@ Status 2026-10-21 (latest): v1.17.0 adds the Mode Palette. Next: a local asset c
 Status 2026-10-21 (latest): v1.18.0 adds the Asset Library. Next: the biome layers / exclusion / painted biome map / presets.
 
 Status 2026-10-21 (latest): v1.19.0 adds Biome layers, exclusion and presets. Next: the painted biome map (a viewport brush), competition inside a biome.
+
+Status 2026-10-21 (latest): v1.20.0 adds the painted biome map. Next: competition inside a biome (a big tree thinning the small ones around it).

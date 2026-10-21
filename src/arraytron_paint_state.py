@@ -33,6 +33,8 @@ class PaintState(object):
         self.state_name=state_name;self.scene_viewer=scene_viewer
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
         self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None);self.place_drag=None;self.stroke=[];self.stroke_radius=0.0
+        self.biomepaint=False;self.bsurf=None;self.bdata=None;self.bhit=None;self.bpainting=False;self.bdirty=False;self.bsign=1;self._biome_erase_hover=False
+        self.erased=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_biome_erase');self.erased.setParams({'color1':hou.Vector4((1.0,0.25,0.2,1.0)),'radius':4.0})
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
         self.preview=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_paint_points')
@@ -54,18 +56,20 @@ class PaintState(object):
         if dev.isCtrlKey() and not dev.isShiftKey():return 'add' if op==1 else 'remove'
         if dev.isShiftKey() and not dev.isCtrlKey():return 'add' if op==3 else 'relax'
         return KINDS[op]
-    def _active(self):return self.node is not None and (self.picking or self.placing or self.node.evalParm('mode')==6)
+    def _active(self):return self.node is not None and (self.picking or self.placing or self.biomepaint or self.node.evalParm('mode')==6)
     def _ensure(self):
         """True while the node is in Paint mode. Selecting the node enters this tool by itself, so it never changes the Distribution Mode: with another mode it stays idle
         (nothing drawn, no prompt, every mouse / key event is left to Houdini) and wakes up when the mode becomes Paint (the Start Painting button sets it)."""
         if self.node is not None and not self.picking and self.node.userData('arraytron_pick'):             # the Pick Instance button asked for picking
-            self.node.destroyUserData('arraytron_pick');self.picking=True;self.placing=False;self.loaded=False;self.painting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_pick');self.picking=True;self.placing=False;self.biomepaint=False;self.loaded=False;self.painting=False;self.resizing=None
         if self.node is not None and not self.placing and self.node.userData('arraytron_place'):                          # the Place Instances button asked for placing
-            self.node.destroyUserData('arraytron_place');self.placing=True;self.picking=False;self.loaded=False;self.painting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_place');self.placing=True;self.picking=False;self.biomepaint=False;self.loaded=False;self.painting=False;self.resizing=None
+        if self.node is not None and not self.biomepaint and self.node.userData('arraytron_biomepaint'):                  # the Paint Biome Map button asked for biome painting
+            self.node.destroyUserData('arraytron_biomepaint');self.biomepaint=True;self.picking=False;self.placing=False;self.loaded=False;self.painting=False;self.bpainting=False;self.resizing=None
         if not self._active():
             if self.loaded:
-                self._commit();self.loaded=False;self.painting=False;self.resizing=None
-                self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.scene_viewer.clearPromptMessage()
+                self._commit();self.loaded=False;self.painting=False;self.bpainting=False;self.resizing=None
+                self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False);self.scene_viewer.clearPromptMessage()
             return False
         if not self.loaded:
             if self.placing:
@@ -73,11 +77,59 @@ class PaintState(object):
                 try:self.place_surf=self._m().place_surface(self.node)
                 except hou.Error as exc:
                     self.place_surf=None;self.scene_viewer.setPromptMessage('Arraytron Place: %s'%exc,hou.promptMessageType.Error)
+            elif self.biomepaint:self._biome_load()
             elif self.picking:
                 self.inst=self._m().pick_instances(self.node);self.pick_hit=None;self.brush.show(False);self.core.show(False);self.preview.show(False)
             else:self._load()
             self.loaded=True;self._prompt()
         return True
+    def _biome_row(self):
+        n=self.node;return min(max(n.evalParm('biome_brush_row'),1),max(n.evalParm('biomes'),1))
+    def _biome_load(self):
+        m=self._m();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False)
+        try:self.bsurf=m.biomemap_surface(self.node)
+        except hou.Error as exc:
+            self.bsurf=None;self.scene_viewer.setPromptMessage('Arraytron Biome Map: %s'%exc,hou.promptMessageType.Error)
+        self.bdata=m.biomemap_decode(self.node.evalParm('biome_map_data'));self.bdirty=False;self.bhit=None;self._biome_draw_points()
+    def _biome_draw_points(self):
+        """The stamps of the active biome row as points on the terrain: green where painted, red where erased."""
+        row=self._biome_row();paint=hou.Geometry();erase=hou.Geometry()
+        if self.bdata is not None and len(self.bdata):
+            sel=self.bdata[self.bdata[:,0]==row][-4000:]
+            paint.createPoints([(float(s[2]),float(s[3])+0.02,float(s[4])) for s in sel if s[1]>0]);erase.createPoints([(float(s[2]),float(s[3])+0.02,float(s[4])) for s in sel if s[1]<=0])
+        self.preview.setGeometry(paint);self.preview.show(True);self.erased.setGeometry(erase);self.erased.show(True)
+    def _biome_dab(self):
+        n=self.node;pos,nrm=self.bhit;r=max(n.evalParm('biome_brush_radius'),1e-4)
+        self.bdata,added=self._m().biomemap_add(self.bdata,self._biome_row(),self.bsign,pos,r,n.evalParm('biome_brush_strength'),n.evalParm('biome_brush_falloff'))
+        if added:self.bdirty=True;self._biome_draw_points()
+    def _biome_ring(self):
+        if self.bhit is None:self.brush.show(False);self.core.show(False);return
+        pos,nrm=self.bhit;r=max(self.node.evalParm('biome_brush_radius'),1e-4);erase=self.bsign<0 if self.bpainting else self._biome_erase_hover
+        self.brush.setParams({'color1':hou.Vector4((1.0,0.25,0.2,1.0) if erase else (0.3,1.0,0.4,1.0)),'line_width':2.0});self.brush.setGeometry(self._ring(pos,nrm,r));self.brush.show(True)
+        strength=min(max(self.node.evalParm('biome_brush_strength'),0.0),1.0)
+        if 0.02<strength<0.99:self.core.setGeometry(self._ring(pos,nrm,r*strength));self.core.show(True)
+        else:self.core.show(False)
+    def _biome_mouse(self,ev,dev,reason):
+        """Biome map painting: LMB paints the active biome row (keys 1 to 9 pick the row) where the mouse hits the terrain, Ctrl+LMB keeps it out; one undo step per stroke."""
+        try:origin,direction=ev.ray()
+        except Exception:
+            origin,direction=ev.curViewport().mapToWorld(dev.mouseX(),dev.mouseY())
+        m=self._m();R=hou.uiEventReason;o=np.array(origin,dtype=float);d=np.array(direction,dtype=float);d=d/np.linalg.norm(d);self.bhit=None
+        if self.bsurf is not None:
+            P,T,area,normals,vn=self.bsurf;t,j=m.ray_triangles(o,d,P,T)
+            if j[0]>=0:
+                nrm=normals[j[0]]
+                if np.dot(nrm,d)>0:nrm=-nrm
+                self.bhit=(o+d*t[0],nrm)
+        left=dev.isLeftButton();self._biome_erase_hover=dev.isCtrlKey()
+        if left and reason==R.Start and self.bhit is not None:
+            self.bpainting=True;self.bsign=-1 if dev.isCtrlKey() else 1;self._biome_dab()
+        elif reason==R.Active and self.bpainting and self.bhit is not None:self._biome_dab()
+        elif reason==R.Changed and self.bpainting:
+            self.bpainting=False;self._commit()
+        elif reason==R.Picked and left and self.bhit is not None and not self.bpainting:
+            self.bsign=-1 if dev.isCtrlKey() else 1;self._biome_dab();self._commit()
+        self._biome_ring();self._prompt();return True
     def _load(self):
         m=self._m();self.data=m.paint_decode(self.node.evalParm('paint_data'))
         try:self.surface=m.paint_surface(self.node)
@@ -125,6 +177,8 @@ class PaintState(object):
         if kind in ('add','replace'):self.stroke.append(np.array(pos,dtype=float));self.stroke_radius=float(r)                  # the path of the stroke, kept for the Falloff
         if count:self.dirty=True;self._draw_points()
     def _commit(self):
+        if self.biomepaint and self.bdirty and self.bdata is not None:
+            self._m().biomemap_apply(self.node,self.bdata);self.bdirty=False
         if self.stroke and self.data is not None:
             self.data=self._m().paint_stroke_add(self.data,self.stroke,self.stroke_radius);self.dirty=True
         self.stroke=[]
@@ -133,6 +187,12 @@ class PaintState(object):
     def status(self):
         """The prompt line: the live brush values (and the shortcuts until H hides them)."""
         n=self.node
+        if self.biomepaint:
+            row=self._biome_row();name=n.evalParm('biome_name%d'%row) if n.evalParm('biomes')>0 else '-';mode=('Off','Add And Erase','Only Where Painted')[min(n.evalParm('biome_map%d'%row),2)] if n.evalParm('biomes')>0 else '-'
+            head='Arraytron Biome Map  |  row %d %s  (Map: %s)  radius %.3g  strength %.2f  falloff %s  |  %d stamps'%(row,name,mode,n.evalParm('biome_brush_radius'),n.evalParm('biome_brush_strength'),FALLOFFS[min(n.evalParm('biome_brush_falloff'),3)],0 if self.bdata is None else len(self.bdata))
+            if self.bsurf is None:head+='  |  no terrain'
+            elif self.bhit is None:head+='  |  no terrain under the mouse'
+            return head+('\nLMB paint this biome  |  Ctrl+LMB keep it out  |  1-9 biome row  |  wheel + Shift: radius, + Ctrl: strength  |  [ ] radius  |  - = strength  |  F falloff  |  H hide this help  |  Esc / Enter: finish' if self.show_help else '')
         if self.placing:
             proto=n.evalParm('place_def_proto')
             head='Arraytron Place  |  scale %.3g  rotation %g  prototype %s  |  %d placed'%(n.evalParm('place_def_scale'),n.evalParm('place_def_yaw'),'auto' if proto==0 else 'row %d'%proto,n.evalParm('places'))
@@ -159,16 +219,17 @@ class PaintState(object):
         self.loaded=False;self._ensure()
     @guarded
     def onInterrupt(self,kwargs):
-        self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False)
+        self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False)
     @guarded
     def onExit(self,kwargs):
-        self._commit();self.picking=False;self.placing=False;self.place_hit=None;self.place_drag=None;self.inst=None;self.pick_hit=None;self.loaded=False
-        self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.scene_viewer.clearPromptMessage()
+        self._commit();self.picking=False;self.placing=False;self.biomepaint=False;self.bpainting=False;self.bhit=None;self.place_hit=None;self.place_drag=None;self.inst=None;self.pick_hit=None;self.loaded=False
+        self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False);self.scene_viewer.clearPromptMessage()
     @guarded
     def onMouseEvent(self,kwargs):
         if not self._ensure():return False
         ev=kwargs['ui_event'];dev=ev.device();reason=ev.reason()
         if dev.isMiddleButton() or dev.isAltKey():return False                        # let the camera handle navigation
+        if self.biomepaint:return self._biome_mouse(ev,dev,reason)
         if self.placing:return self._place_mouse(ev,dev,reason)
         if self.picking:return self._pick_mouse(ev,dev,reason)
         self._pick(ev)
@@ -225,7 +286,7 @@ class PaintState(object):
             drag=self.place_drag;self.place_drag=None;self.place_hit=drag['hit'];commit(drag['yaw'],drag['scale'])
         elif left and reason==R.Picked and self.place_hit is not None and not dev.isCtrlKey():commit()
         shown=self.place_drag['hit'] if self.place_drag is not None else self.place_hit
-        if shown is None:self.marker.show(False)
+        if shown is None:self.marker.show(False);self.erased.show(False)
         else:
             pos,nrm,t=shown;r=max(t*0.02,1e-3);yaw=node.evalParm('place_def_yaw')+(self.place_drag['yaw'] if self.place_drag is not None else 0.0);k=self.place_drag['scale'] if self.place_drag is not None else 1.0
             snap=node.evalParm('place_snap_rot')
@@ -243,7 +304,7 @@ class PaintState(object):
         m=self._m()
         if self.inst is None:self.inst=m.pick_instances(self.node)
         self.pick_hit=m.pick_nearest(origin,direction,self.inst['P'],self.inst['ids'])
-        if self.pick_hit is None:self.marker.show(False)
+        if self.pick_hit is None:self.marker.show(False);self.erased.show(False)
         else:
             iid,pos,t=self.pick_hit;view=-np.asarray(direction,dtype=float);view=view/np.linalg.norm(view)
             self.marker.setParams({'color1':hou.Vector4((1.0,0.9,0.1,1.0)),'line_width':3.0});self.marker.setGeometry(self._ring(pos,view,max(t*0.03,1e-3)));self.marker.show(True)
@@ -254,6 +315,13 @@ class PaintState(object):
     def onMouseWheelEvent(self,kwargs):
         """Shift + wheel: radius; Ctrl + wheel: strength; Ctrl + Shift + wheel: density (anything else scrolls / zooms the camera as usual)."""
         if not self._ensure() or self.picking:return False
+        if self.biomepaint:
+            dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
+            if sign==0 or dev.isAltKey():return False
+            if dev.isShiftKey():self._set('biome_brush_radius',self.node.evalParm('biome_brush_radius')*1.1**sign,0.01,100000.0)
+            elif dev.isCtrlKey():self._set('biome_brush_strength',self.node.evalParm('biome_brush_strength')+0.05*sign,0.0,1.0)
+            else:return False
+            self._prompt();self._biome_ring();return True
         if self.placing:
             dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
             if sign==0 or dev.isAltKey():return False
@@ -272,6 +340,16 @@ class PaintState(object):
     def onKeyEvent(self,kwargs):
         if not self._ensure() or self.picking:return False
         key=kwargs['ui_event'].device().keyString();n=self.node
+        if self.biomepaint:
+            if key in ('[',']'):self._set('biome_brush_radius',n.evalParm('biome_brush_radius')*(1.1 if key==']' else 1/1.1),0.01,100000.0)
+            elif key in ('-','_'):self._set('biome_brush_strength',n.evalParm('biome_brush_strength')-0.05,0.0,1.0)
+            elif key in ('=','+'):self._set('biome_brush_strength',n.evalParm('biome_brush_strength')+0.05,0.0,1.0)
+            elif key in ('f','F'):n.parm('biome_brush_falloff').set((n.evalParm('biome_brush_falloff')+1)%4)
+            elif len(key)==1 and key.isdigit() and key!='0':
+                n.parm('biome_brush_row').set(min(int(key),max(n.evalParm('biomes'),1)));self._biome_draw_points()
+            elif key in ('h','H'):self.show_help=not self.show_help
+            else:return False
+            self._prompt();self._biome_ring();return True
         if self.placing:
             if key in ('[',']'):self._set('place_def_scale',n.evalParm('place_def_scale')*(1.1 if key==']' else 1/1.1),0.0001,1000.0)
             elif key in (',','.'):self._set('place_def_yaw',n.evalParm('place_def_yaw')+(15.0 if key=='.' else -15.0),-360.0,360.0)
@@ -291,7 +369,7 @@ class PaintState(object):
         self._prompt();self._draw_brush();return True
     @guarded
     def onDraw(self,kwargs):
-        handle=kwargs['draw_handle'];self.preview.draw(handle);self.brush.draw(handle);self.core.draw(handle);self.marker.draw(handle)
+        handle=kwargs['draw_handle'];self.preview.draw(handle);self.erased.draw(handle);self.brush.draw(handle);self.core.draw(handle);self.marker.draw(handle)
 
 def createViewerStateTemplate():
     """Mandatory entry point: the state template for Solaris (LOP) nodes."""

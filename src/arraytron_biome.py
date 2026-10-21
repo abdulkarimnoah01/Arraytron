@@ -65,7 +65,8 @@ def biome_rows(asset):
                          m=asset.evalParmTuple('biome_mrange%d'%i),m_edge=asset.evalParm('biome_medge%d'%i),t=asset.evalParmTuple('biome_trange%d'%i),t_edge=asset.evalParm('biome_tedge%d'%i),
                          scale=asset.evalParmTuple('biome_scale%d'%i),h_effect=asset.evalParm('biome_heffect%d'%i),s_effect=asset.evalParm('biome_seffect%d'%i),m_effect=asset.evalParm('biome_meffect%d'%i),t_effect=asset.evalParm('biome_teffect%d'%i),
                          layer=asset.evalParm('biome_layer%d'%i) if asset.parm('biome_layer%d'%i) is not None else 1,clear=asset.evalParm('biome_clear%d'%i) if asset.parm('biome_clear%d'%i) is not None else 0.0,
-                         exclude=biome_parse_rows(asset.evalParm('biome_excl%d'%i)) if asset.parm('biome_excl%d'%i) is not None else ()))
+                         exclude=biome_parse_rows(asset.evalParm('biome_excl%d'%i)) if asset.parm('biome_excl%d'%i) is not None else (),
+                         map=asset.evalParm('biome_map%d'%i) if asset.parm('biome_map%d'%i) is not None else 0))
     return rows
 
 def biome_parse_rows(text):
@@ -142,7 +143,7 @@ def biome_temperature_field(asset,P,normals):
 def biome_points(asset):
     """Every surviving point of every biome: dict(pos (n,3), normal (n,3), align (n,4), ids, biome (1 based row), proto (Prototype Bank row), scale (n,), weight (n,)) and the statistics per row."""
     P,T,area,normals,vn=stage_surface(asset,'biome_prim');rows=biome_rows(asset);enabled=bank_rows(asset);seed=asset.evalParm('biome_seed');smooth=asset.evalParm('biome_normal')==1;total=float(area.sum())
-    parts=[];stats=[]
+    parts=[];stats=[];stamps=biomemap_data(asset) if (any(r['map'] for r in rows) and asset.parm('biome_map_data') is not None) else None;bounds=biomemap_bounds(P) if stamps is not None else None;key=hash(stamps.tobytes()) if stamps is not None else None
     for r in rows:
         pairs,bad=biome_parse_mix(r['mix'],enabled)
         if not pairs:raise hou.NodeError("Biome '%s': the Prototype Mix names no enabled Prototype Bank row (write bank row numbers, for example '1 2:3 4:0.5')."%r['name'])
@@ -154,7 +155,9 @@ def biome_points(asset):
     for (r,pairs,bad,rs,pos,n,quat),st in zip(parts,stats):
         k=len(pos);sl=slice(at,at+k);at+=k
         if k==0:continue
-        w=biome_weights(allP[sl],allN[sl],moist[sl],temp[sl],r);ids=np.arange(k,dtype=np.int64);keep=scatter_hash(ids,rs,BIOME_STREAM)<w;ids=ids[keep]
+        w=biome_weights(allP[sl],allN[sl],moist[sl],temp[sl],r)
+        if r['map'] and stamps is not None:w=biomemap_combine(w,biomemap_values(stamps,r['index'],bounds,asset.evalParm('biome_map_res'),allP[sl][:,[0,2]],key),r['map'])        # the painted biome map (v1.20.0)
+        ids=np.arange(k,dtype=np.int64);keep=scatter_hash(ids,rs,BIOME_STREAM)<w;ids=ids[keep]
         if not len(ids):continue
         lo,hi=r['scale'];u=scatter_hash(ids,rs,BIOME_STREAM+2);st['kept']=len(ids)
         out['pos'].append(pos[keep]+n[keep]*asset.evalParm('biome_offset'));out['normal'].append(n[keep]);out['align'].append(quat[keep]);out['ids'].append((r['index']-1)*BIOME_STRIDE+ids)

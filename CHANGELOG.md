@@ -2,6 +2,10 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.20.0 - Painted biome map
+* **Paint where a biome grows.** The **Paint Biome Map** button enters a viewport brush (a mode of the Arraytron viewer state): drag to paint the active biome row (keys 1 to 9), Ctrl+drag to keep it out, radius / strength / falloff on keys and wheel, one undo step per stroke. Every row has a **Painted Map** menu (Off by default = exactly v1.19.0; **Add And Erase**: grows also where painted, kept out where erased; **Only Where Painted**). The paint is a list of stamps turned into a per-row map over the terrain at cook time (*Map Resolution*, default 256), combined with the weight of the conditions; the ids are the biome's own, so painting never moves anything outside the stroke. Painted biomes take part in the layers and the clearance. Clear Row Paint / Clear All Paint, a read-out of the stamps.
+* New suite `tests/validate_biomemap.py` (6 groups, 4 mutations); the Biome demo gets a *Painted flowers* row along a painted path. Both builds. Documentation `docs/BIOME.md`.
+
 ## v1.19.0 - Biome layers, exclusion and presets
 * **Layers and Clearance** (every Biomes row): *Layer* (1 top to 4), *Clearance* (a radius times the point's own scale) and *Excludes Rows*. A biome on a lower layer keeps clear of the points of the layers above it, and a biome keeps the rows it excludes clear whatever their layer. Only the biomes above remove points, so a lower layer never moves the ones above; ids stay stable; Clearance 0 (the default) is exactly v1.18.0. The read-out counts the points *cleared by the layers above*.
 * **Biome presets:** *Load Preset...* (Temperate Forest, Alpine, Coastal Wetland, Desert, and your own) and *Save Preset...*; elevations are fractions of the terrain height so a preset fits any terrain; one undo step. User presets in `biome_presets.json` next to the Asset Library.

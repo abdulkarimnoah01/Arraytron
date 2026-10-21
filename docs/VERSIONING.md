@@ -58,7 +58,8 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.16.0 | - | `arraytron::instancer::1.16.0` | Biome: an Effect (0 to 1) per condition in every biome row; both builds |
 | v1.17.0 | - | `arraytron::instancer::1.17.0` | Mode Palette: the Distribution Mode as a row of icon cells in the Parameters pane; both builds |
 | v1.18.0 | - | `arraytron::instancer::1.18.0` | Asset Library (categories, Asset Catalog import, Add to Bank); Stagger Rows as a slider; both builds |
-| **v1.19.0** (current) | - | `arraytron::instancer::1.19.0` | Biome layers, clearance, exclusion and presets; both builds |
+| v1.19.0 | - | `arraytron::instancer::1.19.0` | Biome layers, clearance, exclusion and presets; both builds |
+| **v1.20.0** (current) | - | `arraytron::instancer::1.20.0` | Painted biome map: a viewport brush that paints where each biome grows or stays out; both builds |
 
 Old releases keep the type names they shipped with, so scenes built with them still load. Their HDA files were moved bit-for-bit (checked by SHA-256 against the originals) to `dist/archive/`, except v0.3.0 and v0.3.5, which were rebuilt from their builders (v0.3.5 was then moved to the archive with `tools/archive_release.py`, its first real use). A scene of your own that contains old nodes records the old HDA path: install the archived HDA (Assets > Install Asset Library) if Houdini reports the type missing.
 

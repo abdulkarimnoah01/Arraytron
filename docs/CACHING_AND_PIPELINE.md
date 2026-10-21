@@ -1,4 +1,4 @@
-# Caching strategy and pipeline use (v1.19.0)
+# Caching strategy and pipeline use (v1.20.0)
 
 Arraytron is **procedural and deterministic**: the same settings, scene and Houdini version give bit-identical instances (tested across two separate processes). That makes caching a choice, not a necessity. This page says what is stored where and which cache to use when.
 
