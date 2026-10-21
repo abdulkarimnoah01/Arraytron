@@ -41,7 +41,7 @@ def changelog_notes(version):
     return lines
 
 
-DEFAULT_UPDATE_SOURCE = "https://github.com/abdulkarimnoh01/Arraytron/releases/latest/download/"     # baked into every package, so an installed copy knows where its updates come from (pass --update-source "" for none)
+DEFAULT_UPDATE_SOURCE = "https://github.com/abdulkarimnoah01/Arraytron/releases/latest/download/"     # baked into every package, so an installed copy knows where its updates come from (pass --update-source "" for none)
 def build(out, update_source=""):
     os.environ["ARRAYTRON_UPDATE_SOURCE_BAKED"] = update_source
     sys.path.insert(0, str(ROOT / "tools"))
