@@ -28,7 +28,7 @@ def icosphere(level):
         F=new
     return np.array(V),np.array(F,dtype=np.int64)
 def rock_dense(path):
-    """A lumpy rock: an icosphere with smooth pseudo random bumps, resting on its base (origin at the bottom), smooth normals, UVs, a grey colour and a material."""
+    """A lumpy rock: an icosphere with smooth pseudo random bumps, resting on its base (origin at the bottom), smooth normals, UVs, a grey colour a stone and a moss material on face groups (GeomSubsets)."""
     V,F=icosphere(4);rng=np.random.RandomState(7);d=np.zeros(len(V))
     for _ in range(36):
         c=rng.normal(size=3);c/=np.linalg.norm(c);w=rng.uniform(0.04,0.2);h=rng.uniform(-0.2,0.22);d+=h*np.exp(-((1-V@c)/w))
@@ -41,6 +41,11 @@ def rock_dense(path):
     uv=UsdGeom.PrimvarsAPI(mesh).CreatePrimvar('st',Sdf.ValueTypeNames.TexCoord2fArray,UsdGeom.Tokens.faceVarying);uv.Set(Vt.Vec2fArray.FromNumpy(np.array([(P[i][0]*0.5+0.5,P[i][2]*0.5+0.5) for i in F.reshape(-1)],dtype=np.float32)))
     mat=UsdShade.Material.Define(st,'/RockDense/Looks/M');sh=UsdShade.Shader.Define(st,'/RockDense/Looks/M/Surface');sh.CreateIdAttr('UsdPreviewSurface');sh.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.46,0.44,0.40));sh.CreateInput('roughness',Sdf.ValueTypeNames.Float).Set(0.85)
     mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(),'surface');UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim());UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(mat)
+    moss=UsdShade.Material.Define(st,'/RockDense/Looks/Moss');ms=UsdShade.Shader.Define(st,'/RockDense/Looks/Moss/Surface');ms.CreateIdAttr('UsdPreviewSurface');ms.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.22,0.42,0.15));ms.CreateInput('roughness',Sdf.ValueTypeNames.Float).Set(0.9)
+    moss.CreateSurfaceOutput().ConnectToSource(ms.ConnectableAPI(),'surface')
+    up=n[F].mean(axis=1)[:,1]>0.5                                                                                   # v1.21.0: two materials by face group (GeomSubsets): moss on the top, stone below; the LOD levels keep both
+    for name,faces,material in (('Moss',np.nonzero(up)[0],moss),('Stone',np.nonzero(~up)[0],mat)):
+        sub=UsdGeom.Subset.CreateGeomSubset(mesh,name,'face',Vt.IntArray(faces.astype(np.int32).tolist()),'materialBind','nonOverlapping');UsdShade.MaterialBindingAPI.Apply(sub.GetPrim());UsdShade.MaterialBindingAPI(sub.GetPrim()).Bind(material)
     st.GetRootLayer().Save()
 for folder in (ROOT/'dist/test_assets',ROOT/'otls_h205/test_assets'):
     if folder.exists() and not (folder/'rock_dense.usda').exists():rock_dense(folder/'rock_dense.usda')

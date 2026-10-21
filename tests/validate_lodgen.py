@@ -2,7 +2,7 @@
 The reduction (vertex clustering with quadric positions) is checked against geometry facts (triangle targets, no degenerate or duplicate triangles, distance to the sphere, area,
 planarity, determinism, primvars carried over with their interpolation), then on the node: the generated prims in the stream (hierarchy, transforms, materials, primvars), the
 prototype list, the camera LOD switch with the generated levels, explicit LOD prims winning, and Generate LODs off reproducing the previous release.
-Env ARRAYTRON_MUTATE=lodgen_ratio|lodgen_explicit|lodgen_st|lodgen_dup|lodgen_level breaks the module; the suite must FAIL."""
+Env ARRAYTRON_MUTATE=lodgen_ratio|lodgen_explicit|lodgen_st|lodgen_dup|lodgen_level|lodgen_subsets|lodgen_bind|lodgen_material breaks the module; the suite must FAIL."""
 from pathlib import Path
 import hou, importlib.util, json, os, sys, tempfile, time
 import numpy as np
@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_lodgen_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 spec=importlib.util.spec_from_file_location('lodgen_src',str(ROOT/'src/arraytron_lodgen.py'));LG=importlib.util.module_from_spec(spec);spec.loader.exec_module(LG)   # the pure functions, no Houdini needed
@@ -52,6 +52,17 @@ def write_scene():
     UsdGeom.Xform.Define(s,'/World/Props/Box');b=UsdGeom.Mesh.Define(s,'/World/Props/Box/Mesh');b.CreatePointsAttr([(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)])
     b.CreateFaceVertexCountsAttr([4]*6);b.CreateFaceVertexIndicesAttr([0,3,2,1,4,5,6,7,0,1,5,4,2,3,7,6,0,4,7,3,1,2,6,5])
     UsdGeom.Xform.Define(s,'/World/Props/Hand');h=UsdGeom.Mesh.Define(s,'/World/Props/Hand/Mesh');h.CreatePointsAttr([(0,0,0),(1,0,0),(1,1,0),(0,1,0)]);h.CreateFaceVertexCountsAttr([4]);h.CreateFaceVertexIndicesAttr([0,1,2,3])
+    from pxr import UsdShade
+    UsdGeom.Xform.Define(s,'/World/Props/Dragon');V3,F3=icosphere(4);d=UsdGeom.Mesh.Define(s,'/World/Props/Dragon/Body');d.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(V3.astype(np.float32)));d.CreateFaceVertexCountsAttr([3]*len(F3));d.CreateFaceVertexIndicesAttr(F3.reshape(-1).tolist());d.CreateSubdivisionSchemeAttr('none')
+    dst=UsdGeom.PrimvarsAPI(d).CreatePrimvar('st',Sdf.ValueTypeNames.TexCoord2fArray,UsdGeom.Tokens.faceVarying);dst.Set(Vt.Vec2fArray.FromNumpy(np.array([(V3[i][0],V3[i][2]) for i in F3.reshape(-1)],dtype=np.float32)))
+    UsdGeom.Scope.Define(s,'/World/Props/Dragon/Looks');half=len(F3)//2
+    for name,faces in (('A',range(0,half)),('B',range(half,len(F3)))):
+        mat=UsdShade.Material.Define(s,'/World/Props/Dragon/Looks/Mat'+name);sh=UsdShade.Shader.Define(s,'/World/Props/Dragon/Looks/Mat%s/Surface'%name);sh.CreateIdAttr('UsdPreviewSurface')
+        tex=UsdShade.Shader.Define(s,'/World/Props/Dragon/Looks/Mat%s/Tex'%name);tex.CreateIdAttr('UsdUVTexture');tex.CreateInput('file',Sdf.ValueTypeNames.Asset).Set(Sdf.AssetPath('textures/skin_%s.png'%name));tex.CreateOutput('rgb',Sdf.ValueTypeNames.Float3)
+        sh.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).ConnectToSource(tex.ConnectableAPI(),'rgb');mat.CreateSurfaceOutput().ConnectToSource(sh.ConnectableAPI(),'surface')
+        sub=UsdGeom.Subset.CreateGeomSubset(d,'Skin'+name,'face',Vt.IntArray(list(faces)),'materialBind','nonOverlapping');UsdShade.MaterialBindingAPI.Apply(sub.GetPrim());UsdShade.MaterialBindingAPI(sub.GetPrim()).Bind(mat)
+    UsdGeom.Xform.Define(s,'/World/Props/Rock');V4,F4=icosphere(3);r=UsdGeom.Mesh.Define(s,'/World/Props/Rock/Rock');r.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(V4.astype(np.float32)));r.CreateFaceVertexCountsAttr([3]*len(F4));r.CreateFaceVertexIndicesAttr(F4.reshape(-1).tolist());r.CreateSubdivisionSchemeAttr('none')
+    stone=UsdShade.Material.Define(s,'/World/Looks/Stone');props=s.GetPrimAtPath('/World/Props');UsdShade.MaterialBindingAPI.Apply(props);UsdShade.MaterialBindingAPI(props).Bind(stone)         # a binding on the parent: the rock inherits it
     cam=UsdGeom.Camera.Define(s,'/World/Cam');cam.CreateFocalLengthAttr(35.0)
     s.GetRootLayer().Save();return path.as_posix()
 SCENE=write_scene()
@@ -91,6 +102,12 @@ def mutate(a=None):
             good=g['lodgen_transfer'];g['lodgen_transfer']=lambda v,i,res:good(v,'vertex' if i=='faceVarying' else i,res)
         elif MUTATE=='lodgen_dup':
             g['_kept']=lambda tri,key:(lambda c:np.nonzero((c[:,0]!=c[:,1])&(c[:,1]!=c[:,2])&(c[:,0]!=c[:,2]))[0])(key[tri])
+        elif MUTATE=='lodgen_subsets':
+            g['lodgen_subsets']=lambda stage,src,dst,res,faces:None                                           # the face subsets (a material per face group) are dropped
+        elif MUTATE=='lodgen_bind':
+            g['lodgen_bind']=lambda src,dst:None                                                              # the effective material is not re-bound on the copy
+        elif MUTATE=='lodgen_material':
+            g['LODGEN_MATERIALS']=False                                                                      # the old behaviour: Material prims copied, no subsets, no binding
         elif MUTATE=='lodgen_level':
             good=g['lodgen_path'];g['lodgen_path']=lambda asset,row,level:good(asset,row,min(level,2))
         elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
@@ -154,6 +171,35 @@ def stage_prims():
     b=painted(st,sc,[(0,0,-3)],name='Box',lodg_on=1,proto_prim1='/World/Props/Box');out(b)
     P,counts,idx=mesh_arrays(b.stage(),'/World/Props/Box_LOD/Proto01_LOD1/Mesh') if False else mesh_arrays(b.stage(),'/World/Arraytron_LOD/Proto01_LOD1/Mesh');assert len(counts)==6 and len(P)==8
 
+def materials():
+    """v1.21.0: the generated levels keep the materials of the hero: the per-face GeomSubsets (mapped onto the reduced triangles), the bindings (also a binding inherited from a parent), the shader networks
+    stay where they are (no Material prim is copied), and the textures reach the levels."""
+    from pxr import UsdShade
+    st,sc=new_scene('mats');a=painted(st,sc,[(0,0,-3)],lodg_on=1,proto_prim1='/World/Props/Dragon');o=out(a);s=a.stage();m=a.hdaModule();hero='/World/Props/Dragon/Body'
+    P,counts,idx=mesh_arrays(s,hero);half=len(counts)//2
+    for level,name,ratio in ((1,'LOD1',0.5),(2,'LOD2',0.2),(3,'PROXY',0.05)):
+        path='/World/Arraytron_LOD/Proto01_%s/Body'%name;LP,lc,li=mesh_arrays(s,path);K=len(lc);res=m.lodgen_reduce(P,counts,idx,ratio,12)
+        subs={c.GetName():np.array(UsdGeom.Subset(c).GetIndicesAttr().Get()) for c in s.GetPrimAtPath(path).GetChildren() if c.IsA(UsdGeom.Subset)};assert set(subs)=={'SkinA','SkinB'},(name,list(subs))
+        assert np.array_equal(subs['SkinA'],np.nonzero(res['src_face']<half)[0]) and np.array_equal(subs['SkinB'],np.nonzero(res['src_face']>=half)[0])                  # each new triangle is in the subset of the face it came from
+        assert len(set(subs['SkinA'].tolist())&set(subs['SkinB'].tolist()))==0 and sorted(subs['SkinA'].tolist()+subs['SkinB'].tolist())==list(range(K)) and len(subs['SkinA'])>0 and len(subs['SkinB'])>0
+        for sub,mat in (('SkinA','MatA'),('SkinB','MatB')):
+            sp=s.GetPrimAtPath(path+'/'+sub);bound=UsdShade.MaterialBindingAPI(sp).ComputeBoundMaterial()[0];assert bound and str(bound.GetPath())=='/World/Props/Dragon/Looks/'+mat,(name,sub,bound)        # the same material as the hero
+            fam=UsdGeom.Subset(sp);assert fam.GetFamilyNameAttr().Get()=='materialBind' and fam.GetElementTypeAttr().Get()=='face'
+        pv=UsdGeom.PrimvarsAPI(s.GetPrimAtPath(path)).GetPrimvar('st');assert pv.GetInterpolation()=='faceVarying' and len(pv.ComputeFlattened())==3*K                                  # the texture coordinates
+    lod_root=s.GetPrimAtPath('/World/Arraytron_LOD');assert not [p for p in Usd.PrimRange(lod_root) if p.IsA(UsdShade.Material) or p.IsA(UsdShade.Shader)]                                # no material or shader is copied
+    tex=UsdShade.Shader(s.GetPrimAtPath('/World/Props/Dragon/Looks/MatA/Tex'));assert tex.GetInput('file').Get().path=='textures/skin_A.png'
+    conn=UsdShade.Shader(s.GetPrimAtPath('/World/Props/Dragon/Looks/MatA/Surface')).GetInput('diffuseColor').GetConnectedSources()[0][0];assert str(conn.source.GetPath())=='/World/Props/Dragon/Looks/MatA/Tex'      # the hero network is untouched
+    # a binding inherited from a parent (the rock) is bound on the copy itself
+    r=painted(st,sc,[(0,0,-3)],name='Rock',lodg_on=1,proto_prim1='/World/Props/Rock');out(r);rs=r.stage()
+    assert str(UsdShade.MaterialBindingAPI(rs.GetPrimAtPath('/World/Props/Rock/Rock')).ComputeBoundMaterial()[0].GetPath())=='/World/Looks/Stone'
+    for name in ('LOD1','LOD2','PROXY'):
+        lp=rs.GetPrimAtPath('/World/Arraytron_LOD/Proto01_%s/Rock'%name);bound=UsdShade.MaterialBindingAPI(lp).ComputeBoundMaterial()[0];assert bound and str(bound.GetPath())=='/World/Looks/Stone',(name,bound)
+    # a mesh that is not reduced (the minimum is above its triangles): an exact copy keeps the subsets as they are
+    e=painted(st,sc,[(0,0,-3)],name='Exact',lodg_on=1,proto_prim1='/World/Props/Dragon',lodg_min=100000);out(e);es=e.stage()
+    for sub in ('SkinA','SkinB'):
+        assert np.array_equal(np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Props/Dragon/Body/'+sub)).GetIndicesAttr().Get()),np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Arraytron_LOD/Proto01_LOD1/Body/'+sub)).GetIndicesAttr().Get()))
+    off=painted(st,sc,[(0,0,-3)],name='Off',lodg_on=0,proto_prim1='/World/Props/Dragon');out(off);assert not off.stage().GetPrimAtPath('/World/Arraytron_LOD')
+
 def UsdShadeBind(prim):
     from pxr import UsdShade
     return UsdShade.MaterialBindingAPI(prim).GetDirectBindingRel().GetTargets()
@@ -202,6 +248,7 @@ def main():
     for name,func in (('Reduction: triangle targets, no degenerate or duplicate triangles, surface distance, area, bounding box, planarity, determinism, minimum',reduce_maths),
                       ('Primvars: face-varying, vertex, uniform and constant carried over to the reduced mesh',primvar_maths),
                       ('On the node: generated prims (hierarchy, transform, material, primvars, normals), hero untouched, prototype list, read-out',stage_prims),
+                      ('Materials: face subsets mapped onto the reduced triangles, bindings kept (also inherited ones), no material copied, the hero network untouched, an exact copy keeps its subsets',materials),
                       ('Level of detail switch uses the generated levels by camera distance',lod_switch),
                       ('A prim of its own wins over the generated level',explicit_wins),
                       ('Generate LODs off reproduces the previous release and writes no prims',off_reproduces),

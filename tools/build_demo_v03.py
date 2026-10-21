@@ -5,8 +5,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions, demo_compat
 parser=argparse.ArgumentParser();parser.add_argument('version',nargs='?',default=versions.CURRENT)
-VID=versions.resolve(parser.parse_args().version);CIRCLE=VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0');VARIATION=VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0')
-assert VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0'),'this builder makes the Prototype Bank demos (v0.3.0 to v0.4.0); the Physics Settle demo is tools/build_demo_physics_v04.py'
+VID=versions.resolve(parser.parse_args().version);CIRCLE=VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0');VARIATION=VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0')
+assert VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0'),'this builder makes the Prototype Bank demos (v0.3.0 to v0.4.0); the Physics Settle demo is tools/build_demo_physics_v04.py'
 TYPE=versions.type_name(VID);HIP=versions.demo(VID);ASSETS=versions.assets_ref(VID);RENDERS=versions.renders_ref(VID)
 HIP.parent.mkdir(parents=True,exist_ok=True)
 hou.hipFile.clear(suppress_save_prompt=True)
@@ -85,7 +85,7 @@ if CIRCLE:
     circle.setComment('CIRCLE — 14 points on a 270 degree arc, Facing: Outward. Cycle: crate, barrel, crate, ...')
     circle.setGenericFlag(hou.nodeFlag.DisplayComment,True)
     last=circle
-CURVES=VID in ('v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0')
+CURVES=VID in ('v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0')
 if CURVES:
     curve_ref=reference('reference_curve','/World/Curve',ASSETS+'/curve_s.usda',last)
     curve=stage.createNode(TYPE,'Arraytron_Curve');curve.setInput(0,curve_ref)

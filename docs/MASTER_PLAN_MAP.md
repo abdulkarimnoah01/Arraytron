@@ -87,3 +87,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-21: v1.18.0 Asset Library and the Stagger Rows slider (user requests); v1.17.0 archived.
 - 2026-10-21: v1.19.0 Biome layers, exclusion and presets (user request); v1.18.0 archived.
 - 2026-10-21: v1.20.0 painted biome map (user request, the last item of the biome phase); v1.19.0 archived.
+- 2026-10-21: v1.21.0 LOD generator keeps the materials (user report from the work PC) and the all-demos grid; v1.20.0 archived.

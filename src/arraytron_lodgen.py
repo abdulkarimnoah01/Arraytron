@@ -5,6 +5,7 @@
 import hashlib
 import numpy as np
 
+LODGEN_MATERIALS=False                      # v1.21.0 (the builder sets it True): the generated levels keep the materials: GeomSubsets carried over, bindings re-authored, Material prims not copied
 LODGEN_PARMS=(('lodg_1','proto_lod1',1),('lodg_2','proto_lod2',2),('lodg_3','proto_proxy',3))
 _LODGEN_CACHE={}
 _LODGEN_STATS={}
@@ -115,6 +116,33 @@ def lodgen_copy_prim(src,dst,skip=()):
     kind=Usd.ModelAPI(src).GetKind()
     if kind:Usd.ModelAPI(dst).SetKind(kind)
 
+def lodgen_bind(src,dst):
+    """Make the generated prim use the same material as its source: the material the source is bound to (its own binding, or one inherited from a parent, a collection ...) is bound directly on the
+    copy when the copy would not resolve to it by itself (the copy lives under another parent)."""
+    try:
+        from pxr import UsdShade
+        want=UsdShade.MaterialBindingAPI(src).ComputeBoundMaterial()[0]
+        if not want:return
+        api=UsdShade.MaterialBindingAPI.Apply(dst);have=api.ComputeBoundMaterial()[0]
+        if not have or have.GetPath()!=want.GetPath():api.Bind(want)
+    except Exception:pass
+
+def lodgen_subsets(stage,src,dst,res,faces):
+    """Carry the face GeomSubsets of a mesh (a material per face group) over to its reduced copy: a new triangle belongs to a subset when the original face it came from does; an exact copy keeps the
+    indices. Everything else on the subset (family, material binding, ...) is copied."""
+    from pxr import Usd,UsdGeom,Vt
+    for child in src.GetChildren():
+        if not child.IsA(UsdGeom.Subset):continue
+        sub=UsdGeom.Subset(child)
+        if str(sub.GetElementTypeAttr().Get() or 'face')!='face':continue
+        idx=np.array(sub.GetIndicesAttr().Get(Usd.TimeCode.EarliestTime()) or [],dtype=np.int64)
+        if res is None:new_idx=idx
+        else:
+            member=np.zeros(max(faces,int(idx.max())+1 if len(idx) else 0),dtype=bool);member[idx]=True;new_idx=np.nonzero(member[res['src_face']])[0]
+        if not len(new_idx):continue
+        out=UsdGeom.Subset.Define(stage,dst.GetPath().AppendChild(child.GetName()));lodgen_copy_prim(child,out.GetPrim(),skip={'indices'})
+        out.CreateIndicesAttr(Vt.IntArray.FromNumpy(new_idx.astype(np.int32)));lodgen_bind(child,out.GetPrim())
+
 def lodgen_mesh(stage,src,path,ratio,min_tris):
     """A reduced copy of one Mesh prim. Returns (triangles before, triangles after)."""
     from pxr import Sdf,Usd,UsdGeom,Vt
@@ -148,6 +176,8 @@ def lodgen_mesh(stage,src,path,ratio,min_tris):
             out=UsdGeom.PrimvarsAPI(new).CreatePrimvar(name,pv.GetTypeName(),interp)
             try:out.Set(type(flat).FromNumpy(np.ascontiguousarray(values)))
             except Exception:out.Set(type(flat)(values.tolist()))
+    if LODGEN_MATERIALS:
+        lodgen_subsets(stage,src,new.GetPrim(),res,len(counts));lodgen_bind(src,new.GetPrim())
     lo,hi=(pts.min(axis=0),pts.max(axis=0)) if res is not None else ((P.min(axis=0),P.max(axis=0)) if len(P) else (np.zeros(3),np.zeros(3)))
     new.CreateExtentAttr([tuple(float(x) for x in lo),tuple(float(x) for x in hi)])
     return before,after
@@ -155,9 +185,11 @@ def lodgen_mesh(stage,src,path,ratio,min_tris):
 def lodgen_clone(stage,src,dst_path,ratio,min_tris):
     """Copy the prim hierarchy of a prototype to dst_path, every Mesh reduced. Returns (triangles before, triangles after)."""
     from pxr import Sdf,Usd,UsdGeom
-    base=str(src.GetPath());total=[0,0]
-    for prim in Usd.PrimRange(src):
-        if prim.GetTypeName()=='GeomSubset':continue                                          # material subsets are not carried over (see docs)
+    from pxr import UsdShade
+    base=str(src.GetPath());total=[0,0];walk=iter(Usd.PrimRange(src))
+    for prim in walk:
+        if LODGEN_MATERIALS and prim.IsA(UsdShade.Material):walk.PruneChildren();continue      # the levels bind the materials of the hero, they do not copy them (a copy loses the shader connections)
+        if prim.GetTypeName()=='GeomSubset':continue                                          # handled with its mesh (lodgen_subsets)
         path=Sdf.Path(dst_path+str(prim.GetPath())[len(base):])
         if prim.IsA(UsdGeom.Mesh):
             b,a=lodgen_mesh(stage,prim,path,ratio,min_tris);total[0]+=b;total[1]+=a;continue

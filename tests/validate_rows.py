@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 SLIDER=tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0)                                                          # v1.18.0: Stagger Rows is a slider (a fraction of the gap), the old tick meant 0.5
-PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_rows_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=20000000
