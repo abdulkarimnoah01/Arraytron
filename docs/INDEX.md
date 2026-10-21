@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.16.0)
+# Arraytron documentation index (v1.17.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
@@ -44,3 +44,4 @@ Start with the **User guide**. Everything is plain Markdown in `docs/`; the proj
 - [Falloff](FALLOFF.md): scale and density fading towards the edge of any scatter.
 - [Rows](ROWS.md): the Line, Circle and Curve modes in several rows, optionally random.
 - [Biome](BIOME.md): rule based scatter by elevation, slope, moisture and temperature.
+- [Mode Palette](MODE_PALETTE.md): the Distribution Mode as a row of icon cells in the Parameters pane.

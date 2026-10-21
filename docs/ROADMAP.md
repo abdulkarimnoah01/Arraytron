@@ -78,3 +78,5 @@ Status 2026-10-21 (latest): v1.14.0 adds Rows for the linear modes. Next: the bi
 Status 2026-10-21 (latest): v1.15.0 starts the biome sector (Biome distribution mode). Next: layers (canopy / understory / ground cover), competition, biome map.
 
 Status 2026-10-21 (latest): v1.16.0 adds the Effect per biome condition. Next: layers (canopy / understory / ground cover), competition, biome map.
+
+Status 2026-10-21 (latest): v1.17.0 adds the Mode Palette. Next: a local asset catalogue (categories), then the biome layers / exclusion / painted biome map / presets.

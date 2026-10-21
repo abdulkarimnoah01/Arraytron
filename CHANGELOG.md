@@ -2,6 +2,10 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.17.0 - Mode Palette
+* **The Distribution Mode is chosen on a palette of big icon cells** at the top of the node's Parameters pane: one cell per mode with its **title under the icon**, the selected one lit (warm tile, yellow frame), the others dim; click a cell to choose the mode. It is a Python Panel registered for the Arraytron node type (like the brush row of Paint Instances) with the node's own parameter dialog embedded below it: no parameter was added, removed or moved and the output is identical to v1.16.0. Icons are drawn by code (`tools/make_mode_icons.py`, 22 SVGs embedded in the HDA); the Paint icon is a simple brush. `ARRAYTRON_NO_PARM_PANEL=1` keeps Houdini's plain dialog.
+* New suite `tests/validate_modepanel.py` (4 groups, 4 mutations). Both builds (PySide6 / PySide2). Documentation `docs/MODE_PALETTE.md`.
+
 ## v1.16.0 - Biome effect
 * **Effect per condition** in every Biome row (Layout tab, Biomes table): *Elevation / Slope / Moisture / Temperature Effect* (0 to 1, default 1). 1 is the condition as set, 0 ignores it completely, in between it only partly counts (`weight = 1 - effect * (1 - band)`), so a biome can follow the elevation but not the temperature. Defaults reproduce v1.15.0 exactly.
 * `tests/validate_biome.py` now has 8 groups and 7 mutations (`biome_effect`). The demo uses the Effect on the Shore stones. Both builds. Documentation `docs/BIOME.md`.

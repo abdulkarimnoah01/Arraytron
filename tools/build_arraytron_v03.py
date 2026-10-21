@@ -41,14 +41,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.13.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True),     # v1.13.0: the same features, plus the mode-aware Falloff (paint strokes, clusters, 3D grid) and the renamed tabs with an Export tab
         'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True),     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
         'v1.15.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True),     # v1.15.0: the same features, plus the Biome distribution mode
-        'v1.16.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True)}     # v1.16.0: the same features, plus an Effect per condition in every biome row
+        'v1.16.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True),     # v1.16.0: the same features, plus an Effect per condition in every biome row
+        'v1.17.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True)}     # v1.17.0: the Mode Palette (big icon cells with the mode titles)
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -786,8 +787,9 @@ def parms():
         g.insertAfter('grid',circle)
     if CURVE:
         names=['Line','Area','Grid / Matrix','Circle / Radial','Curve']+(['Surface'] if SURFACE else [])+(['Paint'] if PAINT else [])+(['Cluster'] if CLUSTER else [])+(['Imported Points'] if IMPORTED else [])+(['Instance Place'] if PLACE else [])+(['Biome'] if BIOME else [])
-        g.replace('distribution',hou.FolderParmTemplate('distribution','Distribution',folder_type=hou.folderType.Simple,parm_templates=(
-            hou.MenuParmTemplate('mode','Distribution Mode',tuple(str(i) for i in range(len(names))),tuple(names)),)))
+        mode=hou.MenuParmTemplate('mode','Distribution Mode',tuple(str(i) for i in range(len(names))),tuple(names))
+        extra=()
+        g.replace('distribution',hou.FolderParmTemplate('distribution','Distribution',folder_type=hou.folderType.Simple,parm_templates=(mode,)+extra))
         curve=curve_folder();curve.setConditional(hou.parmCondType.HideWhen,'{ mode != 4 }');g.insertAfter('circle',curve)
         if SURFACE:
             surface=surface_folder();surface.setConditional(hou.parmCondType.HideWhen,'{ mode != 5 }');g.insertAfter('curve',surface)
@@ -840,6 +842,17 @@ def add_viewer_state(definition):
     definition.setExtraFileOption('ViewerStateInstall/IsViewerState',True);definition.setExtraFileOption('ViewerStateUninstall/IsViewerState',True)
     definition.setExtraFileOption('ViewerStateName.orig/IsPython',True);definition.setExtraFileOption('ViewerStateName.orig/IsExpr',False)
 
+def add_mode_palette(definition):
+    """The Mode Palette widget (src/arraytron_modepanel.py) with the icons of tools/make_mode_icons.py filled in, as the HDA section ModePalette.py (run by src/arraytron_modepalette.py)."""
+    sys.path.insert(0,str(ROOT/'tools'))
+    import make_mode_icons
+    icons={}
+    for key in make_mode_icons.KEYS:
+        for state in ('on','off'):icons['%s_%s'%(key,state)]=(make_mode_icons.OUT/('Mode_%s_%s.svg'%(key,state))).read_text(encoding='utf8')
+    text=(ROOT/'src'/'arraytron_modepanel.py').read_text(encoding='utf8')
+    assert 'ICONS = {}' in text
+    definition.addSection('ModePalette.py',text.replace('ICONS = {}','ICONS = '+repr(icons),1))
+
 def set_icon(definition):
     """Embed icon/Arraytron-Clean.svg in the HDA as the section Icon.svg and point the type's icon at it (opdef:), so the HDA needs no external file."""
     definition.addSection('Icon.svg',(ROOT/'icon'/'Arraytron-Clean.svg').read_text(encoding='utf8'))
@@ -865,6 +878,7 @@ def module_text():
     if FINISH:text+='\n\n# ---- Manual overrides (src/arraytron_overrides.py)\n'+(ROOT/'src/arraytron_overrides.py').read_text()+'\n\n# ---- Production finishing (src/arraytron_finish.py)\n'+(ROOT/'src/arraytron_finish.py').read_text()
     if PICK:text+='\n\n# ---- Pick Instance (src/arraytron_pick.py)\n'+(ROOT/'src/arraytron_pick.py').read_text()
     if PLACE:text+='\n\n# ---- Instance Place (src/arraytron_place.py)\n'+(ROOT/'src/arraytron_place.py').read_text()
+    if MODEPAL:text+='\n\n# ---- Mode Palette opener (src/arraytron_modepalette.py)\n'+(ROOT/'src/arraytron_modepalette.py').read_text()
     return text
 
 def python_sop(parent,name,call):
@@ -1030,6 +1044,9 @@ def build():
     assert usd.GetPrimAtPath('/World/Arraytron/Bounds_Guide/Bounds'),'bounds guide was not authored'
     definition.setParmTemplateGroup(parms())
     definition.addSection('OnCreated',"node=kwargs['node']\nif node.name().startswith('instancer'):\n    node.setName('arraytron1',unique_name=True)\n");definition.setExtraFileOption('OnCreated/IsPython',True)           # a new node is called arraytron1, not instancer1
+    if MODEPAL:                                                       # v1.17.0: the mode palette + the parameters, as a Python Panel shown in the Parameters pane (see src/arraytron_modepalette.py)
+        hook="try:\n    kwargs['node'].hdaModule().install_parm_panel(kwargs['node'].type())\nexcept Exception as error:\n    print('Arraytron: the mode palette is not available (%s)'%error)\n"
+        definition.addSection('OnCreated',definition.sections()['OnCreated'].contents()+hook);definition.addSection('OnLoaded',hook);definition.setExtraFileOption('OnLoaded/IsPython',True)
     definition.addSection('ArraytronVersion',LABEL+(' Prototype Bank, Line/Area/Grid/Circle, Bounds Transform'+(', variation extras' if VARIATION else '')+(', Physics Settle' if PHYSICS else '')+(', Curve' if CURVE else '')+(', Surface Scatter' if SURFACE else '')+(', Mask' if MASK else '')+(', No Overlap' if OVERLAP else '')+(', Grow animation' if GROW else '') if CIRCLE else ' Prototype Bank, Line/Area/Grid, Bounds Transform'))
     definition.addSection('Help','<html><body><h1>Arraytron '+LABEL+'</h1><p>A Solaris instancer: it scatters USD prototypes with a native <b>UsdGeomPointInstancer</b>. Every instance has a <b>stable id</b>, so changing the look, weights or transform never reshuffles the layout.</p>'
         '<h2>Quick start</h2><ol><li>Wire your scene (terrain, curve, models) into the <b>first input</b>; extra models into inputs 2 to 4.</li><li><b>Prototypes</b>: fill the Prototype Bank (a prim path per model).</li><li><b>Layout</b>: pick a Distribution Mode (Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster) and a count.</li><li><b>Variation</b>: switch Randomize on.</li></ol>'
@@ -1039,6 +1056,7 @@ def build():
     set_dialog_script(definition)
     if PAINT:add_viewer_state(definition)
     set_icon(definition)
+    if MODEPAL:add_mode_palette(definition)
     print(json.dumps({'hda':str(HDA),'type':TYPE,'errors':asset.errors()},indent=2))
 
 if __name__=='__main__':
