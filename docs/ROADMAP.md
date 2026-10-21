@@ -89,3 +89,4 @@ Status 2026-10-21 (latest): v1.20.0 adds the painted biome map. Next: competitio
 
 Status 2026-10-21 (latest): v1.21.0 fixes the textures of the generated LOD levels. Next: competition inside a biome.
 Status 2026-10-21 (latest): v1.21.1 fixes the LOD levels of Houdini's own assets (validated with Karma on the Rubber Toy). Next: competition inside a biome.
+Status 2026-10-21 (latest): v1.22.0 adds position Noise, the Points Only display and the cycling Stagger. Next: competition inside a biome.

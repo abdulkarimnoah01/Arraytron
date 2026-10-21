@@ -47,14 +47,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.19.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True),     # v1.19.0: Biome layers, exclusion and presets
         'v1.20.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True),     # v1.20.0: the painted biome map
         'v1.21.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True),     # v1.21.0: the LOD generator keeps the materials
-        'v1.21.1':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True)}     # v1.21.1: the same, and an instanceable prototype (Houdini test geometry) is traversed through its instance proxies
+        'v1.21.1':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True),     # v1.21.1: the same, and an instanceable prototype (Houdini test geometry) is traversed through its instance proxies
+        'v1.22.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True,noise=True,viewmode=True,stagwrap=True)}     # v1.22.0: Stagger Rows cycles and keeps a Circle on its orbit, Display: Points Only, position Noise for every mode
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LIBRARY=STAGGER=BIOMEX=BIOMEMAP=LODMAT=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LIBRARY=STAGGER=BIOMEX=BIOMEMAP=LODMAT=NOISE=VIEWMODE=STAGWRAP=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LIBRARY,STAGGER,BIOMEX,BIOMEMAP,LODMAT,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LIBRARY,STAGGER,BIOMEX,BIOMEMAP,LODMAT,NOISE,VIEWMODE,STAGWRAP,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LIBRARY=c.get('library',False);STAGGER=c.get('staggerslider',False);BIOMEX=c.get('biomex',False);BIOMEMAP=c.get('biomemap',False);LODMAT=c.get('lodmat',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LIBRARY=c.get('library',False);STAGGER=c.get('staggerslider',False);BIOMEX=c.get('biomex',False);BIOMEMAP=c.get('biomemap',False);LODMAT=c.get('lodmat',False);NOISE=c.get('noise',False);VIEWMODE=c.get('viewmode',False);STAGWRAP=c.get('stagwrap',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -245,6 +246,22 @@ def place_folder():
         callback(hou.ButtonParmTemplate('place_clear','Clear Placed Instances',help='Remove every placed instance (undoable).'),"kwargs['node'].hdaModule().place_clear(kwargs['node'])"),
         table))
 
+def noise_folder():
+    """Position noise (v1.22.0): every Distribution Mode, any axis."""
+    def hide(template,condition):
+        template.setConditional(hou.parmCondType.HideWhen,condition);return template
+    def menu(name,label,items,**kw):
+        return hou.MenuParmTemplate(name,label,tuple(str(i) for i in range(len(items))),tuple(items),**kw)
+    return hou.FolderParmTemplate('noise','Noise',folder_type=hou.folderType.Simple,parm_templates=(
+        hou.ToggleParmTemplate('noise_on','Position Noise',default_value=False,help='Move every point by a noise vector, for every Distribution Mode. Off: the points are exactly as the distribution made them. The noise runs before the Mask, the Field Stack and everything after, so those work on the moved points.'),
+        hide(menu('noise_type','Noise Type',('Perlin','Simplex','Random (per point)','Curl (flowing)'),help='Perlin and Simplex: smooth noise that moves neighbouring points alike (the pattern follows the position). Random: every point moves on its own (keyed on its stable id). Curl: swirling, divergence free noise.'),'{ noise_on == 0 }'),
+        hide(hou.FloatParmTemplate('noise_amp','Amount (X Y Z)',3,default_value=(0.5,0.0,0.5),min=0,max=10,help='How far a point may move on each axis, in the local units of the layout. Set an axis to 0 to leave it alone (the default moves points on the ground and keeps their height). A point never moves further than this on any axis.'),'{ noise_on == 0 }'),
+        hide(hou.FloatParmTemplate('noise_freq','Frequency',1,default_value=(0.5,),min=0.001,max=20,help='Size of the pattern: 0.5 repeats about every 2 units, a higher value gives a finer pattern. Not used by Random.'),'{ noise_on == 0 } { noise_type == 2 }'),
+        hide(hou.IntParmTemplate('noise_octaves','Octaves',1,default_value=(1,),min=1,max=8,min_is_strict=True,max_is_strict=True,help='Layers of finer noise added on top (turbulence). 1 is a plain pattern.'),'{ noise_on == 0 } { noise_type == 2 }'),
+        hide(hou.FloatParmTemplate('noise_rough','Roughness',1,default_value=(0.5,),min=0,max=1,help='How strong every finer layer is compared to the one before it.'),'{ noise_on == 0 } { noise_type == 2 } { noise_octaves < 2 }'),
+        hide(hou.FloatParmTemplate('noise_offset','Pattern Offset',3,default_value=(0.0,0.0,0.0),min=-100,max=100,help='Slide the pattern through space (animate it for moving noise). Not used by Random.'),'{ noise_on == 0 } { noise_type == 2 }'),
+        hide(hou.IntParmTemplate('noise_seed','Noise Seed',1,default_value=(1,),min=0,max=10000,help='A different pattern for every seed.'),'{ noise_on == 0 }')))
+
 def rows_folder():
     """Rows (v1.14.0): the linear modes (Line, Circle, Curve) scatter in several parallel rows, optionally randomised."""
     def hide(template,condition):
@@ -257,7 +274,7 @@ def rows_folder():
         hou.ToggleParmTemplate('rows_center','Centre The Rows',default_value=True,help='On: the rows are spread around the path (the middle one is on it when the number of rows is odd). Off: the path is the first row and the others follow on one side (a Circle: outwards).'),
         hou.FloatParmTemplate('rows_random','Random Offset',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point sideways by up to this fraction of half the Row Spacing, so the rows are not straight lines. 0 keeps them straight. Works with one row too (a rough band along the path).'),
         hou.FloatParmTemplate('rows_shift','Random Shift Along',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point along the path by up to this fraction of half the gap between neighbours, so the points of the rows do not line up. 0 keeps them in step.'),
-        (hou.FloatParmTemplate('rows_stagger','Stagger Rows',1,default_value=(0.0,),min=0.0,max=1.0,help='Shift every second row along the path by this fraction of the gap between neighbours: 0 is off, 0.5 a brick pattern, 1 a full gap (the points line up again).') if STAGGER else
+        (hou.FloatParmTemplate('rows_stagger','Stagger Rows',1,default_value=(0.0,),min=0.0,max=1.0,help='Shift every second row along the path by this fraction of the gap between neighbours: 0 is off, 0.5 a brick pattern, 1 a full gap (the points line up again).'+(' Above 1 it cycles (1.5 is 0.5). In a Circle the odd rings are turned about the centre, so they stay on their orbit.' if STAGWRAP else '')) if STAGGER else
          hou.ToggleParmTemplate('rows_stagger','Stagger Rows',default_value=False,help='Shift every second row along the path by half the gap between neighbours (a brick pattern).')),
         hou.IntParmTemplate('rows_seed','Rows Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random offsets. They are keyed on the id of every point, so a point keeps its offset when other rows come and go.'),
         info))
@@ -503,14 +520,15 @@ def finish_folder():
     path=hou.StringParmTemplate('export_path','Export File',1,default_value=('$HIP/arraytron_export/$OS.usd',),string_type=hou.stringParmType.FileReference,tags={'filechooser_pattern':'*.usd,*.usda,*.usdc','filechooser_mode':'write'},help='Where Export USD writes. $OS is the node name.')
     dbg=lambda name,label,default,help_:hide(hou.ToggleParmTemplate(name,label,default_value=default,help=help_),'{ dbg_on == 0 }')
     fold=hou.FolderParmTemplate('finish','Finish',folder_type=hou.folderType.Simple,parm_templates=(table,info,clear,
+        *((menu('view_mode','Display',('Instances','Points Only'),help='Instances: the normal result. Points Only: the instances are hidden in the stream and the points that scatter them are drawn as guide points (purpose guide, never rendered), so you see the layout without the models. The render shows nothing while this is on. Colour and size come from the Debug options.'),) if VIEWMODE else ()),
         hou.ToggleParmTemplate('dbg_on','Debug Views',default_value=False,help='Show debug guides under the output prim (Debug). They are guide purpose: visible in the viewport, never rendered. Off by default.'),
         dbg('dbg_generated','Generated Points',True,'The points as the distribution generated them (white), before the Mask, Field Stack, Separation and Avoid Geometry.'),
         dbg('dbg_rejected','Rejected Points',True,'Generated points that are gone at the end: masked, thinned, separated or avoided (red).'),
-        hide(menu('dbg_color','Colour Final Points By',('Off','Prototype','Id','Weight')+(('Biome',) if BIOME else ()),help='Colour the final instance points: by prototype index, by a colour per id, by weight (Mask x Field Stack: red 0 to green 1) or by biome (Biome mode: one colour per row of the table).'),'{ dbg_on == 0 }'),
+        hide(menu('dbg_color','Colour Final Points By',('Off','Prototype','Id','Weight')+(('Biome',) if BIOME else ()),help='Colour the final instance points: by prototype index, by a colour per id, by weight (Mask x Field Stack: red 0 to green 1) or by biome (Biome mode: one colour per row of the table).'),'{ dbg_on == 0 view_mode == 0 }' if VIEWMODE else '{ dbg_on == 0 }'),
         dbg('dbg_axes','Axes',False,'The up (green) and forward (blue) axis of every instance.'),
         dbg('dbg_radius','Collision Radius',False,'The Separation sphere of every instance (a ring in the XZ plane).'),
         dbg('dbg_centres','Cluster Centres',False,'The cluster centres (Cluster mode).'),
-        hide(hou.FloatParmTemplate('dbg_size','Debug Size',1,default_value=(0.05,),min=0.001,max=100,help='Size of the debug points and axes.'),'{ dbg_on == 0 }'),
+        hide(hou.FloatParmTemplate('dbg_size','Debug Size',1,default_value=(0.05,),min=0.001,max=100,help='Size of the debug points and axes (and of the points in Points Only).'),'{ dbg_on == 0 view_mode == 0 }' if VIEWMODE else '{ dbg_on == 0 }'),
         path,export,cinfo))
     if PICK:fold.addParmTemplate(callback(hou.ButtonParmTemplate('ovr_pick','Pick Instance in Viewport',help='Click an instance in the viewport to create its override row (its stable id is filled in for you). Ctrl-click ticks Delete as well. The marker shows the instance under the mouse and the prompt its id. Esc or Enter finishes. The instances come from the node output, so hidden or deleted ones cannot be picked.'),"kwargs['node'].hdaModule().pick_start(kwargs['node'])"))
     return fold
@@ -746,6 +764,7 @@ def ui_layout(g):
         layout+=heading(title,condition)+[also_hide(t,condition) for t in folders[name].parmTemplates()]
     if 'rows' in folders:
         r=content('rows');rcond='{ mode != 0 mode != 3 mode != 4 }';layout+=heading('ROWS',rcond)+[also_hide(r[n],rcond) for n in ('rows_count','rows_spacing','rows_center','rows_random','rows_shift','rows_stagger','rows_seed','rows_info')]
+    if 'noise' in folders:layout+=heading('NOISE')+list(folders['noise'].parmTemplates())
     bounds=content('bounds')
     layout+=heading('MOVE THE LAYOUT')+pick('bounds','bound_t','bound_r','bound_s','bound_scale_instances')+[bounds['reset_bounds'],details('ui_pivot','Pivot & Guide',[bounds['bound_p'],bounds['show_bounds']])]
     if 'falloff' in folders:
@@ -787,7 +806,7 @@ def ui_layout(g):
     finish=[];export=[]
     if FINISH:
         f2=content('finish');finish=hint('Fix single instances by hand and look inside the result.' if NEWTABS else 'Fix single instances by hand, look inside the result, and write it out.')+heading('INSTANCE OVERRIDES')+([f2['ovr_pick']] if PICK else [])+[f2['overrides'],f2['ovr_info'],f2['ovr_clear']]
-        finish+=heading('DEBUG')+[f2[n] for n in ('dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size')]
+        finish+=(heading('DISPLAY')+[f2['view_mode']] if VIEWMODE else [])+heading('DEBUG')+[f2[n] for n in ('dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size')]
         if NEWTABS:export=hint('Write the result out and see what this node stores.')+heading('EXPORT USD')+[f2['export_path'],f2['export_usd']]+heading('CACHE')+[f2['cache_info']]
         else:finish+=heading('EXPORT AND CACHE')+[f2['export_path'],f2['export_usd'],f2['cache_info']]
     tabs=[tab('tab_source','Prototypes' if NEWTABS else 'Source',source),tab('tab_layout','Layout',layout),tab('tab_look','Variation' if NEWTABS else 'Look',look)]
@@ -833,6 +852,7 @@ def parms():
     if OVERLAP:g.insertAfter('fieldstack' if FIELDS else 'mask',overlap_folder())
     if FALLOFF:g.append(falloff_folder())
     if ROWS:g.append(rows_folder())
+    if NOISE:g.append(noise_folder())
     if PHYSICS:g.append(physics_folder())
     if CAMERA:g.append(optimize_folder())
     if FINISH:g.append(finish_folder())
@@ -895,7 +915,7 @@ def module_text():
     if PAINT:text+='\n\n# ---- Viewport brush (src/arraytron_paint.py)\n'+(ROOT/'src/arraytron_paint.py').read_text()
     if FIELDS:text+='\n\n# ---- Field Stack (src/arraytron_fields.py)\n'+(ROOT/'src/arraytron_fields.py').read_text()
     if FALLOFF:text+='\n\n# ---- Falloff (src/arraytron_falloff.py)\n'+(ROOT/'src/arraytron_falloff.py').read_text()
-    if ROWS:text+='\n\n# ---- Rows (src/arraytron_rows.py)\n'+(ROOT/'src/arraytron_rows.py').read_text()
+    if ROWS:text+='\n\n# ---- Rows (src/arraytron_rows.py)\n'+(ROOT/'src/arraytron_rows.py').read_text().replace('ROWS_WRAP=False','ROWS_WRAP=%s'%STAGWRAP,1)
     if BIOME:text+='\n\n# ---- Biome (src/arraytron_biome.py)\n'+(ROOT/'src/arraytron_biome.py').read_text()
     if CLUSTER:text+='\n\n# ---- Clustering (src/arraytron_cluster.py)\n'+(ROOT/'src/arraytron_cluster.py').read_text()
     if CAMERA:text+='\n\n# ---- Camera, LOD and primvars (src/arraytron_camera.py)\n'+(ROOT/'src/arraytron_camera.py').read_text()
@@ -1024,6 +1044,8 @@ def build():
     after=switch
     if ROWS:
         rows=python_sop(inst,'ROWS','sop_linerows');rows.setInput(0,switch);after=rows                      # Line / Circle / Curve: several rows (after the generator, before everything else)
+    if NOISE:
+        noise=wrangle(inst,'NOISE','noise.vfl',2);noise.setInput(0,after);after=noise                    # position noise on every mode (after the Rows, before the Mask)
     if MASK:
         mask_node=python_sop(inst,'MASK_PROCESSOR','sop_mask');mask_node.setInput(0,after);after=mask_node         # removes points / writes f@maskscale; ids of the survivors are untouched
     if FIELDS:

@@ -1,0 +1,33 @@
+// Position noise (v1.22.0): moves every point by a noise vector times the Amount (X Y Z), so any axis can stay put. Runs right after the distribution (and the Rows),
+// before the Mask, the Field Stack and everything else, for every Distribution Mode. The noise is sampled at the position the point had before it moved, so the pattern
+// is the same wherever the points come from; Random keys on the stable id instead. Every component is kept inside -1..1, so no point moves further than the Amount.
+if (chi("../../noise_on")) {
+    int type = chi("../../noise_type");
+    int seed = chi("../../noise_seed");
+    vector amp = chv("../../noise_amp");
+    float freq = chf("../../noise_freq");
+    int octaves = clamp(chi("../../noise_octaves"), 1, 8);
+    float rough = clamp(chf("../../noise_rough"), 0.0, 1.0);
+    vector shift = chv("../../noise_offset") + set(seed*17.137, seed*31.719, seed*7.331);
+    vector n = {0,0,0};
+    if (type == 2) {
+        float key = float(@id)*3.0 + float(seed)*1000.0;
+        n = set(rand(key), rand(key + 1.0), rand(key + 2.0))*2.0 - 1.0;
+    } else {
+        vector q = @P*freq + shift;
+        float gain = 1.0, total = 0.0;
+        for (int o = 0; o < octaves; o++) {
+            vector v;
+            if (type == 0) { vector w = noise(q); v = w*2.0 - 1.0; }
+            else if (type == 1) { vector w = snoise(q); v = w; }
+            else v = curlnoise(q);
+            n += v*gain;
+            total += gain;
+            gain *= rough;
+            q *= 2.0;
+        }
+        n /= max(total, 1e-6);
+    }
+    n = set(clamp(n.x, -1.0, 1.0), clamp(n.y, -1.0, 1.0), clamp(n.z, -1.0, 1.0));
+    @P += n*amp;
+}

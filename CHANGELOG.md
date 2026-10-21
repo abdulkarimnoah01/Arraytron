@@ -2,6 +2,12 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.22.0 - Noise, Points Only display, cycling Stagger
+* **Position Noise for every Distribution Mode** (Layout tab, section NOISE; off by default): Perlin, Simplex, Random (per point, keyed on the id) or Curl noise, an **Amount per axis** (0 keeps an axis exactly), Frequency, Octaves / Roughness, Pattern Offset and a Seed. It runs after the distribution and the Rows, before the Mask, the Field Stack and the rest, and never changes ids or counts. `src/vex_v190/noise.vfl`, `docs/NOISE_AND_DISPLAY.md`.
+* **Display: Points Only** (Debugging tab): hides every instance (invisibleIds) and draws the scattering points as guide points, coloured and sized by the Debug options. Not rendered; the render is empty while it is on.
+* **Fix: Stagger Rows above 1** pushed a Circle's rings outward (a straight shift along the tangent). It now cycles (1.5 is 0.5, a whole number is off) and in a Circle the odd rings are turned about the centre with their facing, so they keep their orbit.
+* `tests/validate_noise.py` (7 groups, 9 mutations); `tests/validate_rows.py` 7 groups (new `rows_wrap`, `rows_orbit`). New demo `build_demo_noise_v1220.py` (also in the all-demos scene). Both builds.
+
 ## v1.21.1 - LOD generator on Houdini's own assets
 * **Fix: the LOD levels of a Test Geometry asset (Rubber Toy, ...) rendered black or did not exist.** Two causes: the meshes of Houdini's assets are **left-handed** and the generated normals pointed into the mesh (a level shaded from the inside renders black, though the material was bound), and the assets are **instanceable** (their meshes and materials are instance proxies that the traversal skipped, so no level was written at all). Now the normals follow the orientation and the traversal steps into instance proxies; the levels are bound to the material of the hero. Right-handed meshes are unchanged.
 * New tool `tools/lodgen_render_check.py <version> [--instanceable 0|1]`: renders the Rubber Toy as hero, LOD 1, LOD 2 and proxy with Karma (CPU) and compares the colour of each level with the hero (PASS when within the tolerance). v1.21.1: all three levels within 0.05 of the hero; v1.20.0: black.

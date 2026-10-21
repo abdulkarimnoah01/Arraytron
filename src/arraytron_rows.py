@@ -9,6 +9,7 @@ ROWS_ID_STRIDE=20000000
 ROWS_MAX=50
 ROWS_MODES=(0,3,4)                # Line, Circle, Curve
 ROWS_STREAM=96
+ROWS_WRAP=False                    # v1.22.0 (the builder sets it True): Stagger Rows cycles (a value of 1.85 is 0.85) and, in a Circle, turns the odd rings about the centre instead of pushing them along the tangent
 
 def rows_offsets(count,spacing,centered):
     """Sideways offset of every row: centered rows are spread around the path (the middle one on it for an odd count), otherwise the path is the first row and the others follow on one side."""
@@ -35,7 +36,18 @@ def rows_gap(P,ids):
     if len(P)<2:return 0.0
     d=np.linalg.norm(np.diff(P[np.argsort(ids,kind='stable')],axis=0),axis=1);d=d[d>1e-9];return float(np.median(d)) if len(d) else 0.0
 
-def rows_expand(P,ids,along,side,count,spacing,centered,random,shift,stagger,seed):
+def rows_stagger_phi(P,src,row,stagger,gap,normal):
+    """The angle (radians, per point of the result) the odd rings of a Circle are turned by: the fraction of the angle between two neighbours of the ring (the chord of one gap on the radius of the source point). 0 on even rows."""
+    P=np.asarray(P,dtype=np.float64).reshape(-1,3);normal=np.asarray(normal,dtype=np.float64);normal=normal/np.linalg.norm(normal)
+    flat=P-np.outer(P@normal,normal);r=np.linalg.norm(flat,axis=1)[src];step=2.0*np.arcsin(np.clip(gap/(2.0*np.maximum(r,1e-9)),0.0,1.0))
+    return np.where((row%2==1)&(r>1e-9),(float(stagger)%1.0)*step,0.0)
+
+def rows_rotate(pos,normal,phi):
+    """pos turned by phi (per point) about the axis through the origin along normal (Rodrigues)."""
+    n=np.asarray(normal,dtype=np.float64);n=n/np.linalg.norm(n);par=np.outer(pos@n,n);q=pos-par
+    return par+q*np.cos(phi)[:,None]+np.cross(n[None,:],q)*np.sin(phi)[:,None]
+
+def rows_expand(P,ids,along,side,count,spacing,centered,random,shift,stagger,seed,normal=None):
     """The points of all rows. Returns (source index (m,), new positions (m,3), new ids (m,), row number (m,)): row k of source point i is at P + side * offset(k) (+ a random offset across the row of up
     to random * spacing / 2, + a random shift along the path of up to shift * gap / 2, + half a gap along the path on every odd row when staggered), with id + k * ROWS_ID_STRIDE. The random numbers
     are keyed on the new id and the seed, so a point never changes when the number of rows changes."""
@@ -44,7 +56,9 @@ def rows_expand(P,ids,along,side,count,spacing,centered,random,shift,stagger,see
     pos=P[src]+side[src]*off[row][:,None]
     if random>0:pos=pos+side[src]*((scatter_hash(new_ids,seed,ROWS_STREAM)*2.0-1.0)*0.5*float(random)*float(spacing))[:,None]
     if shift>0 and gap>0:pos=pos+along[src]*((scatter_hash(new_ids,seed,ROWS_STREAM+1)*2.0-1.0)*0.5*float(shift)*gap)[:,None]
-    if stagger and gap>0:pos=pos+along[src]*(float(stagger)*gap*(row%2))[:,None]                                  # stagger: the fraction of the gap (the old tick was 0.5)
+    if stagger and gap>0:
+        if ROWS_WRAP and normal is not None:pos=rows_rotate(pos,normal,rows_stagger_phi(P,src,row,stagger,gap,normal))                  # a Circle: the odd rings stay on their orbit
+        else:pos=pos+along[src]*(((float(stagger)%1.0) if ROWS_WRAP else float(stagger))*gap*(row%2))[:,None]                           # stagger: the fraction of the gap (the old tick was 0.5); from v1.22.0 it cycles
     return src,pos,new_ids,row
 
 # ---------------------------------------------------------------- the stage
@@ -57,7 +71,9 @@ def sop_linerows(geo,asset):
     count=min(count,ROWS_MAX);P=np.array(geo.pointFloatAttribValues('P')).reshape(-1,3);ids=np.array(geo.pointIntAttribValues('id'),dtype=np.int64)
     pathdir=np.array(geo.pointFloatAttribValues('pathdir')).reshape(-1,3) if mode==4 and geo.findPointAttrib('pathdir') is not None else None
     along,side=rows_directions(mode,P,asset.evalParm('line_axis'),asset.evalParmTuple('line_direction'),asset.evalParm('circle_plane'),pathdir)
-    src,pos,new_ids,row=rows_expand(P,ids,along,side,count,asset.evalParm('rows_spacing'),asset.evalParm('rows_center'),random,shift,stagger,asset.evalParm('rows_seed'))
+    normal=np.eye(3)[(1,2,0)[int(asset.evalParm('circle_plane'))]] if mode==3 else None
+    src,pos,new_ids,row=rows_expand(P,ids,along,side,count,asset.evalParm('rows_spacing'),asset.evalParm('rows_center'),random,shift,stagger,asset.evalParm('rows_seed'),normal)
+    phi=rows_stagger_phi(P,src,row,stagger,rows_gap(P,ids),normal) if (ROWS_WRAP and normal is not None and stagger and rows_gap(P,ids)>0) else None
     saved=[]
     for a in geo.pointAttribs():
         name=a.name()
@@ -74,6 +90,9 @@ def sop_linerows(geo,asset):
     for name,t,size,default,values in saved:
         v=values[src]
         if name=='id':v=new_ids.reshape(-1,1)
+        if name=='align' and phi is not None and size==4:                                                  # the facing turns with the ring (both are rotations about the plane normal)
+            h=0.5*phi;sn=normal;v=np.array(v,dtype=np.float64);x,y,z,w=v[:,0],v[:,1],v[:,2],v[:,3];sx,sy,sz=np.sin(h)*sn[0],np.sin(h)*sn[1],np.sin(h)*sn[2];c=np.cos(h)
+            v=np.column_stack([c*x+w*sx+sy*z-sz*y,c*y+w*sy+sz*x-sx*z,c*z+w*sz+sx*y-sy*x,c*w-sx*x-sy*y-sz*z])
         (geo.setPointFloatAttribValues if t==hou.attribData.Float else geo.setPointIntAttribValues)(name,v.ravel().tolist())
     geo.setGlobalAttribValue('rows_before',n);geo.setGlobalAttribValue('rows_after',len(pos));geo.setGlobalAttribValue('rows_gap',rows_gap(P,ids))
 

@@ -11,7 +11,8 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 SLIDER=tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0)                                                          # v1.18.0: Stagger Rows is a slider (a fraction of the gap), the old tick meant 0.5
-PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.21.1':'v1.21.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.15.0':'v1.14.0'}[VID]
+WRAP=tuple(int(x) for x in VID[1:].split('.'))>=(1,22,0)                                                            # v1.22.0: Stagger cycles and a Circle stays on its orbit
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_rows_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=20000000
@@ -56,9 +57,13 @@ def mutate(a=None):
     elif MUTATE=='rows_center':
         g['rows_offsets']=lambda count,spacing,centered:np.arange(int(count))*float(spacing)
     elif MUTATE=='rows_random':
-        good=g['rows_expand'];g['rows_expand']=lambda P,ids,along,side,count,spacing,centered,random,shift,stagger,seed:good(P,ids,along,side,count,spacing,centered,0.0,shift,stagger,seed)
+        good=g['rows_expand'];g['rows_expand']=lambda P,ids,along,side,count,spacing,centered,random,shift,stagger,seed,normal=None:good(P,ids,along,side,count,spacing,centered,0.0,shift,stagger,seed,normal)
     elif MUTATE=='rows_stagger':
-        good=g['rows_expand'];g['rows_expand']=lambda P,ids,along,side,count,spacing,centered,random,shift,stagger,seed:good(P,ids,along,side,count,spacing,centered,random,shift,False,seed)
+        good=g['rows_expand'];g['rows_expand']=lambda P,ids,along,side,count,spacing,centered,random,shift,stagger,seed,normal=None:good(P,ids,along,side,count,spacing,centered,random,shift,False,seed,normal)
+    elif MUTATE=='rows_wrap':
+        g['ROWS_WRAP']=False                                                                                                                  # a stagger above 1 keeps growing
+    elif MUTATE=='rows_orbit':
+        g['rows_stagger_phi']=lambda P,src,row,stagger,gap,normal:np.zeros(len(src))                                                           # the odd rings are not turned
     elif MUTATE=='rows_tangent':
         good=g['rows_directions'];g['rows_directions']=lambda mode,P,line_axis=0,line_direction=(1.0,0.0,0.0),circle_plane=0,pathdir=None:good(mode,P,line_axis,line_direction,circle_plane,None)
     elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
@@ -107,7 +112,7 @@ def line_rows():
     sh=by_id(out(scatter(st,sc,name='Shift',rows_count=2,rows_spacing=1.0,rows_shift=1.0,rows_center=0,**kw)));d=sh['pos'][:,0]-np.tile(b['pos'][:,0],2);assert np.all(np.abs(d)<=0.5*1.0+1e-6) and np.ptp(d)>0.3     # along: within half a gap (1.0)
     sg=by_id(out(scatter(st,sc,name='Stagger',rows_count=3,rows_spacing=1.0,rows_stagger=0.5 if SLIDER else 1,rows_center=0,**kw)));rows=sg['ids']//STRIDE;assert np.allclose(sg['pos'][rows==1][:,0],b['pos'][:,0]+0.5,atol=1e-6) and np.allclose(sg['pos'][rows==2][:,0],b['pos'][:,0],atol=1e-6)
     if SLIDER:
-        for amount in (0.25,0.75,1.0):                                                                                                                  # the slider is the fraction of the gap
+        for amount in ((0.25,0.75) if WRAP else (0.25,0.75,1.0)):                                                                                                                  # the slider is the fraction of the gap
             q=by_id(out(scatter(st,sc,name='Stag%d'%int(amount*100),rows_count=3,rows_spacing=1.0,rows_stagger=amount,rows_center=0,**kw)));rq=q['ids']//STRIDE
             assert np.allclose(q['pos'][rq==1][:,0],b['pos'][:,0]+amount,atol=1e-6) and np.allclose(q['pos'][rq==0][:,0],b['pos'][:,0],atol=1e-6) and np.allclose(q['pos'][rq==2][:,0],b['pos'][:,0],atol=1e-6)
         z=by_id(out(scatter(st,sc,name='Stag0',rows_count=3,rows_spacing=1.0,rows_stagger=0.0,rows_center=0,**kw)));assert np.allclose(z['pos'][:,0],np.tile(b['pos'][:,0],3),atol=1e-6)      # 0 is off
@@ -125,6 +130,25 @@ def circle_rows():
     for i in range(72):assert abs(abs(float(np.dot(o['quat'][i],b['quat'][base_id[int(o['ids'][i])%STRIDE]])))-1.0)<2e-3                                                                                    # the facing is copied
     out_rows=by_id(out(scatter(st,sc,name='Out',rows_count=3,rows_spacing=0.6,rows_center=0,**kw)));assert np.allclose(sorted(set(np.round(np.linalg.norm(out_rows['pos'][:,[0,2]],axis=1),5))),[4.0,4.6,5.2])         # outwards
     wall=scatter(st,sc,name='Wall',mode=3,circle_count=12,circle_radius=3.0,circle_plane=1,rows_count=2,rows_spacing=1.0,rows_center=0);w=by_id(out(wall));rw=np.linalg.norm(w['pos'][:,[0,1]],axis=1);assert np.allclose(w['pos'][:,2],0,atol=1e-6) and np.allclose(sorted(set(np.round(rw,5))),[3.0,4.0])   # a ring in the XY plane
+
+def stagger_cycle():
+    """v1.22.0: a Stagger above 1 cycles (1.75 is 0.75), a Circle keeps its orbit: the odd rings are turned about the centre by the fraction of the angle between two neighbours, the facing with them."""
+    if not WRAP:return
+    st,sc=new_scene('cycle');kw=dict(mode=0,line_count=10,line_length=9.0,line_center=1);b=by_id(out(scatter(st,sc,name='Base',**kw)))
+    for amount,eff in ((1.75,0.75),(7.85,0.85),(2.0,0.0),(0.4,0.4)):
+        q=by_id(out(scatter(st,sc,name='L%d'%int(amount*100),rows_count=3,rows_spacing=1.0,rows_stagger=amount,rows_center=0,**kw)));rq=q['ids']//STRIDE
+        assert np.allclose(q['pos'][rq==1][:,0],b['pos'][:,0]+eff,atol=1e-6) and np.allclose(q['pos'][rq==0][:,0],b['pos'][:,0],atol=1e-6) and np.allclose(q['pos'][rq==2][:,0],b['pos'][:,0],atol=1e-6),amount
+    kc=dict(mode=3,circle_count=24,circle_radius=4.0,circle_facing=1,rows_count=3,rows_spacing=0.6);step=2*math.pi/24
+    flat=by_id(out(scatter(st,sc,name='Flat',**kc)));rows=flat['ids']//STRIDE;ang0=np.arctan2(flat['pos'][:,2],flat['pos'][:,0])
+    for amount in (0.5,7.85,3.25):
+        o=by_id(out(scatter(st,sc,name='Orbit%d'%int(amount*100),rows_stagger=amount,**kc)));assert np.array_equal(o['ids'],flat['ids']);eff=amount%1.0
+        r=np.linalg.norm(o['pos'][:,[0,2]],axis=1)
+        for k,rad in ((0,3.4),(1,4.0),(2,4.6)):assert np.allclose(r[rows==k],rad,atol=1e-5),(amount,k,r[rows==k][:3])                                                    # the orbit is kept
+        assert np.allclose(o['pos'][:,1],0,atol=1e-9)
+        turn=np.array([abs(math.remainder(a-b_,2*math.pi)) for a,b_ in zip(np.arctan2(o['pos'][:,2],o['pos'][:,0]),ang0)])
+        assert np.allclose(turn[rows%2==0],0,atol=1e-6) and np.allclose(turn[rows==1],eff*step,atol=1e-6),(amount,turn[rows==1][:3],eff*step)
+        rel=np.array([2*math.acos(min(1.0,abs(float(np.dot(a,b_))))) for a,b_ in zip(o['quat'],flat['quat'])]);assert np.allclose(rel[rows==1],eff*step,atol=0.05) and np.all(rel[rows%2==0]<0.1),(amount,rel[rows==1][:3])      # the facing turns with the ring
+    z=by_id(out(scatter(st,sc,name='Zero',rows_stagger=0.0,**kc)));assert np.allclose(z['pos'],flat['pos'])
 
 def curve_rows():
     st,sc=new_scene('curve');kw=dict(mode=4,curve_prim='/World/Path',curve_count=13)
@@ -156,13 +180,14 @@ def contract():
     assert 'mode != 0' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen] and 'mode != 4' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen]
     chain=[];n=a.node('USD_COMPILER/MASK_PROCESSOR')
     while n is not None and len(chain)<4:chain.append(n.name());n=n.inputs()[0] if n.inputs() else None
-    assert chain[:3]==['MASK_PROCESSOR','ROWS','DISTRIBUTION_GENERATOR'],chain
+    assert chain[:3]==(['MASK_PROCESSOR','NOISE','ROWS'] if WRAP else ['MASK_PROCESSOR','ROWS','DISTRIBUTION_GENERATOR']),chain
     assert '$' not in a.type().definition().sections()['PythonModule'].contents().split('# ---- Rows')[1].split('# ----')[0] and 'Row 0 keeps its ids' in g.find('rows_count').help()
 
 def main():
     for name,func in (('Maths: offsets, directions (line, circle planes, curve), gap, expansion, ids, random and stagger bounds, stability',maths),
                       ('Line: rows next to each other (centred or on one side), ids, more rows never move the others, random across, shift along, stagger, a band, other axis',line_rows),
                       ('Circle: concentric rings, same angles, facing copied, outwards, a ring in another plane',circle_rows),
+                      ('Stagger cycles above 1, a Circle keeps its orbit and its facing',stagger_cycle),
                       ('Curve: rows pushed sideways from the path on every leg; one row is the previous release',curve_rows),
                       ('Other modes untouched; Falloff and Mask work on all rows',other_modes_and_stages),
                       ('Contract: parameters, Layout tab, stage order, no dollar signs',contract)):check(name,func)

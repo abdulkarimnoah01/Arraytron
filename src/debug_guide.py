@@ -5,11 +5,12 @@
 # (before the Bounds Transform), so the Debug prim, a child of the output prim, moves with the layout.
 import hou
 import numpy as np
-from pxr import Gf, Sdf, UsdGeom, Vt
+from pxr import Gf, Sdf, Usd, UsdGeom, Vt
 node=hou.pwd()
 asset=node.parent()
 stage=node.editableStage()
-if asset.evalParm('dbg_on'):
+dbg=bool(asset.evalParm('dbg_on'));view=asset.parm('view_mode') is not None and asset.evalParm('view_mode')==1               # view: Points Only (v1.22.0), the instances are hidden and the points shown
+if dbg or view:
     asset.evalParm('cam_frame')                                                                 # follow the timeline (Grow, animated cameras)
     m=asset.hdaModule();root=Sdf.Path(asset.evalParm('outputpath'));prim=stage.GetPrimAtPath(root)
     if prim and prim.IsValid():
@@ -30,7 +31,7 @@ if asset.evalParm('dbg_on'):
         final=asset.node('USD_COMPILER/OUT_POINTS').geometry();gen=asset.node('USD_COMPILER/DISTRIBUTION_GENERATOR').geometry()
         if final is None or gen is None:raise hou.NodeError('Debug Views: the points could not be generated (see the error of the node above); fix that first.')
         fids=np.array(final.pointIntAttribValues('id'),dtype=np.int64) if final.intrinsicValue('pointcount') else np.zeros(0,dtype=np.int64)
-        if asset.evalParm('dbg_generated') or asset.evalParm('dbg_rejected'):
+        if dbg and (asset.evalParm('dbg_generated') or asset.evalParm('dbg_rejected')):
             gids=np.array(gen.pointIntAttribValues('id'),dtype=np.int64) if gen.intrinsicValue('pointcount') else np.zeros(0,dtype=np.int64);gpos=np.array(gen.pointFloatAttribValues('P')).reshape(-1,3) if gen.intrinsicValue('pointcount') else np.zeros((0,3))
             if asset.evalParm('dbg_generated'):points('Generated',gpos,(0.9,0.9,0.9))
             if asset.evalParm('dbg_rejected'):
@@ -50,14 +51,21 @@ if asset.evalParm('dbg_on'):
                     w=np.array(final.pointFloatAttribValues('mask'))*np.array(final.pointFloatAttribValues('density')) if final.findPointAttrib('mask') is not None and final.findPointAttrib('density') is not None else np.ones(len(fids))
                     cols=np.column_stack([1.0-w,w,0.1*np.ones(len(w))])
                 points('Final',fpos,cols)
-            if asset.evalParm('dbg_axes'):
+            elif view:points('Final',fpos,(0.35,1.0,0.55))
+            if dbg and asset.evalParm('dbg_axes'):
                 x,y,z,w=q[:,0],q[:,1],q[:,2],q[:,3]
                 up=np.column_stack([2*(x*y-z*w),1-2*(x*x+z*z),2*(y*z+x*w)]);fwd=np.column_stack([2*(x*z+y*w),2*(y*z-x*w),1-2*(x*x+y*y)])
                 segs=[];cols=[]
                 for p,u,f in zip(fpos,up,fwd):segs+=[[p,p+u*size*4],[p,p+f*size*4]];cols+=[(0.2,1.0,0.2),(0.3,0.5,1.0)]
                 lines('Axes',segs,cols)
-            if asset.evalParm('dbg_radius'):
+            if dbg and asset.evalParm('dbg_radius'):
                 cen,rad=m.instance_spheres_for(asset,final)[1:] if asset.parm('overlap_size') is not None else (fpos,np.full(len(fpos),size))
                 ang=np.linspace(0,2*np.pi,25);segs=[np.column_stack([c[0]+r*np.cos(ang),np.full(25,c[1]),c[2]+r*np.sin(ang)]) for c,r in zip(cen,rad)];lines('Radius',segs,[(1.0,0.8,0.1)]*len(segs))
-        if asset.evalParm('dbg_centres') and asset.parm('cluster_prim') is not None and asset.evalParm('mode')==7:
+        if dbg and asset.evalParm('dbg_centres') and asset.parm('cluster_prim') is not None and asset.evalParm('mode')==7:
             P_,T_,area_,normals_,vn_=m.cluster_surface(asset);centres,_,_=m.surface_points(P_,T_,area_,normals_,vn_,asset.evalParm('cluster_count'),asset.evalParm('cluster_seed'),asset.evalParm('cluster_normal')==1,0.0,180.0,0.0,0.0);points('ClusterCentres',centres,(1.0,1.0,0.1))
+        if view:                                                                                  # Points Only: every id is invisible (the instancer itself stays, so its guide children show)
+            pi=UsdGeom.PointInstancer(prim)
+            if pi:
+                attr=pi.CreateInvisibleIdsAttr();ids=set(int(i) for i in (pi.GetIdsAttr().Get() or [])) or set(int(i) for i in fids)
+                for time in [Usd.TimeCode.Default()]+[Usd.TimeCode(t) for t in attr.GetTimeSamples()]:
+                    attr.Set(Vt.Int64Array(sorted(ids|set(int(i) for i in (attr.Get(time) or [])))),time)
