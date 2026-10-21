@@ -9,7 +9,7 @@ The linear Distribution Modes (**Line**, **Circle / Radial**, **Curve**) scatter
 | Centre The Rows | On (default): the rows are spread around the path (the middle one on it for an odd number of rows). Off: the path is the first row and the others follow on one side (a Circle: outwards). |
 | Random Offset | 0 to 1: each point is moved sideways by a random amount of up to this fraction of half the Row Spacing, so the rows are not straight lines. Works with one row too (a rough band along the path). |
 | Random Shift Along | 0 to 1: each point is moved along the path by up to this fraction of half the gap between neighbours, so the points of the rows do not line up. |
-| Stagger Rows | Every second row is shifted by half a gap along the path (a brick pattern). |
+| Stagger Rows | A slider, 0 to 1 (v1.18.0): every second row is shifted along the path by this fraction of the gap between neighbours. 0 is off, **0.5 a brick pattern**, 1 a full gap. (Before v1.18.0 it was a tick that meant 0.5.) |
 | Rows Seed | Seed of the random numbers. |
 
 **Ids.** Row 0 keeps the ids of the path; row k gets `id + k * 20,000,000`. A point's random offsets are keyed on its id, so **adding or removing rows never moves or renames the points that stay** (use *Centre The Rows* off when you want the first rows to stay in place as you add more).

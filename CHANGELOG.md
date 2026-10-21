@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.18.0 - Asset Library
+* **Asset Library** (Parameters pane, under the Mode Palette): a local catalogue of USD assets with **your own categories** (Trees, Plants, Rocks, Props by default). Import from the **Solaris Asset Catalog** (names, thumbnails, tags), from USD files, from a folder or by dragging files; search by name or tag; **Add to Bank** (or double-click) puts an asset into the Prototype Bank as a USD File row. Thumbnails for plain USD files are drawn by a small software renderer. One JSON file per user (`Documents/Arraytron/library`, or `ARRAYTRON_LIBRARY`). Logic in the HDA's PythonModule (usable from scripts), Qt section in the panel. Documentation `docs/ASSET_LIBRARY.md`.
+* **Stagger Rows is a slider** (0 to 1, the fraction of the gap; 0 off, 0.5 the old brick pattern) instead of a tick. Earlier releases are unchanged.
+* New suite `tests/validate_library.py` (6 groups, 4 mutations); the Rows suite checks the slider. Both builds.
+
 ## v1.17.0 - Mode Palette
 * **The Distribution Mode is chosen on a palette of big icon cells** at the top of the node's Parameters pane: one cell per mode with its **title under the icon**, the selected one lit (warm tile, yellow frame), the others dim; click a cell to choose the mode. It is a Python Panel registered for the Arraytron node type (like the brush row of Paint Instances) with the node's own parameter dialog embedded below it: no parameter was added, removed or moved and the output is identical to v1.16.0. Icons are drawn by code (`tools/make_mode_icons.py`, 22 SVGs embedded in the HDA); the Paint icon is a simple brush. `ARRAYTRON_NO_PARM_PANEL=1` keeps Houdini's plain dialog.
 * New suite `tests/validate_modepanel.py` (4 groups, 4 mutations). Both builds (PySide6 / PySide2). Documentation `docs/MODE_PALETTE.md`.

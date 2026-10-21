@@ -177,11 +177,17 @@ class ParmPanel(QtWidgets.QWidget):
         self.palette = ModePalette(self, embedded=True)
         self.dialog = hou.qt.ParmDialog(None, False)
         layout.addWidget(self.palette, 0)
+        self.library = LibraryPanel(self) if 'LibraryPanel' in globals() else None             # the Asset Library section (src/arraytron_libpanel.py), when this build has it
+        if self.library is not None:
+            layout.addWidget(self.library, 0)
         layout.addWidget(self.dialog, 1)
 
     def set_node(self, node):
         self.palette.set_node(node)
         self.palette.setVisible(self.palette.node is not None)
+        if self.library is not None:
+            self.library.set_node(node if self.palette.node is not None else None)
+            self.library.setVisible(self.palette.node is not None)
         try:
             self.dialog.setNode(node)
         except Exception:

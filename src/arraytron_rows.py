@@ -44,7 +44,7 @@ def rows_expand(P,ids,along,side,count,spacing,centered,random,shift,stagger,see
     pos=P[src]+side[src]*off[row][:,None]
     if random>0:pos=pos+side[src]*((scatter_hash(new_ids,seed,ROWS_STREAM)*2.0-1.0)*0.5*float(random)*float(spacing))[:,None]
     if shift>0 and gap>0:pos=pos+along[src]*((scatter_hash(new_ids,seed,ROWS_STREAM+1)*2.0-1.0)*0.5*float(shift)*gap)[:,None]
-    if stagger and gap>0:pos=pos+along[src]*(0.5*gap*(row%2))[:,None]
+    if stagger and gap>0:pos=pos+along[src]*(float(stagger)*gap*(row%2))[:,None]                                  # stagger: the fraction of the gap (the old tick was 0.5)
     return src,pos,new_ids,row
 
 # ---------------------------------------------------------------- the stage
@@ -52,7 +52,7 @@ def sop_linerows(geo,asset):
     """ROWS: replicate the path into several rows (and randomise). Every attribute of a point is copied to its copies (the alignment of a Circle, the curve number ...)."""
     for name,default in (('rows_before',0),('rows_after',0),('rows_gap',0.0)):geo.addAttrib(hou.attribType.Global,name,default)
     n=geo.intrinsicValue('pointcount');geo.setGlobalAttribValue('rows_before',n);geo.setGlobalAttribValue('rows_after',n);mode=asset.evalParm('mode')
-    count=asset.evalParm('rows_count');random=asset.evalParm('rows_random');shift=asset.evalParm('rows_shift');stagger=asset.evalParm('rows_stagger')
+    count=asset.evalParm('rows_count');random=asset.evalParm('rows_random');shift=asset.evalParm('rows_shift');stagger=asset.evalParm('rows_stagger')*(0.5 if asset.parm('rows_stagger').parmTemplate().type()==hou.parmTemplateType.Toggle else 1.0)
     if mode not in ROWS_MODES or n==0 or (count<=1 and random<=0 and shift<=0 and not stagger):return
     count=min(count,ROWS_MAX);P=np.array(geo.pointFloatAttribValues('P')).reshape(-1,3);ids=np.array(geo.pointIntAttribValues('id'),dtype=np.int64)
     pathdir=np.array(geo.pointFloatAttribValues('pathdir')).reshape(-1,3) if mode==4 and geo.findPointAttrib('pathdir') is not None else None

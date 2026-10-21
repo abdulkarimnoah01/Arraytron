@@ -42,14 +42,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.14.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True),     # v1.14.0: the same features, plus Rows for the Line, Circle and Curve modes
         'v1.15.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True),     # v1.15.0: the same features, plus the Biome distribution mode
         'v1.16.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True),     # v1.16.0: the same features, plus an Effect per condition in every biome row
-        'v1.17.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True)}     # v1.17.0: the Mode Palette (big icon cells with the mode titles)
+        'v1.17.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True),     # v1.17.0: the Mode Palette (big icon cells with the mode titles)
+        'v1.18.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True)}     # v1.18.0: the Asset Library in the Parameters pane; Stagger Rows is a slider
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LIBRARY=STAGGER=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LIBRARY,STAGGER,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LIBRARY=c.get('library',False);STAGGER=c.get('staggerslider',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -252,7 +253,8 @@ def rows_folder():
         hou.ToggleParmTemplate('rows_center','Centre The Rows',default_value=True,help='On: the rows are spread around the path (the middle one is on it when the number of rows is odd). Off: the path is the first row and the others follow on one side (a Circle: outwards).'),
         hou.FloatParmTemplate('rows_random','Random Offset',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point sideways by up to this fraction of half the Row Spacing, so the rows are not straight lines. 0 keeps them straight. Works with one row too (a rough band along the path).'),
         hou.FloatParmTemplate('rows_shift','Random Shift Along',1,default_value=(0.0,),min=0,max=1,help='Randomise the position of every point along the path by up to this fraction of half the gap between neighbours, so the points of the rows do not line up. 0 keeps them in step.'),
-        hou.ToggleParmTemplate('rows_stagger','Stagger Rows',default_value=False,help='Shift every second row along the path by half the gap between neighbours (a brick pattern).'),
+        (hou.FloatParmTemplate('rows_stagger','Stagger Rows',1,default_value=(0.0,),min=0.0,max=1.0,help='Shift every second row along the path by this fraction of the gap between neighbours: 0 is off, 0.5 a brick pattern, 1 a full gap (the points line up again).') if STAGGER else
+         hou.ToggleParmTemplate('rows_stagger','Stagger Rows',default_value=False,help='Shift every second row along the path by half the gap between neighbours (a brick pattern).')),
         hou.IntParmTemplate('rows_seed','Rows Seed',1,default_value=(1,),min=0,max=10000,help='Seed of the random offsets. They are keyed on the id of every point, so a point keeps its offset when other rows come and go.'),
         info))
 
@@ -851,7 +853,9 @@ def add_mode_palette(definition):
         for state in ('on','off'):icons['%s_%s'%(key,state)]=(make_mode_icons.OUT/('Mode_%s_%s.svg'%(key,state))).read_text(encoding='utf8')
     text=(ROOT/'src'/'arraytron_modepanel.py').read_text(encoding='utf8')
     assert 'ICONS = {}' in text
-    definition.addSection('ModePalette.py',text.replace('ICONS = {}','ICONS = '+repr(icons),1))
+    text=text.replace('ICONS = {}','ICONS = '+repr(icons),1)
+    if LIBRARY:text+=(ROOT/'src/arraytron_library.py').read_text(encoding='utf8')+(ROOT/'src/arraytron_libpanel.py').read_text(encoding='utf8')
+    definition.addSection('ModePalette.py',text)
 
 def set_icon(definition):
     """Embed icon/Arraytron-Clean.svg in the HDA as the section Icon.svg and point the type's icon at it (opdef:), so the HDA needs no external file."""
@@ -879,6 +883,7 @@ def module_text():
     if PICK:text+='\n\n# ---- Pick Instance (src/arraytron_pick.py)\n'+(ROOT/'src/arraytron_pick.py').read_text()
     if PLACE:text+='\n\n# ---- Instance Place (src/arraytron_place.py)\n'+(ROOT/'src/arraytron_place.py').read_text()
     if MODEPAL:text+='\n\n# ---- Mode Palette opener (src/arraytron_modepalette.py)\n'+(ROOT/'src/arraytron_modepalette.py').read_text()
+    if LIBRARY:text+=(ROOT/'src/arraytron_library.py').read_text()
     return text
 
 def python_sop(parent,name,call):

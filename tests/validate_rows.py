@@ -10,7 +10,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.15.0':'v1.14.0'}[VID]
+SLIDER=tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0)                                                          # v1.18.0: Stagger Rows is a slider (a fraction of the gap), the old tick meant 0.5
+PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_rows_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=20000000
@@ -88,7 +89,7 @@ def maths():
     assert np.allclose(r1,r2[:len(r1)]) and np.array_equal(i1,i2[:len(i1)])                                                                                                                                  # a point keeps its offset when rows are added
     lat=r1[:,2]+(w1*0.8)[:]*0;jit=r1[:,2]-(-(w1*0.8));assert np.all(np.abs(jit)<=0.5*1.0*0.8+1e-12) and np.ptp(jit)>0.2                                                                                       # sideways jitter within +/- random * spacing / 2
     _,rs,_,_=m.rows_expand(P,ids,al,sd,1,0.5,True,0.0,1.0,False,3);assert np.all(np.abs(rs[:,0]-P[:,0])<=0.5*1.0*1.0+1e-12) and np.ptp(rs[:,0]-P[:,0])>0.2 and np.allclose(rs[:,2],0)                              # along jitter within +/- shift * gap / 2
-    _,st_,_,rw=m.rows_expand(P,ids,al,sd,3,0.5,False,0.0,0.0,True,1);assert np.allclose(st_[rw==1][:,0],P[:,0]+0.5) and np.allclose(st_[rw==0][:,0],P[:,0]) and np.allclose(st_[rw==2][:,0],P[:,0])               # odd rows shifted by half a gap
+    _,st_,_,rw=m.rows_expand(P,ids,al,sd,3,0.5,False,0.0,0.0,0.5 if SLIDER else True,1);assert np.allclose(st_[rw==1][:,0],P[:,0]+0.5) and np.allclose(st_[rw==0][:,0],P[:,0]) and np.allclose(st_[rw==2][:,0],P[:,0])               # odd rows shifted by half a gap
 
 def line_rows():
     st,sc=new_scene('line');kw=dict(mode=0,line_count=10,line_length=9.0,line_center=1)
@@ -104,7 +105,12 @@ def line_rows():
     r2=by_id(out(scatter(st,sc,name='Rand2',rows_count=3,rows_spacing=1.0,rows_random=1.0,rows_seed=4,rows_center=0,**kw)));assert np.allclose(r['pos'],r2['pos'])                                           # deterministic
     r3=by_id(out(scatter(st,sc,name='Rand3',rows_count=3,rows_spacing=1.0,rows_random=1.0,rows_seed=5,rows_center=0,**kw)));assert not np.allclose(r['pos'],r3['pos'],atol=1e-3)                              # the seed
     sh=by_id(out(scatter(st,sc,name='Shift',rows_count=2,rows_spacing=1.0,rows_shift=1.0,rows_center=0,**kw)));d=sh['pos'][:,0]-np.tile(b['pos'][:,0],2);assert np.all(np.abs(d)<=0.5*1.0+1e-6) and np.ptp(d)>0.3     # along: within half a gap (1.0)
-    sg=by_id(out(scatter(st,sc,name='Stagger',rows_count=3,rows_spacing=1.0,rows_stagger=1,rows_center=0,**kw)));rows=sg['ids']//STRIDE;assert np.allclose(sg['pos'][rows==1][:,0],b['pos'][:,0]+0.5,atol=1e-6) and np.allclose(sg['pos'][rows==2][:,0],b['pos'][:,0],atol=1e-6)
+    sg=by_id(out(scatter(st,sc,name='Stagger',rows_count=3,rows_spacing=1.0,rows_stagger=0.5 if SLIDER else 1,rows_center=0,**kw)));rows=sg['ids']//STRIDE;assert np.allclose(sg['pos'][rows==1][:,0],b['pos'][:,0]+0.5,atol=1e-6) and np.allclose(sg['pos'][rows==2][:,0],b['pos'][:,0],atol=1e-6)
+    if SLIDER:
+        for amount in (0.25,0.75,1.0):                                                                                                                  # the slider is the fraction of the gap
+            q=by_id(out(scatter(st,sc,name='Stag%d'%int(amount*100),rows_count=3,rows_spacing=1.0,rows_stagger=amount,rows_center=0,**kw)));rq=q['ids']//STRIDE
+            assert np.allclose(q['pos'][rq==1][:,0],b['pos'][:,0]+amount,atol=1e-6) and np.allclose(q['pos'][rq==0][:,0],b['pos'][:,0],atol=1e-6) and np.allclose(q['pos'][rq==2][:,0],b['pos'][:,0],atol=1e-6)
+        z=by_id(out(scatter(st,sc,name='Stag0',rows_count=3,rows_spacing=1.0,rows_stagger=0.0,rows_center=0,**kw)));assert np.allclose(z['pos'][:,0],np.tile(b['pos'][:,0],3),atol=1e-6)      # 0 is off
     band=by_id(out(scatter(st,sc,name='Band',rows_count=1,rows_spacing=2.0,rows_random=1.0,**kw)));assert len(band['ids'])==10 and np.all(np.abs(band['pos'][:,2])<=1.0+1e-6) and np.ptp(band['pos'][:,2])>0.3 and np.array_equal(band['ids'],b['ids'])      # one row with a random offset: a band
     z=by_id(out(scatter(st,sc,name='Z',mode=0,line_axis=2,line_count=6,line_length=5.0,rows_count=2,rows_spacing=1.0,rows_center=0)));assert sorted(set(np.round(z['pos'][:,0],6)))==[0.0,1.0]                         # a line along Z: rows along X
     c=scatter(st,sc,name='Info',rows_count=3,**kw);out(c);assert '3 rows of 10 points = 30 points' in c.hdaModule().rows_info(c)
@@ -145,7 +151,7 @@ def other_modes_and_stages():
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
     for n in ('rows_count','rows_spacing','rows_center','rows_random','rows_shift','rows_stagger','rows_seed','rows_info'):assert g.find(n) is not None,n
-    assert g.find('rows_count').defaultValue()==(1,) and g.find('rows_random').defaultValue()==(0.0,) and g.find('rows_shift').defaultValue()==(0.0,) and g.find('rows_stagger').defaultValue() is False
+    assert g.find('rows_count').defaultValue()==(1,) and g.find('rows_random').defaultValue()==(0.0,) and g.find('rows_shift').defaultValue()==(0.0,) and ((g.find('rows_stagger').defaultValue()==(0.0,) and g.find('rows_stagger').minValue()==0.0 and g.find('rows_stagger').maxValue()==1.0) if SLIDER else g.find('rows_stagger').defaultValue() is False)
     layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('rows_count')>names.index('circle_count') and names.index('rows_count')<names.index('bound_t')
     assert 'mode != 0' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen] and 'mode != 4' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen]
     chain=[];n=a.node('USD_COMPILER/MASK_PROCESSOR')

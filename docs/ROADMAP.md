@@ -80,3 +80,5 @@ Status 2026-10-21 (latest): v1.15.0 starts the biome sector (Biome distribution 
 Status 2026-10-21 (latest): v1.16.0 adds the Effect per biome condition. Next: layers (canopy / understory / ground cover), competition, biome map.
 
 Status 2026-10-21 (latest): v1.17.0 adds the Mode Palette. Next: a local asset catalogue (categories), then the biome layers / exclusion / painted biome map / presets.
+
+Status 2026-10-21 (latest): v1.18.0 adds the Asset Library. Next: the biome layers / exclusion / painted biome map / presets.

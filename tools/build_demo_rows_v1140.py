@@ -27,6 +27,7 @@ def node(name,out,comment,**values):
     n=stage.createNode(TYPE,name);n.setInput(0,previous[0]);n.parm('outputpath').set(out);n.parm('protos').set(1);n.parm('proto_prim1').set('/World/Props/Rock');n.parm('proto_scale1').set(0.2)
     n.parm('scale_random_mode').set(1);n.parm('scale_min').set(0.7);n.parm('scale_max').set(1.2);n.parm('rotation_random_mode').set(1);n.parm('yaw_random').set(180)
     for k,v in values.items():
+        if k=='rows_stagger' and n.parm(k).parmTemplate().type()==hou.parmTemplateType.Float:v=0.5*v      # v1.18.0: Stagger Rows is a slider (the fraction of the gap); the old tick meant 0.5
         pt=n.parmTuple(k)
         if pt is not None:pt.set(v if isinstance(v,(tuple,list)) else (v,))
         else:n.parm(k).set(v)
