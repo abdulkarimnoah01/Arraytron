@@ -5,7 +5,7 @@
 import hashlib
 import numpy as np
 
-LODGEN_MATERIALS=False                      # v1.21.0 (the builder sets it True): the generated levels keep the materials: GeomSubsets carried over, bindings re-authored, Material prims not copied
+LODGEN_MATERIALS=False                      # v1.21.0 / v1.21.1 (the builder sets it True): the generated levels keep the look of the hero: GeomSubsets carried over, bindings re-authored, Material prims not copied, instance proxies traversed, normals of left-handed meshes pointing out
 LODGEN_PARMS=(('lodg_1','proto_lod1',1),('lodg_2','proto_lod2',2),('lodg_3','proto_proxy',3))
 _LODGEN_CACHE={}
 _LODGEN_STATS={}
@@ -116,6 +116,16 @@ def lodgen_copy_prim(src,dst,skip=()):
     kind=Usd.ModelAPI(src).GetKind()
     if kind:Usd.ModelAPI(dst).SetKind(kind)
 
+def lodgen_prims(src):
+    """Every prim of the hierarchy of a prototype, also the instance proxies under an instanceable prim (see lodgen_children)."""
+    from pxr import Usd
+    return Usd.PrimRange(src,Usd.TraverseInstanceProxies(Usd.PrimDefaultPredicate)) if LODGEN_MATERIALS else Usd.PrimRange(src)
+
+def lodgen_children(prim):
+    """The children of a prim, also when it is an instance proxy (an instanceable prototype such as Houdini's Test Geometry assets: its meshes and materials are instance proxies that a plain traversal skips)."""
+    from pxr import Usd
+    return prim.GetFilteredChildren(Usd.TraverseInstanceProxies(Usd.PrimDefaultPredicate)) if LODGEN_MATERIALS else prim.GetChildren()
+
 def lodgen_bind(src,dst):
     """Make the generated prim use the same material as its source: the material the source is bound to (its own binding, or one inherited from a parent, a collection ...) is bound directly on the
     copy when the copy would not resolve to it by itself (the copy lives under another parent)."""
@@ -131,7 +141,7 @@ def lodgen_subsets(stage,src,dst,res,faces):
     """Carry the face GeomSubsets of a mesh (a material per face group) over to its reduced copy: a new triangle belongs to a subset when the original face it came from does; an exact copy keeps the
     indices. Everything else on the subset (family, material binding, ...) is copied."""
     from pxr import Usd,UsdGeom,Vt
-    for child in src.GetChildren():
+    for child in lodgen_children(src):
         if not child.IsA(UsdGeom.Subset):continue
         sub=UsdGeom.Subset(child)
         if str(sub.GetElementTypeAttr().Get() or 'face')!='face':continue
@@ -166,7 +176,9 @@ def lodgen_mesh(stage,src,path,ratio,min_tris):
         new.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(pts.astype(np.float32)));new.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(after,3,dtype=np.int32)));new.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(tri.reshape(-1).astype(np.int32)))
         new.CreateSubdivisionSchemeAttr('none')
         if src.GetAttribute('normals').HasValue() or UsdGeom.PrimvarsAPI(src).GetPrimvar('normals'):
-            normals=lodgen_normals(pts,tri);new.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(normals.astype(np.float32)));new.SetNormalsInterpolation('vertex')
+            normals=lodgen_normals(pts,tri)
+            if LODGEN_MATERIALS and str(mesh.GetOrientationAttr().Get() or 'rightHanded')=='leftHanded':normals=-normals          # a left-handed mesh (Houdini's own) faces the other way: the normals point out of it, not into it
+            new.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(normals.astype(np.float32)));new.SetNormalsInterpolation('vertex')
         for pv in UsdGeom.PrimvarsAPI(src).GetAuthoredPrimvars():
             name=pv.GetPrimvarName()
             if name=='normals':continue
@@ -186,7 +198,7 @@ def lodgen_clone(stage,src,dst_path,ratio,min_tris):
     """Copy the prim hierarchy of a prototype to dst_path, every Mesh reduced. Returns (triangles before, triangles after)."""
     from pxr import Sdf,Usd,UsdGeom
     from pxr import UsdShade
-    base=str(src.GetPath());total=[0,0];walk=iter(Usd.PrimRange(src))
+    base=str(src.GetPath());total=[0,0];walk=iter(lodgen_prims(src))
     for prim in walk:
         if LODGEN_MATERIALS and prim.IsA(UsdShade.Material):walk.PruneChildren();continue      # the levels bind the materials of the hero, they do not copy them (a copy loses the shader connections)
         if prim.GetTypeName()=='GeomSubset':continue                                          # handled with its mesh (lodgen_subsets)

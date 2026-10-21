@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.21.1 - LOD generator on Houdini's own assets
+* **Fix: the LOD levels of a Test Geometry asset (Rubber Toy, ...) rendered black or did not exist.** Two causes: the meshes of Houdini's assets are **left-handed** and the generated normals pointed into the mesh (a level shaded from the inside renders black, though the material was bound), and the assets are **instanceable** (their meshes and materials are instance proxies that the traversal skipped, so no level was written at all). Now the normals follow the orientation and the traversal steps into instance proxies; the levels are bound to the material of the hero. Right-handed meshes are unchanged.
+* New tool `tools/lodgen_render_check.py <version> [--instanceable 0|1]`: renders the Rubber Toy as hero, LOD 1, LOD 2 and proxy with Karma (CPU) and compares the colour of each level with the hero (PASS when within the tolerance). v1.21.1: all three levels within 0.05 of the hero; v1.20.0: black.
+* `tests/validate_lodgen.py` has 10 groups and 10 mutations (new: `lodgen_hand`, `lodgen_proxy`). Both builds.
+
 ## v1.21.0 - LOD generator keeps the materials
 * **Fix: the generated LOD levels lost the textures of the hero.** Face GeomSubsets (a material per face group) were dropped, Material and shader prims inside the prototype were copied without their connections (black), and a binding inherited from a parent was not found by the copy. Now the subsets are mapped onto the reduced triangles, the hero's effective material is bound directly on every copy (also on every subset), and no Material or Shader prim is copied: the levels use the hero's own materials and textures. Defaults and everything else are unchanged; earlier builds keep their old behaviour.
 * **The all-demos scene is laid out as a grid** (6 boxes per row, equal cells) instead of scattered boxes. The LOD demo's dense rock has two materials by face group (stone, moss) so the levels show both.

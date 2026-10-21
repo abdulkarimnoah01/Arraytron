@@ -2,7 +2,7 @@
 The reduction (vertex clustering with quadric positions) is checked against geometry facts (triangle targets, no degenerate or duplicate triangles, distance to the sphere, area,
 planarity, determinism, primvars carried over with their interpolation), then on the node: the generated prims in the stream (hierarchy, transforms, materials, primvars), the
 prototype list, the camera LOD switch with the generated levels, explicit LOD prims winning, and Generate LODs off reproducing the previous release.
-Env ARRAYTRON_MUTATE=lodgen_ratio|lodgen_explicit|lodgen_st|lodgen_dup|lodgen_level|lodgen_subsets|lodgen_bind|lodgen_material breaks the module; the suite must FAIL."""
+Env ARRAYTRON_MUTATE=lodgen_ratio|lodgen_explicit|lodgen_st|lodgen_dup|lodgen_level|lodgen_subsets|lodgen_bind|lodgen_material|lodgen_hand|lodgen_proxy breaks the module; the suite must FAIL."""
 from pathlib import Path
 import hou, importlib.util, json, os, sys, tempfile, time
 import numpy as np
@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.21.1':'v1.21.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_lodgen_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 spec=importlib.util.spec_from_file_location('lodgen_src',str(ROOT/'src/arraytron_lodgen.py'));LG=importlib.util.module_from_spec(spec);spec.loader.exec_module(LG)   # the pure functions, no Houdini needed
@@ -63,6 +63,13 @@ def write_scene():
         sub=UsdGeom.Subset.CreateGeomSubset(d,'Skin'+name,'face',Vt.IntArray(list(faces)),'materialBind','nonOverlapping');UsdShade.MaterialBindingAPI.Apply(sub.GetPrim());UsdShade.MaterialBindingAPI(sub.GetPrim()).Bind(mat)
     UsdGeom.Xform.Define(s,'/World/Props/Rock');V4,F4=icosphere(3);r=UsdGeom.Mesh.Define(s,'/World/Props/Rock/Rock');r.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(V4.astype(np.float32)));r.CreateFaceVertexCountsAttr([3]*len(F4));r.CreateFaceVertexIndicesAttr(F4.reshape(-1).tolist());r.CreateSubdivisionSchemeAttr('none')
     stone=UsdShade.Material.Define(s,'/World/Looks/Stone');props=s.GetPrimAtPath('/World/Props');UsdShade.MaterialBindingAPI.Apply(props);UsdShade.MaterialBindingAPI(props).Bind(stone)         # a binding on the parent: the rock inherits it
+    UsdGeom.Xform.Define(s,'/World/Props/Lefty');V5,F5=icosphere(4);lf=UsdGeom.Mesh.Define(s,'/World/Props/Lefty/Body');lf.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(V5.astype(np.float32)));lf.CreateFaceVertexCountsAttr([3]*len(F5));lf.CreateFaceVertexIndicesAttr(F5[:,::-1].reshape(-1).tolist())
+    lf.CreateOrientationAttr('leftHanded');lf.CreateSubdivisionSchemeAttr('none');lf.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(V5.astype(np.float32)));lf.SetNormalsInterpolation('vertex')          # winding reversed + leftHanded: the authored normals point out of the sphere
+    ts=Usd.Stage.CreateNew(str(WORK/'toy.usda'));UsdGeom.Xform.Define(ts,'/Toy');ts.SetDefaultPrim(ts.GetPrimAtPath('/Toy'));UsdGeom.Scope.Define(ts,'/Toy/geo');UsdGeom.Scope.Define(ts,'/Toy/mtl')
+    tm=UsdGeom.Mesh.Define(ts,'/Toy/geo/shape');tm.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(V5.astype(np.float32)));tm.CreateFaceVertexCountsAttr([3]*len(F5));tm.CreateFaceVertexIndicesAttr(F5[:,::-1].reshape(-1).tolist());tm.CreateOrientationAttr('leftHanded');tm.CreateSubdivisionSchemeAttr('none')
+    tm.CreateNormalsAttr(Vt.Vec3fArray.FromNumpy(V5.astype(np.float32)));tm.SetNormalsInterpolation('vertex');UsdGeom.PrimvarsAPI(tm).CreatePrimvar('st',Sdf.ValueTypeNames.TexCoord2fArray,UsdGeom.Tokens.faceVarying).Set(Vt.Vec2fArray.FromNumpy(np.array([(V5[i][0],V5[i][2]) for i in F5[:,::-1].reshape(-1)],dtype=np.float32)))
+    toymat=UsdShade.Material.Define(ts,'/Toy/mtl/ToyShader');tsh=UsdShade.Shader.Define(ts,'/Toy/mtl/ToyShader/Surface');tsh.CreateIdAttr('UsdPreviewSurface');toymat.CreateSurfaceOutput().ConnectToSource(tsh.ConnectableAPI(),'surface');UsdShade.MaterialBindingAPI.Apply(tm.GetPrim());UsdShade.MaterialBindingAPI(tm.GetPrim()).Bind(toymat)
+    ts.GetRootLayer().Save();toy=UsdGeom.Xform.Define(s,'/World/Props/Toy');toy.GetPrim().GetReferences().AddReference(str(WORK/'toy.usda'));toy.GetPrim().SetInstanceable(True)                                 # an instanceable prototype like Houdini's Test Geometry assets: its meshes and materials are instance proxies
     cam=UsdGeom.Camera.Define(s,'/World/Cam');cam.CreateFocalLengthAttr(35.0)
     s.GetRootLayer().Save();return path.as_posix()
 SCENE=write_scene()
@@ -108,6 +115,11 @@ def mutate(a=None):
             g['lodgen_bind']=lambda src,dst:None                                                              # the effective material is not re-bound on the copy
         elif MUTATE=='lodgen_material':
             g['LODGEN_MATERIALS']=False                                                                      # the old behaviour: Material prims copied, no subsets, no binding
+        elif MUTATE=='lodgen_hand':
+            good=g['lodgen_normals'];g['lodgen_normals']=lambda points,tri:-good(points,tri)                   # the fix for left-handed meshes is undone (the normals point into the mesh)
+        elif MUTATE=='lodgen_proxy':
+            from pxr import Usd as _Usd
+            g['lodgen_prims']=lambda src:_Usd.PrimRange(src);g['lodgen_children']=lambda prim:prim.GetChildren()    # the traversal does not step into instance proxies
         elif MUTATE=='lodgen_level':
             good=g['lodgen_path'];g['lodgen_path']=lambda asset,row,level:good(asset,row,min(level,2))
         elif MUTATE:raise SystemExit('unknown mutation '+MUTATE)
@@ -200,6 +212,26 @@ def materials():
         assert np.array_equal(np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Props/Dragon/Body/'+sub)).GetIndicesAttr().Get()),np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Arraytron_LOD/Proto01_LOD1/Body/'+sub)).GetIndicesAttr().Get()))
     off=painted(st,sc,[(0,0,-3)],name='Off',lodg_on=0,proto_prim1='/World/Props/Dragon');out(off);assert not off.stage().GetPrimAtPath('/World/Arraytron_LOD')
 
+def handedness_and_instancing():
+    """v1.21.1: the normals of a left-handed mesh (Houdini's own meshes) point out of it, not into it (a level shaded from the inside renders black), and an instanceable prototype (Houdini's Test
+    Geometry assets: its meshes and materials are instance proxies) is cloned like any other."""
+    from pxr import UsdShade
+    st,sc=new_scene('hand');a=painted(st,sc,[(0,0,-3)],lodg_on=1,proto_prim1='/World/Props/Lefty');out(a);s=a.stage()
+    H,hc,hi=mesh_arrays(s,'/World/Props/Lefty/Body');assert UsdGeom.Mesh(s.GetPrimAtPath('/World/Props/Lefty/Body')).GetOrientationAttr().Get()=='leftHanded'
+    for name in ('LOD1','LOD2','PROXY'):
+        path='/World/Arraytron_LOD/Proto01_%s/Body'%name;P,counts,idx=mesh_arrays(s,path);mesh=UsdGeom.Mesh(s.GetPrimAtPath(path));assert mesh.GetOrientationAttr().Get()=='leftHanded'
+        n=np.array(mesh.GetNormalsAttr().Get());outward=np.einsum('ij,ij->i',n,P/np.linalg.norm(P,axis=1)[:,None]);assert outward.mean()>0.9 and (outward>0.3).all(),(name,outward.mean(),outward.min())      # out of the sphere
+    b=painted(st,sc,[(0,0,-3)],name='Right',lodg_on=1,proto_prim1='/World/Props/Ball');out(b);bs=b.stage()
+    P,counts,idx=mesh_arrays(bs,'/World/Arraytron_LOD/Proto01_LOD1/Sphere');n=np.array(UsdGeom.Mesh(bs.GetPrimAtPath('/World/Arraytron_LOD/Proto01_LOD1/Sphere')).GetNormalsAttr().Get());assert (np.einsum('ij,ij->i',n,P/np.linalg.norm(P,axis=1)[:,None])>0.3).all()        # a right-handed mesh as before
+    t=painted(st,sc,[(0,0,-3)],name='Toy',lodg_on=1,proto_prim1='/World/Props/Toy');out(t);ts=t.stage();toy=ts.GetPrimAtPath('/World/Props/Toy');assert toy.IsInstanceable()
+    pred=Usd.TraverseInstanceProxies(Usd.PrimDefaultPredicate);hero=ts.GetPrimAtPath('/World/Props/Toy/geo/shape');assert hero and hero.IsInstanceProxy()
+    for level,name,ratio in ((1,'LOD1',0.5),(2,'LOD2',0.2),(3,'PROXY',0.05)):
+        path='/World/Arraytron_LOD/Proto01_%s/geo/shape'%name;prim=ts.GetPrimAtPath(path);assert prim and prim.IsA(UsdGeom.Mesh),(name,'no mesh under an instanceable prototype')
+        P,counts,idx=mesh_arrays(ts,path);target=int(np.ceil(ratio*5120));assert 0.5*target<=len(counts)<=target and set(counts.tolist())=={3}
+        bound=UsdShade.MaterialBindingAPI(prim).ComputeBoundMaterial()[0];assert bound and str(bound.GetPath())=='/World/Props/Toy/mtl/ToyShader',(name,bound)                      # the material of the hero
+        n=np.array(UsdGeom.Mesh(prim).GetNormalsAttr().Get());assert (np.einsum('ij,ij->i',n,P/np.linalg.norm(P,axis=1)[:,None])>0.3).all()
+    assert not [p for p in Usd.PrimRange(ts.GetPrimAtPath('/World/Arraytron_LOD'),pred) if p.IsA(UsdShade.Material) or p.IsA(UsdShade.Shader)]
+
 def UsdShadeBind(prim):
     from pxr import UsdShade
     return UsdShade.MaterialBindingAPI(prim).GetDirectBindingRel().GetTargets()
@@ -249,6 +281,7 @@ def main():
                       ('Primvars: face-varying, vertex, uniform and constant carried over to the reduced mesh',primvar_maths),
                       ('On the node: generated prims (hierarchy, transform, material, primvars, normals), hero untouched, prototype list, read-out',stage_prims),
                       ('Materials: face subsets mapped onto the reduced triangles, bindings kept (also inherited ones), no material copied, the hero network untouched, an exact copy keeps its subsets',materials),
+                      ('Left-handed meshes get outward normals; an instanceable prototype (Test Geometry assets) is cloned with its material',handedness_and_instancing),
                       ('Level of detail switch uses the generated levels by camera distance',lod_switch),
                       ('A prim of its own wins over the generated level',explicit_wins),
                       ('Generate LODs off reproduces the previous release and writes no prims',off_reproduces),

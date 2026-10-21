@@ -88,3 +88,4 @@ Status 2026-10-21 (latest): v1.19.0 adds Biome layers, exclusion and presets. Ne
 Status 2026-10-21 (latest): v1.20.0 adds the painted biome map. Next: competition inside a biome (a big tree thinning the small ones around it).
 
 Status 2026-10-21 (latest): v1.21.0 fixes the textures of the generated LOD levels. Next: competition inside a biome.
+Status 2026-10-21 (latest): v1.21.1 fixes the LOD levels of Houdini's own assets (validated with Karma on the Rubber Toy). Next: competition inside a biome.

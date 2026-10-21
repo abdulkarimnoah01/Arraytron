@@ -1,4 +1,4 @@
-# Troubleshooting (v1.21.0)
+# Troubleshooting (v1.21.1)
 
 Errors are written to the node (red) in plain words. The most common ones:
 
