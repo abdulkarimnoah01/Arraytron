@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.19.0 - Biome layers, exclusion and presets
+* **Layers and Clearance** (every Biomes row): *Layer* (1 top to 4), *Clearance* (a radius times the point's own scale) and *Excludes Rows*. A biome on a lower layer keeps clear of the points of the layers above it, and a biome keeps the rows it excludes clear whatever their layer. Only the biomes above remove points, so a lower layer never moves the ones above; ids stay stable; Clearance 0 (the default) is exactly v1.18.0. The read-out counts the points *cleared by the layers above*.
+* **Biome presets:** *Load Preset...* (Temperate Forest, Alpine, Coastal Wetland, Desert, and your own) and *Save Preset...*; elevations are fractions of the terrain height so a preset fits any terrain; one undo step. User presets in `biome_presets.json` next to the Asset Library.
+* New suite `tests/validate_biomelayers.py` (6 groups, 4 mutations); the Biome demo shows the forest clearing the rocks and stones under its trees. Both builds. Documentation `docs/BIOME.md`.
+
 ## v1.18.0 - Asset Library
 * **Asset Library** (Parameters pane, under the Mode Palette): a local catalogue of USD assets with **your own categories** (Trees, Plants, Rocks, Props by default). Import from the **Solaris Asset Catalog** (names, thumbnails, tags), from USD files, from a folder or by dragging files; search by name or tag; **Add to Bank** (or double-click) puts an asset into the Prototype Bank as a USD File row. Thumbnails for plain USD files are drawn by a small software renderer. One JSON file per user (`Documents/Arraytron/library`, or `ARRAYTRON_LIBRARY`). Logic in the HDA's PythonModule (usable from scripts), Qt section in the panel. Documentation `docs/ASSET_LIBRARY.md`.
 * **Stagger Rows is a slider** (0 to 1, the fraction of the gap; 0 off, 0.5 the old brick pattern) instead of a tick. Earlier releases are unchanged.

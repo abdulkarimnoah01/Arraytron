@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.18.0':'v1.17.0'}[VID]
+PREVIOUS={'v1.18.0':'v1.17.0','v1.19.0':'v1.18.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_library_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 LIB=WORK/'lib';os.environ['ARRAYTRON_LIBRARY']=str(LIB)
@@ -152,7 +152,7 @@ def unchanged():
                 o.append(t.name())
                 if t.type() in (hou.parmTemplateType.Folder,hou.parmTemplateType.FolderSet) and hasattr(t,'parmTemplates'):walk(t.parmTemplates())
         walk(g.entries());return o
-    assert names(new)==names(old)
+    assert set(names(old))<=set(names(new)) and all(n.startswith('biome_') for n in set(names(new))-set(names(old)))                    # nothing removed or moved; a later release may add Biome fields only
     for mode,extra in ((0,dict(line_count=12)),(1,dict(area_count=30)),(3,dict(circle_count=9))):
         pa,a=out(fresh_node(st,sc,name='N%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra));pb,b=out(fresh_node(st,sc,typ=OLD_TYPE,name='O%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra))
         assert len(a['ids'])>0 and np.array_equal(a['ids'],b['ids']) and np.array_equal(a['pos'],b['pos']),mode

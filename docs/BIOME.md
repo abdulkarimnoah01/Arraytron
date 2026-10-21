@@ -1,4 +1,4 @@
-# Biome (v1.16.0)
+# Biome (v1.19.0)
 
 Distribution Mode **Biome** (Layout tab) scatters on a **terrain** by rules: a **table of biomes**, every row with the conditions where it grows (**elevation, slope, moisture, temperature**, each a range with a soft edge), its own **density**, its own **Prototype Mix** and **scale range**. The biomes blend at their borders (an *ecotone*) instead of ending on a hard line, and every point keeps a stable id.
 
@@ -30,12 +30,32 @@ Points carry the biome row (`primvars:biome`, tick **Primvar: biome** on the Opt
 
 **Effect, when prototypes follow different conditions.** A row is one set of conditions. A prototype that follows the elevation but not the temperature gets its **own row** with *Temperature Effect* 0 (and the others at 1); a row can be given the same density and a different Prototype Mix, so the biomes of one terrain stay independent and none moves another. Effects at 1 (the default) reproduce v1.15.0 exactly.
 
+## Layers, Clearance and Exclusion (v1.19.0)
+
+Three more fields end every row of the table: **Layer**, **Clearance** and **Excludes Rows**. They let biomes make room for each other, the way a canopy keeps the ground cover out from under its trunks.
+
+| Field | Meaning |
+| --- | --- |
+| Layer (1 to 4) | 1 is the top (canopy), bigger numbers are lower (understory, ground cover). A biome on a lower layer keeps clear of the points of the layers above it. Biomes on the same layer do not affect each other, unless one excludes the other. |
+| Clearance | The radius around every point of this biome, **multiplied by the point's own scale**, where the biomes below it (and the rows in Excludes Rows) may not put points: the trunk of a tree, the footprint of a bush. 0 (the default) switches the biome's clearing off. |
+| Excludes Rows | Row numbers (`2 3`) of biomes that must keep clear of this one **whatever their layer**: a mutual exclusion at borders (a meadow that does not grow under the forest). The distance is this biome's Clearance. This biome is placed before the rows it excludes; if two biomes exclude each other the lower row number wins. Unknown row numbers are ignored. |
+
+How it works: after every biome has made its stable candidates and the conditions have thinned them, the biomes are walked from the top (layer 1) down, a biome after everything that is above it or that excludes it. A point is dropped when it lies closer than Clearance x scale to a surviving point of a biome above it. **Only the biomes above can remove points**, so adding a lower layer, or changing it, never moves a point of the layers above; the ids stay stable; a biome that is off clears nothing. The read-out says how many points each biome lost (*cleared by the layers above*). With every Clearance at 0 the result is exactly v1.18.0.
+
+## Presets (v1.19.0)
+
+**Load Preset...** and **Save Preset...** sit above the Biomes table.
+
+* **Load Preset...** lists four ready-made tables: **Temperate Forest** (canopy trees, understory shrubs, ground cover, cliff rocks), **Alpine** (conifers, stunted trees, meadow plants, scree), **Coastal Wetland** (reeds, shrubs, dune grass, water stones) and **Desert** (scrub, cacti, rocks, dry grass), then your own presets (marked *mine*). It replaces the table (it asks first when the table has rows; one undo step). Every preset row already has its layer and clearance. The Prototype Mix of the k-th row is Prototype Bank row k (or the last row when the bank is shorter): each description names the bank rows it expects.
+* **Elevation is fitted to the terrain.** A preset stores elevation as a **fraction of the terrain's height** (0 = lowest point, 1 = highest) and the elevation edge as a fraction of the height range; loading converts them with the height range of the Terrain prim of the node. Slope, moisture and temperature ranges are stored as they are. (Rows with no elevation limit stay open.)
+* **Save Preset...** saves the current table under a name (the same name replaces the older preset), elevations as fractions, so it fits other terrains. User presets are one JSON file next to the Asset Library: `biome_presets.json` in `Documents/Arraytron/library`, or in the folder of `ARRAYTRON_LIBRARY`. A broken file is no presets.
+
 **Ids.** Candidate i of biome row k (1 based) has id `(k - 1) * 1,000,000 + i`.
 
 ## Evidence and limits
 
-`tests/validate_biome.py` (8 groups, 7 mutations): the mix parser, the stable prototype choice, slope, temperature and the four soft bands against independent formulas; on a synthetic hill with a river the **survivors of two biomes equal the field maths exactly** (same candidates, same id keyed hash), the ranges, ids, mix ratios, scale ranges, density only adding, a biome off leaving the others alone; the Effect of every condition (ignored, half, full; the survivors equal the blended weight exactly), soft edges following the smooth weight, a slope biome, temperature by height and by warm facing; every moisture source and the errors; the previous release unchanged for other modes; the primvar and the debug colours; the interface. How the section looks on the Layout tab and how it feels to author is for the user to judge.
+`tests/validate_biome.py` (8 groups, 7 mutations); layers, exclusion and presets in `tests/validate_biomelayers.py` (6 groups, 4 mutations: the survivors against brute-force distances, the upper layer untouched, a third layer, Excludes Rows and its order, every preset loaded and cooked, saving and loading your own, the previous release unchanged): the mix parser, the stable prototype choice, slope, temperature and the four soft bands against independent formulas; on a synthetic hill with a river the **survivors of two biomes equal the field maths exactly** (same candidates, same id keyed hash), the ranges, ids, mix ratios, scale ranges, density only adding, a biome off leaving the others alone; the Effect of every condition (ignored, half, full; the survivors equal the blended weight exactly), soft edges following the smooth weight, a slope biome, temperature by height and by warm facing; every moisture source and the errors; the previous release unchanged for other modes; the primvar and the debug colours; the interface. How the section looks on the Layout tab and how it feels to author is for the user to judge.
 
-Not in this first version (next steps): layering (canopy, understory, ground cover where the lower layers avoid the ones above), competition between instances (a big tree thinning the small ones around it), a mutual-exclusion option between biomes, a painted biome map, and a biome preset library. Moisture and temperature are fields derived from the terrain and prims; there is no simulation. A very large terrain makes the Distance To Water field slow (one distance query per candidate).
+Next steps: a painted biome map, and competition between instances of one biome (a big tree thinning the small ones around it; the clearance already keeps the lower layers out). Moisture and temperature are fields derived from the terrain and prims; there is no simulation. A very large terrain makes the Distance To Water field slow (one distance query per candidate).
 
-Demo: `dist/Arraytron_v1.16.0_biome_demo.hip` (render `renders/arraytron_v1.16.0_biome_demo_xpu.png`): a hilly terrain with a pond and four biomes (Forest, stunted Alpine firs, Cliff rocks, Shore stones).
+Demo: `dist/Arraytron_v1.19.0_biome_demo.hip` (render `renders/arraytron_v1.19.0_biome_demo_xpu.png`): a hilly terrain with a pond and four biomes (Forest, stunted Alpine firs, Cliff rocks, Shore stones).

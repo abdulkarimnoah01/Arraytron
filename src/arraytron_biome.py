@@ -63,8 +63,51 @@ def biome_rows(asset):
         rows.append(dict(index=i,name=asset.evalParm('biome_name%d'%i).strip() or 'Biome %d'%i,density=asset.evalParm('biome_density%d'%i),mix=asset.evalParm('biome_mix%d'%i),
                          h=asset.evalParmTuple('biome_hrange%d'%i),h_edge=asset.evalParm('biome_hedge%d'%i),s=asset.evalParmTuple('biome_srange%d'%i),s_edge=asset.evalParm('biome_sedge%d'%i),
                          m=asset.evalParmTuple('biome_mrange%d'%i),m_edge=asset.evalParm('biome_medge%d'%i),t=asset.evalParmTuple('biome_trange%d'%i),t_edge=asset.evalParm('biome_tedge%d'%i),
-                         scale=asset.evalParmTuple('biome_scale%d'%i),h_effect=asset.evalParm('biome_heffect%d'%i),s_effect=asset.evalParm('biome_seffect%d'%i),m_effect=asset.evalParm('biome_meffect%d'%i),t_effect=asset.evalParm('biome_teffect%d'%i)))
+                         scale=asset.evalParmTuple('biome_scale%d'%i),h_effect=asset.evalParm('biome_heffect%d'%i),s_effect=asset.evalParm('biome_seffect%d'%i),m_effect=asset.evalParm('biome_meffect%d'%i),t_effect=asset.evalParm('biome_teffect%d'%i),
+                         layer=asset.evalParm('biome_layer%d'%i) if asset.parm('biome_layer%d'%i) is not None else 1,clear=asset.evalParm('biome_clear%d'%i) if asset.parm('biome_clear%d'%i) is not None else 0.0,
+                         exclude=biome_parse_rows(asset.evalParm('biome_excl%d'%i)) if asset.parm('biome_excl%d'%i) is not None else ()))
     return rows
+
+def biome_parse_rows(text):
+    """Row numbers written in a text ('2 3', '2,3'): a tuple of ints (words that are not whole numbers are ignored)."""
+    out=[]
+    for word in re.split(r'[\s,;]+',str(text or '').strip()):
+        if word.isdigit() and int(word) not in out:out.append(int(word))
+    return tuple(out)
+
+def biome_order(rows):
+    """The order the biomes are placed in: a biome comes after everything that is above it. A biome on a lower layer (a bigger layer number) comes after the biomes on the layers above, and a biome
+    that lists another in its Excludes Rows comes before it. Ties (and a cycle, which is broken) go by layer, then row number. Returns the rows in that order."""
+    by_index={r['index']:r for r in rows}
+    before={r['index']:set() for r in rows}                          # index -> the indices that must come first
+    for q in rows:
+        for r in rows:
+            if q is not r and q['layer']<r['layer'] and q['clear']>0:before[r['index']].add(q['index'])
+        for e in q['exclude']:
+            if e in by_index and e!=q['index'] and q['clear']>0:before[e].add(q['index'])
+    order=[];left=sorted(rows,key=lambda r:(r['layer'],r['index']))
+    while left:
+        ready=[r for r in left if not (before[r['index']]-{o['index'] for o in order})]
+        pick=ready[0] if ready else left[0]                           # nothing is free: a cycle, the first by layer and row number goes
+        order.append(pick);left=[r for r in left if r is not pick]
+    return order
+
+def biome_clear_keep(data,rows):
+    """Layers and exclusion: a boolean mask of the points to keep. Rows are walked in biome_order; a point of a biome is dropped when it lies closer than Clearance x the scale of a surviving point
+    of a biome that is above it (a smaller layer number) or that lists its row in Excludes Rows. Only the biomes above a row can remove its points, so adding a lower layer never moves the ones above."""
+    n=len(data['ids']);keep=np.ones(n,dtype=bool)
+    if n==0:return keep
+    order=biome_order(rows);idx={r['index']:np.nonzero(data['biome']==r['index'])[0] for r in rows}
+    for pos,r in enumerate(order):
+        for q in order[:pos]:
+            if q['clear']<=0 or not (q['layer']<r['layer'] or r['index'] in q['exclude']):continue
+            qi=idx[q['index']];qi=qi[keep[qi]];ri=idx[r['index']];ri=ri[keep[ri]]
+            if not len(qi) or not len(ri):continue
+            radius=q['clear']*data['scale'][qi];pts=np.vstack([data['pos'][qi],data['pos'][ri]]);nq=len(qi)
+            i,j=neighbor_pairs(pts,max(float(radius.max())*2.0,1e-9));sel=(i<nq)&(j>=nq);i=i[sel];j=j[sel]
+            hit=np.linalg.norm(pts[i]-pts[j],axis=1)<radius[i];keep[ri[j[hit]-nq]]=False
+    return keep
+
 
 def biome_noise(asset,P,stream):
     """Fractal noise in [0, 1] stretched to use the whole range (fractal noise clusters around 0.5)."""
@@ -116,7 +159,13 @@ def biome_points(asset):
         lo,hi=r['scale'];u=scatter_hash(ids,rs,BIOME_STREAM+2);st['kept']=len(ids)
         out['pos'].append(pos[keep]+n[keep]*asset.evalParm('biome_offset'));out['normal'].append(n[keep]);out['align'].append(quat[keep]);out['ids'].append((r['index']-1)*BIOME_STRIDE+ids)
         out['biome'].append(np.full(len(ids),r['index'],dtype=np.int64));out['proto'].append(biome_choose(ids,pairs,rs));out['scale'].append(lo+(hi-lo)*u);out['weight'].append(w[keep])
-    return {k:(np.concatenate(v) if len(v) else empty[k]) if k not in ('pos','normal','align') else (np.vstack(v) if len(v) else empty[k]) for k,v in out.items()},stats
+    data={k:(np.concatenate(v) if len(v) else empty[k]) if k not in ('pos','normal','align') else (np.vstack(v) if len(v) else empty[k]) for k,v in out.items()}
+    if any(r['clear']>0 for r in rows):                                  # Layers and Exclusion (v1.19.0): rows above remove the points of the rows below that sit too close
+        keep=biome_clear_keep(data,rows)
+        for r,st in zip(rows,stats):st['cleared']=int(np.count_nonzero((data['biome']==r['index'])&~keep))
+        data={k:v[keep] for k,v in data.items()}
+        for r,st in zip(rows,stats):st['kept']=int(np.count_nonzero(data['biome']==r['index']))
+    return data,stats
 
 def sop_biome(geo,asset):
     """generate_biome: the points of every biome. The terrain normal alignment in p@align, the biome scale in v@srcscale, the Prototype Bank row of the mix in i@place_proto (the Prototype Assignment honours it), the biome row in i@biome."""
@@ -136,6 +185,7 @@ def biome_info(asset):
     lines=[]
     for s in stats:
         text='%s: %s of %s candidates'%(s['name'],format(s['kept'],','),format(s['candidates'],','))
+        if s.get('cleared'):text+=', %s cleared by the layers above' % format(s['cleared'],',')
         if s['bad']:text+=' (ignored in the mix: %s)'%' '.join(s['bad'])
         lines.append(text)
     return '\n'.join(lines)
