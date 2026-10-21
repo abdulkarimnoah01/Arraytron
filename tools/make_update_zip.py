@@ -41,6 +41,7 @@ def changelog_notes(version):
     return lines
 
 
+DEFAULT_UPDATE_SOURCE = "https://github.com/abdulkarimnoh01/Arraytron/releases/latest/download/"     # baked into every package, so an installed copy knows where its updates come from (pass --update-source "" for none)
 def build(out, update_source=""):
     os.environ["ARRAYTRON_UPDATE_SOURCE_BAKED"] = update_source
     sys.path.insert(0, str(ROOT / "tools"))
@@ -66,7 +67,7 @@ def build(out, update_source=""):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--out", default=str(ROOT / "release" / "update"))
-    parser.add_argument("--update-source", default="")
+    parser.add_argument("--update-source", default=DEFAULT_UPDATE_SOURCE)
     arguments = parser.parse_args()
     archive, manifest = build(Path(arguments.out), arguments.update_source)
     print("built", archive, "(%.1f MB)" % (archive.stat().st_size / 1e6))

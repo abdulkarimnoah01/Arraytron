@@ -15,7 +15,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.CURRENT;VER=VID[1:]
-UPDATE_SOURCE=os.environ.get('ARRAYTRON_UPDATE_SOURCE_BAKED','')                                # set by tools/make_update_zip.py
+UPDATE_SOURCE=os.environ.get('ARRAYTRON_UPDATE_SOURCE_BAKED','https://github.com/abdulkarimnoh01/Arraytron/releases/latest/download/')                                # set by tools/make_update_zip.py
 OUT=ROOT/'release';DIST=ROOT/'dist';H205=ROOT/'otls_h205'
 HYTHON=Path('C:/Program Files/Side Effects Software/Houdini 22.0.368/bin/hython.exe')
 HYTHON205=Path('C:/Program Files/Side Effects Software/Houdini 20.5.445/bin/hython.exe')       # builds the Houdini 20.5 / 21 HDA; Houdini 21.0.440 is tested too
