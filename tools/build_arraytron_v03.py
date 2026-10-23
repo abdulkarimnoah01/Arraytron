@@ -48,14 +48,15 @@ CONFIG={'v0.3.0':dict(vex='vex_v03',guide='guide_bounds_v021.py',circle=False,va
         'v1.20.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True),     # v1.20.0: the painted biome map
         'v1.21.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True),     # v1.21.0: the LOD generator keeps the materials
         'v1.21.1':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True),     # v1.21.1: the same, and an instanceable prototype (Houdini test geometry) is traversed through its instance proxies
-        'v1.22.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True,noise=True,viewmode=True,stagwrap=True)}     # v1.22.0: Stagger Rows cycles and keeps a Circle on its orbit, Display: Points Only, position Noise for every mode
+        'v1.22.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True,noise=True,viewmode=True,stagwrap=True),     # v1.22.0: Stagger Rows cycles and keeps a Circle on its orbit, Display: Points Only, position Noise for every mode
+        'v1.23.0':dict(vex='vex_v190',guide='guide_bounds_v052.py',circle=True,variation=True,physics=True,curve=True,surface=True,mask=True,overlap=True,grow=True,ui=True,paint=True,fields=True,cluster=True,camera=True,finish=True,imported=True,pick=True,lodgen=True,place=True,falloff=True,rows=True,biome=True,modepalette=True,library=True,staggerslider=True,biomex=True,biomemap=True,lodmat=True,noise=True,viewmode=True,stagwrap=True,copyset=True)}     # v1.23.0: copy the settings of one Arraytron node onto another (code, and the Import Settings button)
 H205=False
-TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LIBRARY=STAGGER=BIOMEX=BIOMEMAP=LODMAT=NOISE=VIEWMODE=STAGWRAP=LABEL=PHYS_TAB=NEWTABS=None
+TYPE=HDA=VEX=GUIDE=CIRCLE=VARIATION=PHYSICS=CURVE=SURFACE=MASK=OVERLAP=GROW=UI=PAINT=FIELDS=CLUSTER=CAMERA=FINISH=IMPORTED=PICK=LODGEN=PLACE=FALLOFF=ROWS=BIOME=MODEPAL=LIBRARY=STAGGER=BIOMEX=BIOMEMAP=LODMAT=NOISE=VIEWMODE=STAGWRAP=COPYSET=LABEL=PHYS_TAB=NEWTABS=None
 def configure(version):
     """version: a new id (v0.3.5) or an old tag (v035). Type name and file location come from tools/versions.py."""
-    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LIBRARY,STAGGER,BIOMEX,BIOMEMAP,LODMAT,NOISE,VIEWMODE,STAGWRAP,LABEL,PHYS_TAB,NEWTABS
+    global H205,TYPE,HDA,VEX,GUIDE,CIRCLE,VARIATION,PHYSICS,CURVE,SURFACE,MASK,OVERLAP,GROW,UI,PAINT,FIELDS,CLUSTER,CAMERA,FINISH,IMPORTED,PICK,LODGEN,PLACE,FALLOFF,ROWS,BIOME,MODEPAL,LIBRARY,STAGGER,BIOMEX,BIOMEMAP,LODMAT,NOISE,VIEWMODE,STAGWRAP,COPYSET,LABEL,PHYS_TAB,NEWTABS
     vid=versions.resolve(version);c=CONFIG[vid];H205=versions.is_h205() and bool(versions.VERSIONS[vid].get('h205'))
-    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LIBRARY=c.get('library',False);STAGGER=c.get('staggerslider',False);BIOMEX=c.get('biomex',False);BIOMEMAP=c.get('biomemap',False);LODMAT=c.get('lodmat',False);NOISE=c.get('noise',False);VIEWMODE=c.get('viewmode',False);STAGWRAP=c.get('stagwrap',False);LABEL=vid
+    TYPE=versions.type_name(vid);HDA=versions.hda(vid);VEX=ROOT/'src'/c['vex'];GUIDE=c['guide'];CIRCLE=c['circle'];VARIATION=c['variation'];PHYSICS=c.get('physics',False);CURVE=c.get('curve',False);SURFACE=c.get('surface',False);MASK=c.get('mask',False);OVERLAP=c.get('overlap',False);GROW=c.get('grow',False);UI=c.get('ui',False);PAINT=c.get('paint',False);FIELDS=c.get('fields',False);CLUSTER=c.get('cluster',False);CAMERA=c.get('camera',False);FINISH=c.get('finish',False);IMPORTED=c.get('imported',False);PICK=c.get('pick',False);LODGEN=c.get('lodgen',False);PLACE=c.get('place',False);FALLOFF=c.get('falloff',False);ROWS=c.get('rows',False);BIOME=c.get('biome',False);MODEPAL=c.get('modepalette',False);LIBRARY=c.get('library',False);STAGGER=c.get('staggerslider',False);BIOMEX=c.get('biomex',False);BIOMEMAP=c.get('biomemap',False);LODMAT=c.get('lodmat',False);NOISE=c.get('noise',False);VIEWMODE=c.get('viewmode',False);STAGWRAP=c.get('stagwrap',False);COPYSET=c.get('copyset',False);LABEL=vid
     NEWTABS=tuple(int(x) for x in vid[1:].split('.'))>=(1,13,0)                                                      # v1.13.0: Prototypes, Variation, Debugging and an Export tab
     PHYS_TAB='Physics' if tuple(int(x) for x in vid[1:].split('.'))>=(1,6,2) else 'Settle'                  # v1.6.2: the Settle tab is called Physics
     HDA.parent.mkdir(parents=True,exist_ok=True)
@@ -261,6 +262,15 @@ def noise_folder():
         hide(hou.FloatParmTemplate('noise_rough','Roughness',1,default_value=(0.5,),min=0,max=1,help='How strong every finer layer is compared to the one before it.'),'{ noise_on == 0 } { noise_type == 2 } { noise_octaves < 2 }'),
         hide(hou.FloatParmTemplate('noise_offset','Pattern Offset',3,default_value=(0.0,0.0,0.0),min=-100,max=100,help='Slide the pattern through space (animate it for moving noise). Not used by Random.'),'{ noise_on == 0 } { noise_type == 2 }'),
         hide(hou.IntParmTemplate('noise_seed','Noise Seed',1,default_value=(1,),min=0,max=10000,help='A different pattern for every seed.'),'{ noise_on == 0 }')))
+
+def copy_folder():
+    """Copy settings (v1.23.0): import the settings of another Arraytron node (any version)."""
+    src=hou.StringParmTemplate('copy_source','Source Node',1,default_value=('',),string_type=hou.stringParmType.NodeReference,tags={'opfilter':'!!LOP!!','oprelative':'.'},help='The Arraytron node to copy the settings from, of any version. Empty: the button looks for another Arraytron node in this network (the one wired to the same input first, then the one with the most changed settings).')
+    btn=hou.ButtonParmTemplate('copy_import','Import Settings',help='Copy the settings of the Source Node (or of the Arraytron node found automatically) onto this node. Parameters are matched by name; the single Prototype of the first releases becomes row 1 of the Prototype Bank. From code: hou.pwd().hdaModule().copy_settings(dst, src).')
+    btn.setScriptCallback("kwargs['node'].hdaModule().import_settings(kwargs['node'])");btn.setScriptCallbackLanguage(hou.scriptLanguage.Python)
+    info=hou.StringParmTemplate('copy_info','Last Import',1,default_value=('',),tags={'editor':'1','editorlines':'2-4'},help='Read only. What the last Import Settings copied.')
+    info.setConditional(hou.parmCondType.DisableWhen,'{ mode >= 0 }')
+    return hou.FolderParmTemplate('copyset','Copy Settings',folder_type=hou.folderType.Simple,parm_templates=(src,btn,info))
 
 def rows_folder():
     """Rows (v1.14.0): the linear modes (Line, Circle, Curve) scatter in several parallel rows, optionally randomised."""
@@ -755,7 +765,7 @@ def ui_layout(g):
     # ---- Source
     src=content('source')
     source=hint('Choose what to scatter. Wire the scene (terrain, curve) into the first input, extra models into inputs 2 to 4.')+[src['protos'],src['proto_mode']]+([src['proto_percent']] if 'proto_percent' in src else [])+[src['proto_summary'],details('ui_selection','Selection Details',[src['proto_seed']]),
-        *heading('OUTPUT'),src['outputpath']]
+        *heading('OUTPUT'),src['outputpath']]+((heading('COPY SETTINGS')+[folders['copyset'].parmTemplates()[i] for i in range(3)]) if 'copyset' in folders else [])
     # ---- Layout
     layout=hint('Choose how the points are laid out, then move the whole layout.')+list(folders['distribution'].parmTemplates())
     for index,(name,title) in enumerate((('line','LINE SETTINGS'),('area','AREA SETTINGS'),('grid','GRID SETTINGS'),('circle','CIRCLE SETTINGS'),('curve','CURVE SETTINGS'),('surface','SURFACE SETTINGS'),('paint','PAINT SETTINGS'),('cluster','CLUSTER SETTINGS'),('imported','IMPORTED POINTS'),('place','INSTANCE PLACE'),('biome','BIOME'))):
@@ -853,6 +863,7 @@ def parms():
     if FALLOFF:g.append(falloff_folder())
     if ROWS:g.append(rows_folder())
     if NOISE:g.append(noise_folder())
+    if COPYSET:g.append(copy_folder())
     if PHYSICS:g.append(physics_folder())
     if CAMERA:g.append(optimize_folder())
     if FINISH:g.append(finish_folder())
@@ -916,6 +927,7 @@ def module_text():
     if FIELDS:text+='\n\n# ---- Field Stack (src/arraytron_fields.py)\n'+(ROOT/'src/arraytron_fields.py').read_text()
     if FALLOFF:text+='\n\n# ---- Falloff (src/arraytron_falloff.py)\n'+(ROOT/'src/arraytron_falloff.py').read_text()
     if ROWS:text+='\n\n# ---- Rows (src/arraytron_rows.py)\n'+(ROOT/'src/arraytron_rows.py').read_text().replace('ROWS_WRAP=False','ROWS_WRAP=%s'%STAGWRAP,1)
+    if COPYSET:text+='\n\n# ---- Copy settings (src/arraytron_copy.py)\n'+(ROOT/'src/arraytron_copy.py').read_text()
     if BIOME:text+='\n\n# ---- Biome (src/arraytron_biome.py)\n'+(ROOT/'src/arraytron_biome.py').read_text()
     if CLUSTER:text+='\n\n# ---- Clustering (src/arraytron_cluster.py)\n'+(ROOT/'src/arraytron_cluster.py').read_text()
     if CAMERA:text+='\n\n# ---- Camera, LOD and primvars (src/arraytron_camera.py)\n'+(ROOT/'src/arraytron_camera.py').read_text()

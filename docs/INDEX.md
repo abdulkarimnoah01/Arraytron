@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.22.0)
+# Arraytron documentation index (v1.23.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
@@ -43,6 +43,7 @@ Start with the **User guide**. Everything is plain Markdown in `docs/`; the proj
 - [Instance Place](INSTANCE_PLACE.md): placing instances one at a time (table and viewport tool).
 - [Falloff](FALLOFF.md): scale and density fading towards the edge of any scatter.
 - [Rows](ROWS.md): the Line, Circle and Curve modes in several rows, optionally random.
+- [Copy settings](COPY_SETTINGS.md): the Import Settings button and copy_settings from code, any versions.
 - [Noise and display](NOISE_AND_DISPLAY.md): position noise for every mode, the Points Only display, the cycling Stagger.
 - [Biome](BIOME.md): rule based scatter by elevation, slope, moisture and temperature.
 - [Mode Palette](MODE_PALETTE.md): the Distribution Mode as a row of icon cells in the Parameters pane.

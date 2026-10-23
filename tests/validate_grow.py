@@ -11,7 +11,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_grow_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -89,7 +89,7 @@ def ui_tabs():
     assert [t.label() for t in tabs]==[TN['source'],'Layout',TN['look'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['finish']] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['export']] if TN['export'] and any(x.name()=='export_usd' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
     assert sum(len(flat([t])) for t in tabs)>=140,'every parameter is still there'
     contents={t.label():flat([t]) for t in tabs}
-    exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents[TN['source']] else [])+['proto_summary'];assert contents[TN['source']][:len(exp)]==exp and contents[TN['source']][-1]=='outputpath'
+    exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents[TN['source']] else [])+['proto_summary'];assert contents[TN['source']][:len(exp)]==exp and [n for n in contents[TN['source']] if not n.startswith('copy_')][-1]=='outputpath'
     assert contents['Layout'][0]=='mode' and 'bound_t' in contents['Layout'] and 'line_axis' in contents['Layout'] and 'surface_prim' in contents['Layout']
     assert contents[TN['look']][:2]==['base_rotation','base_scale'] and 'mask_source' in contents[TN['look']] and 'scale_nonuniform' in contents[TN['look']]
     assert contents['Spacing'][0]=='overlap_mode' and contents[PHYSTAB][0]=='phys_on' and contents['Animate'][0]=='grow_on' and 'phys_bake' in contents[PHYSTAB]

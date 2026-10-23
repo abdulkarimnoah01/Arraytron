@@ -90,3 +90,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-21: v1.21.0 LOD generator keeps the materials (user report from the work PC) and the all-demos grid; v1.20.0 archived.
 - 2026-10-21: v1.21.1 LOD generator on Houdini's own assets (Rubber Toy renders black: left-handed normals, instanceable prototypes); v1.21.0 archived.
 - 2026-10-21: v1.22.0 position Noise for every mode, Points Only display, cycling Stagger (user requests); v1.21.1 archived.
+- 2026-10-23: v1.23.0 copy settings between Arraytron nodes (user request, legacy shot nodes); v1.22.0 archived.

@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.23.0 - Copy settings between Arraytron nodes
+* **Import Settings** (Prototypes tab, section COPY SETTINGS): copies the settings of another Arraytron node onto this one. Source Node empty: the button finds one itself (wired to the same input first, then the one with the most changed settings, then the newest). What was copied and what had no counterpart is written into Last Import.
+* **From code:** `hou.node(dst).hdaModule().copy_settings(dst, src, only_changed=False)` returns `{copied, missing, failed}`; `import_settings(node, source=None)` is the button. Works between any versions: the single Prototype of the first releases becomes row 1 of the Prototype Bank; multiparm counters are copied first so the rows exist; animation (keyframes) is copied; buttons and read-outs are not settings. One undo step. Shortcut: expressions are copied as their value, not as text.
+* Checked on the legacy nodes of a shot (v0.15 nodes, one Prototype): 39 settings copied, the same 10 instances as the old node. `tests/validate_copy.py` (4 groups, 5 mutations). Docs: `docs/COPY_SETTINGS.md`.
+
 ## v1.22.0 - Noise, Points Only display, cycling Stagger
 * **Position Noise for every Distribution Mode** (Layout tab, section NOISE; off by default): Perlin, Simplex, Random (per point, keyed on the id) or Curl noise, an **Amount per axis** (0 keeps an axis exactly), Frequency, Octaves / Roughness, Pattern Offset and a Seed. It runs after the distribution and the Rows, before the Mask, the Field Stack and the rest, and never changes ids or counts. `src/vex_v190/noise.vfl`, `docs/NOISE_AND_DISPLAY.md`.
 * **Display: Points Only** (Debugging tab): hides every instance (invisibleIds) and draws the scattering points as guide points, coloured and sized by the Debug options. Not rendered; the render is empty while it is on.

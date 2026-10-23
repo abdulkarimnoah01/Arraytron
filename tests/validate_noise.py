@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.22.0':'v1.21.1'}[VID]
+PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_noise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -149,7 +149,7 @@ def display_mode():
     n=scatter(st,sc,name='Noisy',view_mode=1,noise_on=1,noise_amp=(0.0,0.0,0.5),**kw);no=out(n);fp=np.array(UsdGeom.Points(no['stage'].GetPrimAtPath(path+'/Debug/Final')).GetPointsAttr().Get())
     assert np.abs(fp[:,2]).max()>0.05 and np.allclose(np.sort(fp[:,2]),np.sort(no['pos'][:,2]),atol=1e-5)                                                                        # the moved points
     a.parm('view_mode').set(1);assert len(out(a)['instancer'].GetInvisibleIdsAttr().Get())==12;a.parm('view_mode').set(0);assert not list(out(a)['instancer'].GetInvisibleIdsAttr().Get() or [])  # back to the instances
-    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert old.parm('view_mode') is None and old.parm('noise_on') is None
+    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert old.parm('copy_import') is None
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
