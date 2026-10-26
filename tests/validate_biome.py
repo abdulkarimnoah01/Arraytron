@@ -7,10 +7,11 @@ import hou, json, math, os, sys, tempfile, time
 import numpy as np
 from pxr import Usd, UsdGeom, Vt
 ROOT=Path(__file__).resolve().parents[1]
+def DBGP(a):return a.evalParm('outputpath')+('_View' if a.parm('view_mode') is not None else '/Debug')                       # v1.22.0: the debug prims sit next to the instancer
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0'}[VID]
+PREVIOUS={'v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_biome_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=1000000
@@ -192,7 +193,7 @@ def primvars_and_debug():
     st,sc=new_scene('pv');rows=[dict(name='A',density=15.0,mix='1',h=(-100.0,3.0)),dict(name='B',density=15.0,mix='2',h=(3.0,100.0))]
     a=biome_node(st,sc,rows,biome_moist_mode=0,pv_biome=1,dbg_on=1,dbg_generated=0,dbg_rejected=0,dbg_color=4);o=out(a);s=a.stage();pi=UsdGeom.PointInstancer(s.GetPrimAtPath(a.evalParm('outputpath')))
     pv=UsdGeom.PrimvarsAPI(pi.GetPrim()).GetPrimvar('biome');assert pv and pv.GetInterpolation() in ('varying','vertex');vals=np.array(pv.Get(hou.frame()));assert np.array_equal(vals,o['ids']//STRIDE+1) and set(vals.tolist())=={1,2}
-    fin=s.GetPrimAtPath(a.evalParm('outputpath')+'/Debug/Final');assert fin.IsValid();col=np.array(UsdGeom.PrimvarsAPI(fin).GetPrimvar('displayColor').Get()).reshape(-1,3);assert len(np.unique(col,axis=0))==2          # one colour per biome
+    fin=s.GetPrimAtPath(DBGP(a)+'/Final');assert fin.IsValid();col=np.array(UsdGeom.PrimvarsAPI(fin).GetPrimvar('displayColor').Get()).reshape(-1,3);assert len(np.unique(col,axis=0))==2          # one colour per biome
     b=biome_node(st,sc,rows,name='NoPv',biome_moist_mode=0);sb=b.stage();pb=UsdGeom.PointInstancer(sb.GetPrimAtPath(b.evalParm('outputpath')));out(b);assert not UsdGeom.PrimvarsAPI(pb.GetPrim()).GetPrimvar('biome')                       # off by default
 
 def contract():

@@ -1,4 +1,4 @@
-# Embedded in a Python LOP (debug_guide), last in the Arraytron chain. Visual debugging as GUIDE-purpose prims under <output>/Debug: they show in the Solaris
+# Embedded in a Python LOP (debug_guide), last in the Arraytron chain. Visual debugging as GUIDE-purpose prims next to the instancer (<output>_View, a sibling: Hydra does not draw the children of a PointInstancer that are not prototypes; before v1.22.0 a child <output>/Debug): they show in the Solaris
 # viewport and never render in Karma (guides are not a render purpose), so debugging cannot change the final image. With Debug off this node does nothing.
 # Views: Generated Points, Rejected Points (generated but gone at the end: masked, thinned, separated, avoided), Final Points coloured by Prototype / Id /
 # Weight, Axes (up and forward of every instance), Collision Radius (the Separation spheres), Cluster Centres. Positions are in the space of the points
@@ -9,17 +9,25 @@ from pxr import Gf, Sdf, Usd, UsdGeom, Vt
 node=hou.pwd()
 asset=node.parent()
 stage=node.editableStage()
-dbg=bool(asset.evalParm('dbg_on'));view=asset.parm('view_mode') is not None and asset.evalParm('view_mode')==1               # view: Points Only (v1.22.0), the instances are hidden and the points shown
-if dbg or view:
+vt=asset.evalParm('viz_target') if asset.parm('viz_target') is not None else 0;vw=asset.evalParm('viz_what') if asset.parm('viz_what') is not None else 0
+if vt==0 and asset.parm('mask_viz') is not None and asset.evalParm('mask_viz')>0:vt,vw=asset.evalParm('mask_viz'),0                          # the Visualize toggles of the Mask and Noise sections
+if vt==0 and asset.parm('noise_viz') is not None and asset.evalParm('noise_viz')>0:vt,vw=2,3
+viz=vt>0                                                                                         # Visualize (v1.24.0): the Mask / Field Stack / noise as colour on the scattering surface and the instances
+dbg=bool(asset.evalParm('dbg_on'));vm=asset.evalParm('view_mode') if asset.parm('view_mode') is not None else 0;view=vm>0               # view: Points Only (v1.22.0), the instances are hidden and the points shown
+if dbg or view or viz:
     asset.evalParm('cam_frame')                                                                 # follow the timeline (Grow, animated cameras)
     m=asset.hdaModule();root=Sdf.Path(asset.evalParm('outputpath'));prim=stage.GetPrimAtPath(root)
     if prim and prim.IsValid():
-        path=root.AppendChild('Debug');UsdGeom.Scope.Define(stage,path);UsdGeom.Imageable(stage.GetPrimAtPath(path)).CreatePurposeAttr().Set('guide')
+        if asset.parm('view_mode') is not None:                                                    # v1.22.0 and newer: NEXT to the instancer, with its transform
+            path=root.GetParentPath().AppendChild(root.name+'_View');view_xf=UsdGeom.Xform.Define(stage,path);view_xf.AddTransformOp().Set(UsdGeom.Xformable(prim).GetLocalTransformation(Usd.TimeCode.Default()))
+        else:path=root.AppendChild('Debug');UsdGeom.Scope.Define(stage,path)
+        UsdGeom.Imageable(stage.GetPrimAtPath(path)).CreatePurposeAttr().Set('guide');vpath=path
         size=asset.evalParm('dbg_size');LIMIT=20000
+        def heat(w):w=np.clip(np.asarray(w,dtype=np.float64),0.0,1.0);return np.column_stack([w,0.2+0.8*w,1.0-w])         # blue 0 to yellow 1
         def v3(a):return Vt.Vec3fArray([Gf.Vec3f(*[float(x) for x in r]) for r in a])
-        def points(name,pos,color,widths=None):
+        def points(name,pos,color,widths=None,where=None):
             if not len(pos):return
-            p=UsdGeom.Points.Define(stage,path.AppendChild(name));UsdGeom.Imageable(p.GetPrim()).CreatePurposeAttr().Set('guide');pos=np.asarray(pos)[:LIMIT]
+            p=UsdGeom.Points.Define(stage,(where or path).AppendChild(name));UsdGeom.Imageable(p.GetPrim()).CreatePurposeAttr().Set('guide');pos=np.asarray(pos)[:LIMIT]
             p.CreatePointsAttr(v3(pos));p.CreateWidthsAttr(Vt.FloatArray([float(size)]*len(pos)))
             colors=np.asarray(color,dtype=np.float64);colors=np.tile(colors,(len(pos),1)) if colors.ndim==1 else colors[:len(pos)]
             pv=p.CreateDisplayColorPrimvar(UsdGeom.Tokens.vertex);pv.Set(v3(colors))
@@ -37,9 +45,20 @@ if dbg or view:
             if asset.evalParm('dbg_rejected'):
                 gone=~np.isin(gids,fids);points('Rejected',gpos[gone],(1.0,0.1,0.1))
         if len(fids):
-            fpos=np.array(final.pointFloatAttribValues('P')).reshape(-1,3);q=np.array(final.pointFloatAttribValues('orient')).reshape(-1,4)
+            fpos=np.array(final.pointFloatAttribValues('P')).reshape(-1,3);q=np.array(final.pointFloatAttribValues('orient')).reshape(-1,4);icols=None
+            if viz and vt in (2,3):
+                what=vw
+                def pattr(name):return np.array(final.pointFloatAttribValues(name)) if final.findPointAttrib(name) is not None else np.ones(len(fids))
+                if what==0:val=pattr('maskweight')
+                elif what==1:val=pattr('fieldweight')
+                elif what==2:val=pattr('maskweight')*pattr('fieldweight')
+                else:
+                    amp=np.linalg.norm(asset.evalParmTuple('noise_amp')) if asset.parmTuple('noise_amp') is not None else 0.0
+                    val=np.linalg.norm(np.array(final.pointFloatAttribValues('noise_disp')).reshape(-1,3),axis=1)/max(amp,1e-9) if final.findPointAttrib('noise_disp') is not None else np.zeros(len(fids))
+                icols=heat(val)
+                if vm==0:points('VizInstances',fpos,icols)
             colour=asset.evalParm('dbg_color')
-            if colour:
+            if colour and vm<2 and icols is None:
                 if colour==1:
                     pi=np.array(final.pointIntAttribValues('protoindex'));palette=np.array([[0.2,0.6,1.0],[1.0,0.6,0.1],[0.3,0.9,0.3],[0.9,0.3,0.8],[0.9,0.9,0.2],[0.3,0.9,0.9]]);cols=palette[pi%len(palette)]
                 elif colour==2:
@@ -50,8 +69,8 @@ if dbg or view:
                 else:
                     w=np.array(final.pointFloatAttribValues('mask'))*np.array(final.pointFloatAttribValues('density')) if final.findPointAttrib('mask') is not None and final.findPointAttrib('density') is not None else np.ones(len(fids))
                     cols=np.column_stack([1.0-w,w,0.1*np.ones(len(w))])
-                points('Final',fpos,cols)
-            elif view:points('Final',fpos,(0.35,1.0,0.55))
+                points('Final',fpos,cols,where=vpath if vm==1 else None)
+            elif vm==1:points('Final',fpos,icols if icols is not None else (0.35,1.0,0.55),where=vpath)
             if dbg and asset.evalParm('dbg_axes'):
                 x,y,z,w=q[:,0],q[:,1],q[:,2],q[:,3]
                 up=np.column_stack([2*(x*y-z*w),1-2*(x*x+z*z),2*(y*z+x*w)]);fwd=np.column_stack([2*(x*z+y*w),2*(y*z-x*w),1-2*(x*x+y*y)])
@@ -69,3 +88,32 @@ if dbg or view:
                 attr=pi.CreateInvisibleIdsAttr();ids=set(int(i) for i in (pi.GetIdsAttr().Get() or [])) or set(int(i) for i in fids)
                 for time in [Usd.TimeCode.Default()]+[Usd.TimeCode(t) for t in attr.GetTimeSamples()]:
                     attr.Set(Vt.Int64Array(sorted(ids|set(int(i) for i in (attr.Get(time) or [])))),time)
+            if vm>=2:                                                                              # Boxes / Spheres: one guide shape per instance, from the bound of its prototype
+                base=vpath.AppendChild('Proxy');inst=UsdGeom.PointInstancer.Define(stage,base);UsdGeom.Imageable(inst.GetPrim()).CreatePurposeAttr().Set('guide')
+                cache=UsdGeom.BBoxCache(Usd.TimeCode.Default(),[UsdGeom.Tokens.default_,UsdGeom.Tokens.render,UsdGeom.Tokens.proxy]);palette=[(0.2,0.6,1.0),(1.0,0.6,0.1),(0.3,0.9,0.3),(0.9,0.3,0.8),(0.9,0.9,0.2),(0.3,0.9,0.9)];targets=pi.GetPrototypesRel().GetTargets();shapes=[]
+                for i,target in enumerate(targets):
+                    box=cache.ComputeLocalBound(stage.GetPrimAtPath(target)).ComputeAlignedRange();lo,hi=box.GetMin(),box.GetMax()
+                    if box.IsEmpty():lo,hi=Gf.Vec3d(-0.05),Gf.Vec3d(0.05)
+                    centre=(lo+hi)*0.5;ext=hi-lo;shape_path=base.AppendChild('P%d'%i)
+                    if vm==2:shape=UsdGeom.Cube.Define(stage,shape_path);shape.CreateSizeAttr(1.0);scale=Gf.Vec3f(ext[0],ext[1],ext[2])
+                    else:shape=UsdGeom.Sphere.Define(stage,shape_path);shape.CreateRadiusAttr(1.0);scale=Gf.Vec3f(*([0.5*ext.GetLength()]*3))   # the bounding sphere
+                    UsdGeom.Xformable(shape).AddTranslateOp().Set(Gf.Vec3d(centre));UsdGeom.Xformable(shape).AddScaleOp().Set(scale)
+                    UsdGeom.Imageable(shape.GetPrim()).CreatePurposeAttr().Set('guide');shape.CreateDisplayColorAttr([Gf.Vec3f(*palette[i%len(palette)])]);shapes.append(shape_path)
+                inst.CreatePrototypesRel().SetTargets(shapes);t=Usd.TimeCode(hou.frame())
+                if icols is not None:UsdGeom.PrimvarsAPI(inst).CreatePrimvar('displayColor',Sdf.ValueTypeNames.Color3fArray,UsdGeom.Tokens.varying).Set(v3(icols))   # one colour per instance
+                for attr in ('ProtoIndices','Positions','Orientations','Scales','Ids'):
+                    src=getattr(pi,'Get%sAttr'%attr)().Get(t)
+                    if src is not None:getattr(inst,'Create%sAttr'%attr)().Set(src)
+        if viz and vt in (1,3) and vw<3:           # the value over the scattering surface: dots on the surface, coloured like the instances
+            mode=asset.evalParm('mode');tri=None
+            try:
+                if mode==5:tri=m.stage_surface(asset)
+                elif mode==6:tri=m.paint_surface(asset)
+                elif mode==7:tri=m.cluster_surface(asset)
+                elif mode==1:tri=m.plane_rect(0.5*asset.evalParm('area_sizex'),0.5*asset.evalParm('area_sizez'),0.0)
+            except hou.Error:tri=None
+            if tri is not None:
+                P_,T_,area_,normals_,vn_=tri;pos,nrm,_=m.surface_points(P_,T_,area_,normals_,vn_,asset.evalParm('viz_count'),1,False,0.0,180.0,0.0,0.0);ids_=np.arange(len(pos));what=vw;ones=np.ones(len(pos))
+                mw=m.mask_weights(asset,m.mask_values(asset,pos,ids_)) if asset.parm('mask_source') is not None and asset.evalParm('mask_source')!=0 else ones
+                fw=m.stack_weights(asset,pos,ids_) if asset.parm('fields') is not None else None;fw=ones if fw is None else fw
+                points('VizSurface',pos+nrm*size*0.6,heat((mw,fw,mw*fw)[what]))

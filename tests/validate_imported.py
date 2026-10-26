@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_imported_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
 def ref_hash(i,seed,stream=0):
@@ -238,7 +238,7 @@ def downstream():
     keep=set(d1['ids'].tolist());d2=by_id(out(a,6));assert set(d2['ids'].tolist())<=set(sim_formula(120,6)['id'].tolist())
     a.parm('overrides').set(2);a.parm('ovr_id1').set(int(d1['ids'][0]));a.parm('ovr_delete1').set(1);a.parm('ovr_id2').set(int(d1['ids'][1]));a.parm('ovr_scale2').set(3.0);d3=by_id(out(a,1));assert len(d3['ids'])==len(d1['ids'])-1 and np.allclose(d3['scales'][0],3*d1['scales'][1],atol=1e-5)    # overrides by the source id
     a.parm('overrides').set(0);a.parm('fields').set(1);a.parm('field_type1').set(0);a.parm('field_hmin1').set(0.0);a.parm('field_hmax1').set(1.0);a.parm('field_hfall1').set(0.0);a.parm('field_effect').set(0);d4=out(a,1);assert 0<len(d4['ids'])<=len(d1['ids'])
-    a.parm('fields').set(0);a.parm('dbg_on').set(1);a.parm('dbg_generated').set(1);a.parm('dbg_rejected').set(1);dd=out(a,1);dbg=dd['stage'].GetPrimAtPath(a.evalParm('outputpath')+'/Debug');assert len(UsdGeom.Points(dbg.GetChild('Generated')).GetPointsAttr().Get())==120      # the debug view shows the imported points
+    a.parm('fields').set(0);a.parm('dbg_on').set(1);a.parm('dbg_generated').set(1);a.parm('dbg_rejected').set(1);dd=out(a,1);dbg=dd['stage'].GetPrimAtPath(a.evalParm('outputpath')+('_View' if a.parm('view_mode') is not None else '/Debug'));assert len(UsdGeom.Points(dbg.GetChild('Generated')).GetPointsAttr().Get())==120      # the debug view shows the imported points
 def source_errors():
     st,sc=new_scene('err');a=imported(st,sc,imp_sop='')
     a.parm('imp_sop').set('');d=out(a,1);assert len(d['ids'])==0 and '0 points in the source' in a.parm('imp_info').eval()                       # an empty source gives no instances and no error

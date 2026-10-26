@@ -1,6 +1,6 @@
 # Arraytron
 
-> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.23.0**; v1.22.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
+> **Versioning changed on 2026-10-04.** Releases are now plain `vMAJOR.MINOR.PATCH` (for example `v0.3.5`). The current release is **v1.24.0**; v1.23.0 and everything older are in `dist/archive/` (v0.3.5 was the build earlier called v0.35). Sections below keep their original wording; the old names map as v0.1 = v0.1.0, v0.15 = v0.1.5, v0.16 = v0.1.6, v0.2 = v0.2.0, v0.21 = v0.2.1, v0.3 = v0.3.0, v0.35 = v0.3.5. Scheme, layout and release procedure: `docs/VERSIONING.md`.
 
 
 # Get Arraytron
@@ -24,9 +24,9 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 
 **Updating:** click **Check for Updates** on the *Arraytron* shelf in Houdini. It reads the latest release from GitHub, shows what is new and installs it after you say yes; nothing is checked in the background. Details, rollback and publishing a release: `INSTALL.md`.
 
-# Arraytron v1.23.0 (current)
+# Arraytron v1.24.0 (current)
 
-`dist/Arraytron_v1.23.0.hda` (type `arraytron::instancer::1.23.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.23.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
+`dist/Arraytron_v1.24.0.hda` (type `arraytron::instancer::1.24.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.24.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.1.0_all_demos.hip` (and `Arraytron_v1.1.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
 
 A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Nine tabs in workflow order: **Prototypes** (Prototype Bank, selection, LOD / proxy prims), **Layout** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**, **Instance Place**, and **Falloff**), **Variation** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Physics** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD generator, primvars), **Debugging** (instance overrides, debug views), **Export** (USD export, what the node stores).
 
@@ -63,7 +63,8 @@ A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInsta
 | v1.21.0 | **LOD generator keeps materials**: the generated levels keep the textures of the hero; the all-demos scene in a grid |
 | v1.21.1 | **LOD generator works on Houdini's own assets** (Rubber Toy and the other Test Geometry): textured levels instead of black, instanceable prototypes cloned |
 | v1.22.0 | **Position Noise for every mode, Points Only display, Stagger cycles**: a NOISE section (type, amount per axis, frequency, octaves, seed) in the Layout tab; Display: Points Only in the Debugging tab; Stagger Rows above 1 cycles and a Circle keeps its orbit |
-| **v1.23.0** | **Copy settings between Arraytron nodes**: an Import Settings button (Prototypes tab) and `copy_settings(dst, src)` from code; nodes of any version, including the first releases |
+| v1.23.0 | **Copy settings between Arraytron nodes**: an Import Settings button (Prototypes tab) and `copy_settings(dst, src)` from code; nodes of any version, including the first releases |
+| **v1.24.0** | **Proxy display, Visualize, new noise types**: Display: Boxes or Spheres; Visualize shows the Mask / Field Stack / noise as colour on the surface and the instances; eleven new noise types in the Noise section (Variation tab) |
 
 What v1.0.0 and v1.1.0 guarantee (all tested, `tests/validate_production.py`): a saved scene reloads to the identical result; two separate processes give bit-identical output; every Distribution Mode gives unique, deterministic ids that rotation, scale, weights, selection and masks never change; random parameter fuzzing never produces a Python traceback; the exported USD passes `usdchecker`; every demo cooks.
 

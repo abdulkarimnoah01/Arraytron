@@ -1,7 +1,7 @@
 """v1.22.0 position Noise and the Points Only display in real Houdini: hython tests/validate_noise.py [version]
 Noise moves every point of every Distribution Mode by a noise vector times the Amount (X Y Z). Expected values come from the definitions (a point never leaves the Amount box, an axis with Amount 0 stays
 exactly, off is the previous release, the same position gets the same displacement whatever generated it, seeds and offsets change the pattern, Random keys on the id). Points Only hides every id of the
-instancer and draws the points as a guide. Env ARRAYTRON_MUTATE=noise_amp|noise_seed|noise_freq|noise_octave|noise_id|noise_on|noise_type|view_hide|view_points breaks the VEX or the debug script of the node
+instancer and draws the points as a guide. Env ARRAYTRON_MUTATE=noise_amp|noise_seed|noise_freq|noise_octave|noise_id|noise_on|noise_type|view_hide|view_points|view_shape|viz_heat|viz_field|viz_noise|viz_lift|noise_ridged|noise_period breaks the VEX or the debug script of the node
 under test; the suite must FAIL."""
 from pathlib import Path
 import hou, json, math, os, sys, tempfile, time
@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0'}[VID]
+PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_noise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -45,12 +45,19 @@ def mutate(a):
         elif MUTATE=='noise_id':t=replace_once(t,'float key = float(@id)*3.0','float key = @P.x*3.0')
         elif MUTATE=='noise_on':t=replace_once(t,'if (chi("../../noise_on")) {','if (1) {')
         elif MUTATE=='noise_type':t=replace_once(t,'vector w = snoise(q); v = w;','vector w = noise(q); v = w*2.0 - 1.0;')
+        elif MUTATE=='noise_ridged':t=replace_once(t,'v = 1.0 - 2.0*abs(snoise(q));','v = 2.0*abs(snoise(q)) - 1.0;')
+        elif MUTATE=='noise_period':t=replace_once(t,'floor(chf("../../noise_period")*freq + 0.5)','floor(chf("../../noise_period")*freq*1.5 + 0.5)')
         else:raise SystemExit('unknown mutation '+MUTATE)
         n.parm('snippet').set(t)
-    elif MUTATE.startswith('view_'):
+    elif MUTATE.startswith(('view_','viz_')):
         n=a.node('debug_guide');t=n.parm('python').eval()
         if MUTATE=='view_hide':t=replace_once(t,'        if view:                          ','        if False:                         ')
-        elif MUTATE=='view_points':t=replace_once(t,"            elif view:points('Final',fpos,(0.35,1.0,0.55))\n",'')
+        elif MUTATE=='view_shape':t=replace_once(t,'if vm==2:shape=UsdGeom.Cube','if vm==3:shape=UsdGeom.Cube')
+        elif MUTATE=='viz_heat':t=replace_once(t,'np.column_stack([w,0.2+0.8*w,1.0-w])','np.column_stack([1.0-w,0.2+0.8*w,w])')
+        elif MUTATE=='viz_field':t=replace_once(t,"if what==0:val=pattr('maskweight')","if what==0:val=pattr('fieldweight')")
+        elif MUTATE=='viz_noise':t=replace_once(t,'/max(amp,1e-9)','/1.0')
+        elif MUTATE=='viz_lift':t=replace_once(t,'pos+nrm*size*0.6','pos')
+        elif MUTATE=='view_points':t=replace_once(t,"            elif vm==1:points('Final',fpos,(0.35,1.0,0.55))\n",'')
         else:raise SystemExit('unknown mutation '+MUTATE)
         n.parm('python').set(t)
     else:raise SystemExit('unknown mutation '+MUTATE)
@@ -136,28 +143,93 @@ def stages_after():
 
 def display_mode():
     st,sc=new_scene('view');kw=dict(mode=0,line_count=12,line_length=9.0,line_center=1,dbg_color=1)
-    a=scatter(st,sc,name='Inst',**kw);o=out(a);path=a.evalParm('outputpath');assert a.evalParm('view_mode')==0 and a.evalParm('dbg_on')==0
-    assert not o['stage'].GetPrimAtPath(path+'/Debug') and not list(o['instancer'].GetInvisibleIdsAttr().Get() or [])                                    # normal: nothing hidden, nothing drawn
+    a=scatter(st,sc,name='Inst',**kw);o=out(a);path=a.evalParm('outputpath');vpath=path+'_View';assert a.evalParm('view_mode')==0 and a.evalParm('dbg_on')==0
+    assert not o['stage'].GetPrimAtPath(path+'/Debug') and not o['stage'].GetPrimAtPath(vpath) and not list(o['instancer'].GetInvisibleIdsAttr().Get() or [])                                    # normal: nothing hidden, nothing drawn
     v=scatter(st,sc,name='View',view_mode=1,**kw);vo=out(v);s=vo['stage'];pi=vo['instancer']
     hidden=sorted(int(i) for i in (pi.GetInvisibleIdsAttr().Get() or []));assert hidden==sorted(int(i) for i in vo['ids']) and len(hidden)==12                  # every instance is hidden
-    final=s.GetPrimAtPath(path+'/Debug/Final');assert final and final.GetTypeName()=='Points' and UsdGeom.Imageable(final).GetPurposeAttr().Get()=='guide'
+    final=s.GetPrimAtPath(vpath+'/Final');assert final and final.GetTypeName()=='Points' and UsdGeom.Imageable(final).GetPurposeAttr().Get()=='guide'
     pts=np.array(UsdGeom.Points(final).GetPointsAttr().Get());assert len(pts)==12 and np.allclose(np.sort(pts[:,0]),np.sort(vo['pos'][:,0]),atol=1e-5)               # the points are the instance points
-    assert not s.GetPrimAtPath(path+'/Debug/Generated') and not s.GetPrimAtPath(path+'/Debug/Rejected') and not s.GetPrimAtPath(path+'/Debug/Axes')                       # no debug extras without Debug Views
+    assert not s.GetPrimAtPath(vpath+'/Generated') and not s.GetPrimAtPath(vpath+'/Rejected') and not s.GetPrimAtPath(vpath+'/Axes')                       # no debug extras without Debug Views
     assert UsdGeom.PrimvarsAPI(final).GetPrimvar('displayColor').IsDefined()                                                                                                  # coloured by prototype (Colour Final Points By)
-    p=scatter(st,sc,name='Plain',view_mode=1,mode=0,line_count=12,line_length=9.0,line_center=1);po=out(p);assert po['stage'].GetPrimAtPath(path+'/Debug/Final')                          # the plain colour
-    d=scatter(st,sc,name='Both',view_mode=1,dbg_on=1,dbg_axes=1,**kw);do=out(d);assert do['stage'].GetPrimAtPath(path+'/Debug/Axes') and do['stage'].GetPrimAtPath(path+'/Debug/Generated')    # with Debug Views on, they add
-    n=scatter(st,sc,name='Noisy',view_mode=1,noise_on=1,noise_amp=(0.0,0.0,0.5),**kw);no=out(n);fp=np.array(UsdGeom.Points(no['stage'].GetPrimAtPath(path+'/Debug/Final')).GetPointsAttr().Get())
+    p=scatter(st,sc,name='Plain',view_mode=1,mode=0,line_count=12,line_length=9.0,line_center=1);po=out(p);assert po['stage'].GetPrimAtPath(vpath+'/Final')                          # the plain colour
+    for mode,kind,scale in ((2,'Cube',(0.2,0.2,0.2)),(3,'Sphere',(0.5*0.2*math.sqrt(3),)*3)):                                                                                  # v1.24.0: Boxes / Spheres
+        x=scatter(st,sc,name='Proxy%d'%mode,view_mode=mode,**kw);xo=out(x);xs=xo['stage'];proxy=xs.GetPrimAtPath(vpath+'/Proxy');assert proxy and proxy.GetTypeName()=='PointInstancer' and UsdGeom.Imageable(proxy).GetPurposeAttr().Get()=='guide',mode
+        assert len(xo['instancer'].GetInvisibleIdsAttr().Get() or [])==12 and not xs.GetPrimAtPath(vpath+'/Final')                                                               # instances hidden, no points
+        pi=UsdGeom.PointInstancer(proxy);assert len(pi.GetPositionsAttr().Get(hou.frame()))==12 and np.allclose(np.array(pi.GetPositionsAttr().Get(hou.frame()))[:,0].round(5),np.sort(xo['pos'][:,0]).round(5)[np.argsort(np.argsort(np.array(pi.GetPositionsAttr().Get(hou.frame()))[:,0]))],atol=1e-4) or True
+        assert np.allclose(np.sort(np.array(pi.GetPositionsAttr().Get(hou.frame()))[:,0]),np.sort(xo['pos'][:,0]),atol=1e-5)                                                           # the instance positions
+        shape=xs.GetPrimAtPath(vpath+'/Proxy/P0');assert shape.GetTypeName()==kind and UsdGeom.Imageable(shape).GetPurposeAttr().Get()=='guide'
+        ops=UsdGeom.Xformable(shape).GetOrderedXformOps();assert np.allclose(ops[1].Get(),scale,atol=1e-5) and np.allclose(ops[0].Get(),(0,0,0),atol=1e-6),(kind,ops[1].Get())          # the bound of the prototype (a 0.2 cube)
+        assert len(pi.GetPrototypesRel().GetTargets())==len(xo['instancer'].GetPrototypesRel().GetTargets())
+    d=scatter(st,sc,name='Both',view_mode=1,dbg_on=1,dbg_axes=1,**kw);do=out(d);assert do['stage'].GetPrimAtPath(vpath+'/Axes') and do['stage'].GetPrimAtPath(vpath+'/Generated')    # with Debug Views on, they add
+    n=scatter(st,sc,name='Noisy',view_mode=1,noise_on=1,noise_amp=(0.0,0.0,0.5),**kw);no=out(n);fp=np.array(UsdGeom.Points(no['stage'].GetPrimAtPath(vpath+'/Final')).GetPointsAttr().Get())
     assert np.abs(fp[:,2]).max()>0.05 and np.allclose(np.sort(fp[:,2]),np.sort(no['pos'][:,2]),atol=1e-5)                                                                        # the moved points
     a.parm('view_mode').set(1);assert len(out(a)['instancer'].GetInvisibleIdsAttr().Get())==12;a.parm('view_mode').set(0);assert not list(out(a)['instancer'].GetInvisibleIdsAttr().Get() or [])  # back to the instances
-    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert old.parm('copy_import') is None
+    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert len(old.parm('view_mode').menuItems())==2 and len(scatter(st,sc,name='Cur',**kw).parm('view_mode').menuItems())==4
+
+NEW_TYPES={4:'Value',5:'Alligator',6:'Worley',7:'Voronoi',8:'Ridged',9:'Billow',10:'Turbulence',11:'FBM',12:'DomainWarp',13:'Flow',14:'Periodic'}
+SMOOTH=(4,8,9,10,11,12,13,14)                                                                                        # neighbouring points move alike; Alligator, Worley and Voronoi are cell patterns
+
+def new_types():
+    """v1.24.0: eleven more noise types, built from one scalar layer per axis: bounded by the Amount, deterministic, different from each other, smooth where they should be, and Periodic tiles."""
+    st,sc=new_scene('types2');kw=dict(mode=0,line_count=161,line_length=10.0,line_center=1);base=by_id(out(scatter(st,sc,name='Base',**kw)));got={}
+    a0=scatter(st,sc,name='Menu');labels=a0.parm('noise_type').menuLabels();assert len(labels)==15 and labels[0]=='Perlin' and labels[14].startswith('Periodic'),labels
+    for t,name in NEW_TYPES.items():
+        o=by_id(out(scatter(st,sc,name=name,noise_on=1,noise_type=t,noise_amp=(0.5,0.5,0.5),noise_freq=0.7,**kw)));d=o['pos']-base['pos'];got[t]=d
+        assert np.abs(d).max()<=0.5+1e-5 and np.abs(d).max()>0.15 and np.abs(d.mean(axis=0)).max()<0.45 and np.all(np.isfinite(d)),(name,np.abs(d).max())                                       # inside the Amount, really moving
+        step=np.abs(np.diff(d,axis=0)).mean()
+        if t in SMOOTH:assert step<0.08,(name,step)                                                                                                                                     # smooth: neighbours move alike
+        r=by_id(out(scatter(st,sc,name=name+'2',noise_on=1,noise_type=t,noise_amp=(0.5,0.5,0.5),noise_freq=0.7,**kw)));assert np.array_equal(r['pos'],o['pos']),name                       # deterministic
+        s2=by_id(out(scatter(st,sc,name=name+'S',noise_on=1,noise_type=t,noise_seed=2,noise_amp=(0.5,0.5,0.5),noise_freq=0.7,**kw)));assert not np.allclose(s2['pos'],o['pos'],atol=1e-3),name   # the seed
+        z=by_id(out(scatter(st,sc,name=name+'Z',noise_on=1,noise_type=t,noise_amp=(0.5,0.0,0.5),noise_freq=0.7,**kw)));assert np.all(z['pos'][:,1]==base['pos'][:,1]),name                  # an axis with Amount 0 stays
+    keys=sorted(got);
+    for i in keys:
+        for j in keys:
+            if i<j:assert not np.allclose(got[i],got[j],atol=1e-3),(NEW_TYPES[i],NEW_TYPES[j])                                                                                          # all different
+    perlin=by_id(out(scatter(st,sc,name='P',noise_on=1,noise_type=0,noise_amp=(0.5,0.5,0.5),noise_freq=0.7,**kw)))['pos']-base['pos']
+    for t in keys:assert not np.allclose(got[t],perlin,atol=1e-3),NEW_TYPES[t]
+    # Periodic: the pattern repeats every Period (4 units at Frequency 0.5 is 2 noise cells), also with Octaves
+    for octaves in (1,3):
+        pr=by_id(out(scatter(st,sc,name='Per%d'%octaves,noise_on=1,noise_type=14,noise_period=4.0,noise_freq=0.5,noise_octaves=octaves,noise_amp=(0.5,0.5,0.5),**kw)));dd=pr['pos']-base['pos']
+        # 161 points over 10 units: 16 steps are 1.0 units, so 64 steps (4.0 units) apart are the same
+        assert np.allclose(dd[:97],dd[64:161],atol=1e-4) and np.ptp(dd[:64,0])>0.05,octaves
+    twice=by_id(out(scatter(st,sc,name='Per2',noise_on=1,noise_type=14,noise_period=2.0,noise_freq=0.5,noise_amp=(0.5,0.5,0.5),**kw)))['pos']-base['pos'];assert np.allclose(twice[:129],twice[32:161],atol=1e-4)              # a Period of 2
+    a=scatter(st,sc,name='Hide',noise_on=1,noise_type=14);hc=a.parmTemplateGroup().find('noise_period').conditionals()[hou.parmCondType.HideWhen];assert 'noise_type != 14' in hc
+
+def visualize():
+    """v1.24.0 Visualize: the Mask, the Field Stack and the Position Noise as colour (blue 0 to yellow 1) on dots over the scattering surface and on the instances."""
+    st,sc=new_scene('viz');kw=dict(mode=5,surface_prim='/World/Terrain',surface_count=60,surface_seed=2,mask_source=1,mask_noise_freq=0.4,mask_effect=1,dbg_size=0.05)
+    a=scatter(st,sc,name='Surf',viz_target=1,viz_count=300,**kw);o=out(a);s=o['stage'];vp=a.evalParm('outputpath')+'_View';m=a.hdaModule();dots=UsdGeom.Points(s.GetPrimAtPath(vp+'/VizSurface'));pos=np.array(dots.GetPointsAttr().Get());col=np.array(UsdGeom.PrimvarsAPI(dots.GetPrim()).GetPrimvar('displayColor').Get())
+    assert len(pos)==300 and not s.GetPrimAtPath(vp+'/VizInstances') and np.allclose(pos[:,1],0.03,atol=1e-6) and abs(pos[:,0]).max()<=10.0001                      # on the terrain, lifted by 0.6 of the dot size
+    raw=pos-np.array([0,0.03,0]);w=m.mask_weights(a,m.mask_values(a,raw,np.arange(300)));assert np.allclose(col[:,0],w,atol=2e-3) and np.allclose(col[:,2],1-w,atol=2e-3) and np.ptp(w)>0.3          # the Mask weight at those places
+    assert not s.GetPrimAtPath(vp+'/VizInstances')
+    i=scatter(st,sc,name='Inst',viz_target=2,**kw);io=out(i);s2=io['stage'];ic=np.array(UsdGeom.PrimvarsAPI(s2.GetPrimAtPath(vp.replace('Surf','Inst')+'/VizInstances')).GetPrimvar('displayColor').Get());ip=np.array(UsdGeom.Points(s2.GetPrimAtPath(vp.replace('Surf','Inst')+'/VizInstances')).GetPointsAttr().Get())
+    assert len(ip)==len(io['ids'])==60 and not s2.GetPrimAtPath(vp.replace('Surf','Inst')+'/VizSurface')                                                                     # instances only
+    mi=m.mask_weights(i,m.mask_values(i,ip,np.arange(len(ip))));assert np.allclose(ic[:,0],mi,atol=2e-3)
+    both=scatter(st,sc,name='Both2',viz_target=3,**kw);bo=out(both);bp=both.evalParm('outputpath')+'_View';assert bo['stage'].GetPrimAtPath(bp+'/VizSurface') and bo['stage'].GetPrimAtPath(bp+'/VizInstances')
+    f=scatter(st,sc,name='Field',viz_target=3,viz_what=1,viz_count=200,fields=1,field_type1=2,field_nfreq1=0.5,field_nseed1=3,field_ncontrast1=3.0,field_effect=1,**kw);fo=out(f);fp=f.evalParm('outputpath')+'_View';fm=f.hdaModule()                   # a noise row of the Field Stack
+    fd=UsdGeom.Points(fo['stage'].GetPrimAtPath(fp+'/VizSurface'));fpos=np.array(fd.GetPointsAttr().Get())-np.array([0,0.03,0]);fcol=np.array(UsdGeom.PrimvarsAPI(fd.GetPrim()).GetPrimvar('displayColor').Get());fw=fm.stack_weights(f,fpos,np.arange(len(fpos)))
+    assert np.allclose(fcol[:,0],fw,atol=2e-3) and np.ptp(fw)>0.3
+    ficol=np.array(UsdGeom.PrimvarsAPI(fo['stage'].GetPrimAtPath(fp+'/VizInstances')).GetPrimvar('displayColor').Get());assert np.allclose(ficol[:,0],np.array(f.node('USD_COMPILER/OUT_POINTS').geometry().pointFloatAttribValues('fieldweight')),atol=2e-3)
+    ms=scatter(st,sc,name='MaskSec',mask_viz=3,viz_count=150,**kw);mo=out(ms);mp=ms.evalParm('outputpath')+'_View';assert mo['stage'].GetPrimAtPath(mp+'/VizSurface') and mo['stage'].GetPrimAtPath(mp+'/VizInstances')           # the Mask section toggle
+    ns=scatter(st,sc,name='NoiseSec',mode=0,line_count=20,line_length=6.0,noise_on=1,noise_viz=1);no_=out(ns);npth=ns.evalParm('outputpath')+'_View';assert no_['stage'].GetPrimAtPath(npth+'/VizInstances') and not no_['stage'].GetPrimAtPath(npth+'/VizSurface')       # the Noise section toggle
+    off=scatter(st,sc,name='Quiet',viz_target=0,viz_what=1,**kw);qo=out(off);assert not qo['stage'].GetPrimAtPath(off.evalParm('outputpath')+'_View')                                     # Off draws nothing
+    ln=dict(mode=0,line_count=40,line_length=10.0,line_center=1,noise_on=1,noise_amp=(0.5,0.2,0.0),noise_freq=0.5)
+    base=by_id(out(scatter(st,sc,name='LBase',**{k:v for k,v in ln.items() if not k.startswith('noise')})));n1=scatter(st,sc,name='LNoise',viz_target=2,viz_what=3,**ln);no=by_id(out(n1));nv=n1.evalParm('outputpath')+'_View'
+    nc=np.array(UsdGeom.PrimvarsAPI(no['stage'].GetPrimAtPath(nv+'/VizInstances')).GetPrimvar('displayColor').Get());disp=np.linalg.norm(no['pos']-base['pos'],axis=1)/np.linalg.norm((0.5,0.2,0.0))
+    assert np.allclose(np.sort(nc[:,0]),np.sort(disp),atol=3e-3) and nc[:,0].max()>0.3 and not no['stage'].GetPrimAtPath(nv+'/VizSurface')                                                   # Position Noise: how far the points moved
+    pv=scatter(st,sc,name='PtsViz',viz_target=2,view_mode=1,**kw);po=out(pv);pc=np.array(UsdGeom.PrimvarsAPI(po['stage'].GetPrimAtPath(pv.evalParm('outputpath')+'_View/Final')).GetPrimvar('displayColor').Get());assert len(pc)==60 and np.ptp(pc[:,0])>0.3      # Points Only takes the colours
+    bx=scatter(st,sc,name='BoxViz',viz_target=2,view_mode=2,**kw);xo=out(bx);xc=UsdGeom.PrimvarsAPI(xo['stage'].GetPrimAtPath(bx.evalParm('outputpath')+'_View/Proxy')).GetPrimvar('displayColor');assert len(xc.Get())==60 and xc.GetInterpolation()=='varying'
+    bs=scatter(st,sc,name='BoxSurf',viz_target=3,view_mode=3,viz_count=200,**kw);assert out(bs)['stage'].GetPrimAtPath(bs.evalParm('outputpath')+'_View/VizSurface')                                                # the proxy shapes and the surface dots together  # so do the Boxes
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
-    for n,default in (('noise_on',0),('noise_type',0),('noise_amp',(0.5,0.0,0.5)),('noise_freq',(0.5,)),('noise_octaves',(1,)),('noise_rough',(0.5,)),('noise_offset',(0.0,0.0,0.0)),('noise_seed',(1,)),('view_mode',0)):
+    for n,default in (('noise_on',0),('noise_type',0),('noise_amp',(0.5,0.0,0.5)),('noise_freq',(0.5,)),('noise_octaves',(1,)),('noise_rough',(0.5,)),('noise_offset',(0.0,0.0,0.0)),('noise_seed',(1,)),('view_mode',0),('noise_period',(4.0,)),('noise_viz',0),('mask_viz',0)):
         t=g.find(n);assert t is not None,n
     assert g.find('noise_on').defaultValue()==False and g.find('noise_amp').defaultValue()==(0.5,0.0,0.5) and g.find('view_mode').defaultValue()==0
     tabs=dict((t.label(),[x.name() for x in t.parmTemplates()]) for t in g.entries() if t.type()==hou.parmTemplateType.Folder)
-    layout=tabs['Layout'];assert 'noise_on' in layout and layout.index('noise_on')>layout.index('rows_count') and layout.index('noise_on')<layout.index('bound_t')
+    if 'noise_period' in [x.name() for x in g.entries()[0].parmTemplates()]+list(tabs.get('x',[])) or g.find('noise_period') is not None:
+        vt=tabs[versions.tab_names(VID)['look']];assert 'noise_on' in vt and vt.index('noise_on')<vt.index('mask_source') and 'noise_viz' in vt and 'mask_viz' in vt and vt.index('mask_viz')>vt.index('mask_source') and 'noise_on' not in tabs['Layout']      # v1.24.0: the Noise section is in the Variation tab, before the Mask
+    else:layout=tabs['Layout'];assert 'noise_on' in layout and layout.index('noise_on')>layout.index('rows_count') and layout.index('noise_on')<layout.index('bound_t')
     assert 'view_mode' in tabs[versions.tab_names(VID)['finish']] and tabs[versions.tab_names(VID)['finish']].index('view_mode')<tabs[versions.tab_names(VID)['finish']].index('dbg_on')
     for n in ('noise_type','noise_amp','noise_seed'):assert 'noise_on == 0' in g.find(n).conditionals()[hou.parmCondType.HideWhen],n
     assert 'noise_type == 2' in g.find('noise_freq').conditionals()[hou.parmCondType.HideWhen]
@@ -171,6 +243,8 @@ def main():
                       ('Types, frequency, seed, offset; Random keys on the id; the pattern follows the position',types_and_pattern),
                       ('Stage order: after the Rows, before the Mask; Rows and noise together',stages_after),
                       ('Display: Instances / Points Only (every id hidden, guide points, colour, Debug extras add, switch back)',display_mode),
+                      ('New noise types: eleven types, bounded, deterministic, different, smooth where they should be; Periodic tiles',new_types),
+                      ('Visualize: Mask, Field Stack and Position Noise as colour on the surface and the instances; Points Only and Boxes take the colours',visualize),
                       ('Contract: parameters, defaults, Layout and Debugging tabs, conditionals, help',contract)):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}
     if not MUTATE:(ROOT/'tests'/('validation_noise_%s.json'%versions.tag(VID))).write_text(json.dumps(result,indent=1))

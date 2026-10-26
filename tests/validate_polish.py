@@ -7,12 +7,13 @@ import hou, json, math, os, sys, tempfile, time, types
 import numpy as np
 from pxr import Usd, UsdGeom, Gf, Sdf
 ROOT=Path(__file__).resolve().parents[1]
+def DBGP(a):return a.evalParm('outputpath')+('_View' if a.parm('view_mode') is not None else '/Debug')                       # v1.22.0: the debug prims sit next to the instancer
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_polish_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -84,7 +85,7 @@ def ui_contract():
     for name in ('ovr_id#','ovr_delete#','ovr_move#','ovr_rot#','ovr_scale#','ovr_proto#','ovr_info','ovr_clear','dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size','export_path','export_usd','cache_info'):assert g.find(name) is not None,name
     assert g.find('dbg_on').defaultValue() is False and g.find('dbg_color').menuLabels()[:4]==('Off','Prototype','Id','Weight') and '{ ovr_delete# == 1 }' in g.find('ovr_move#').conditionals()[hou.parmCondType.HideWhen]
     assert g.find('paint_op').menuLabels()==('Add','Remove','Replace','Relax')
-    heads=[t.columnLabels()[0] for t in g.entries()[7].parmTemplates() if t.name().startswith('ui_head')];assert heads==((['INSTANCE OVERRIDES','DISPLAY','DEBUG'] if a.parm('view_mode') is not None else ['INSTANCE OVERRIDES','DEBUG']) if TN['export'] else ['INSTANCE OVERRIDES','DEBUG','EXPORT AND CACHE'])
+    heads=[t.columnLabels()[0] for t in g.entries()[7].parmTemplates() if t.name().startswith('ui_head')];assert heads==(((['INSTANCE OVERRIDES','DISPLAY','VISUALIZE','DEBUG'] if a.parm('viz_target') is not None else ['INSTANCE OVERRIDES','DISPLAY','DEBUG']) if a.parm('view_mode') is not None else ['INSTANCE OVERRIDES','DEBUG']) if TN['export'] else ['INSTANCE OVERRIDES','DEBUG','EXPORT AND CACHE'])
     if TN['export']:eh=[t.columnLabels()[0] for t in g.entries()[8].parmTemplates() if t.name().startswith('ui_head')];assert g.entries()[8].label()=='Export' and eh==['EXPORT USD','CACHE'] and g.find('export_usd') is not None and g.find('cache_info') is not None and not any(t.name() in ('export_usd','export_path','cache_info') for t in g.entries()[7].parmTemplates())
     order=[];n=a.node('USD_COMPILER/OUT_POINTS')
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
@@ -215,13 +216,13 @@ def debug_views():
     st,sc=new_scene('dbg');P=np.column_stack([np.linspace(-3,3,40),np.zeros(40),np.linspace(-2,2,40)]);a=painted(st,sc,P,mask_source=1,mask_noise_freq=1.0,mask_effect=0,mask_low=0.45,mask_high=0.55,overlap_size=1,overlap_radius=0.25)
     a.parm('protos').set(2);a.parm('proto_prim2').set('/World/Props/BallB')
     off=out(a);assert not off['prim'].GetChild('Debug').IsValid() and 5<len(off['ids'])<40
-    a.parm('dbg_on').set(1);d=out(a);dbg=d['stage'].GetPrimAtPath(a.evalParm('outputpath')+'/Debug');assert dbg.IsValid() and UsdGeom.Imageable(dbg).GetPurposeAttr().Get()=='guide'
+    a.parm('dbg_on').set(1);d=out(a);dbg=d['stage'].GetPrimAtPath(DBGP(a));assert dbg.IsValid() and UsdGeom.Imageable(dbg).GetPurposeAttr().Get()=='guide'
     for k in ('Generated','Rejected','Final','Axes','Radius','ClusterCentres'):assert not dbg.GetChild(k).IsValid() or UsdGeom.Imageable(dbg.GetChild(k)).GetPurposeAttr().Get()=='guide'
     gen=UsdGeom.Points(dbg.GetChild('Generated'));rej=UsdGeom.Points(dbg.GetChild('Rejected'));assert len(gen.GetPointsAttr().Get())==40 and len(rej.GetPointsAttr().Get())==40-len(d['ids']) and len(rej.GetPointsAttr().Get())>0
     kept=set(d['ids'].tolist());rp=np.array(rej.GetPointsAttr().Get());ref=np.array([P[i] for i in range(40) if i not in kept]);assert np.allclose(rp,ref,atol=1e-5)                                     # exactly the generated points that did not survive
     assert not dbg.GetChild('Final').IsValid() and not dbg.GetChild('Axes').IsValid()
     assert np.array_equal(d['ids'],off['ids']) and np.allclose(d['pos'],off['pos']) and d['hidden']==off['hidden']                                                             # debugging never changes the instances
-    a.parm('dbg_color').set(1);a.parm('dbg_axes').set(1);a.parm('dbg_radius').set(1);a.parm('dbg_generated').set(0);a.parm('dbg_rejected').set(0);a.parm('dbg_size').set(0.1);d=out(a);dbg=d['stage'].GetPrimAtPath(a.evalParm('outputpath')+'/Debug')
+    a.parm('dbg_color').set(1);a.parm('dbg_axes').set(1);a.parm('dbg_radius').set(1);a.parm('dbg_generated').set(0);a.parm('dbg_rejected').set(0);a.parm('dbg_size').set(0.1);d=out(a);dbg=d['stage'].GetPrimAtPath(DBGP(a))
     assert not dbg.GetChild('Generated').IsValid() and not dbg.GetChild('Rejected').IsValid();fin=UsdGeom.Points(dbg.GetChild('Final'));n=len(d['ids']);fp=np.array(fin.GetPointsAttr().Get());assert len(fp)==n and np.allclose(np.sort(fp[:,0]),np.sort(d['pos'][:,0]),atol=1e-5)
     cols=np.array(fin.GetDisplayColorPrimvar().Get());pr=np.array(a.node('USD_COMPILER/OUT_POINTS').geometry().pointIntAttribValues('protoindex'));assert len(set(pr.tolist()))==2 and np.allclose(cols,np.array([[0.2,0.6,1.0],[1.0,0.6,0.1],[0.3,0.9,0.3],[0.9,0.3,0.8],[0.9,0.9,0.2],[0.3,0.9,0.9]])[pr%6],atol=1e-5)
     assert abs(fin.GetWidthsAttr().Get()[0]-0.1)<1e-6
@@ -229,11 +230,11 @@ def debug_views():
     for k in range(n):                                                                                                                                                           # up = +Y, forward = +Z for upright instances, length 4 x size
         assert np.allclose(pts[4*k+1]-pts[4*k],[0,0.4,0],atol=1e-4) and np.allclose(pts[4*k+3]-pts[4*k+2],[0,0,0.4],atol=1e-4)
     rad=UsdGeom.BasisCurves(dbg.GetChild('Radius'));rp=np.array(rad.GetPointsAttr().Get()).reshape(n,25,3);assert np.allclose(np.linalg.norm(rp[:,:,[0,2]]-rp[:,:1,[0,2]]*0-d['pos'][:,None,[0,2]],axis=2),0.25*d['scales'].max(axis=1)[:,None],atol=2e-3)                    # rings of the Separation sphere
-    a.parm('dbg_color').set(3);d=out(a);dbg=d['stage'].GetPrimAtPath(a.evalParm('outputpath')+'/Debug');w=np.array(UsdGeom.Points(dbg.GetChild('Final')).GetDisplayColorPrimvar().Get());assert np.allclose(w[:,0]+w[:,1],1.0,atol=1e-4)
-    a.parm('dbg_color').set(2);d=out(a);c2=np.array(UsdGeom.Points(d['stage'].GetPrimAtPath(a.evalParm('outputpath')+'/Debug').GetChild('Final')).GetDisplayColorPrimvar().Get());assert len({tuple(np.round(r,4)) for r in c2})==n
+    a.parm('dbg_color').set(3);d=out(a);dbg=d['stage'].GetPrimAtPath(DBGP(a));w=np.array(UsdGeom.Points(dbg.GetChild('Final')).GetDisplayColorPrimvar().Get());assert np.allclose(w[:,0]+w[:,1],1.0,atol=1e-4)
+    a.parm('dbg_color').set(2);d=out(a);c2=np.array(UsdGeom.Points(d['stage'].GetPrimAtPath(DBGP(a)).GetChild('Final')).GetDisplayColorPrimvar().Get());assert len({tuple(np.round(r,4)) for r in c2})==n
     b=st.createNode(TYPE,'CL');b.setInput(0,sc);b.parm('protos').set(1);b.parm('proto_prim1').set('/World/Props/Ball');b.parm('mode').set(7);b.parm('cluster_prim').set('');b.parm('cluster_count').set(5);b.parm('dbg_on').set(1);b.parm('dbg_centres').set(1)
     if MUTATE:mutate(b)
-    ds=b.stage();cc=UsdGeom.Points(ds.GetPrimAtPath(b.evalParm('outputpath')+'/Debug/ClusterCentres'));assert len(cc.GetPointsAttr().Get())==5
+    ds=b.stage();cc=UsdGeom.Points(ds.GetPrimAtPath(DBGP(b)+'/ClusterCentres'));assert len(cc.GetPointsAttr().Get())==5
 def export_usd():
     st,sc=new_scene('exp');P=np.random.default_rng(7).uniform(-3,3,(40,3));a=painted(st,sc,P,scale_random_mode=1,scale_min=0.5,scale_max=2.0,pv_id=1,pv_random=1,dbg_on=1,cam_on=0)
     a.parm('protos').set(2);a.parm('proto_prim2').set('/World/Props/BallB');a.parm('export_path').set((WORK/'exports'/'inst.usd').as_posix());m=a.hdaModule()

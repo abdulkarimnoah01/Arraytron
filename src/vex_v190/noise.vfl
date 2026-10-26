@@ -1,6 +1,49 @@
 // Position noise (v1.22.0): moves every point by a noise vector times the Amount (X Y Z), so any axis can stay put. Runs right after the distribution (and the Rows),
 // before the Mask, the Field Stack and everything else, for every Distribution Mode. The noise is sampled at the position the point had before it moved, so the pattern
 // is the same wherever the points come from; Random keys on the stable id instead. Every component is kept inside -1..1, so no point moves further than the Amount.
+// Types 0 to 3 (Perlin, Simplex, Random, Curl) are the v1.22.0 noises; 4 to 14 (v1.24.0) are built from one scalar layer() that is called once per axis with a shifted position.
+float vhash(vector c; int seed) { return rand(c + set(seed*0.137, seed*0.719, seed*0.331)); }
+
+float valuenoise(vector p; int seed)                          // smooth interpolated random values on the integer lattice, -1..1
+{
+    vector i = floor(p), f = p - i, u = f*f*(3.0 - 2.0*f);
+    float x00 = lerp(vhash(i, seed), vhash(i + {1,0,0}, seed), u.x);
+    float x10 = lerp(vhash(i + {0,1,0}, seed), vhash(i + {1,1,0}, seed), u.x);
+    float x01 = lerp(vhash(i + {0,0,1}, seed), vhash(i + {1,0,1}, seed), u.x);
+    float x11 = lerp(vhash(i + {0,1,1}, seed), vhash(i + {1,1,1}, seed), u.x);
+    return lerp(lerp(x00, x10, u.y), lerp(x01, x11, u.y), u.z)*2.0 - 1.0;
+}
+
+void worley(vector p; int seed; float f1; float f2)           // distances to the nearest and the second nearest jittered feature point
+{
+    vector i = floor(p);
+    f1 = 9.0; f2 = 9.0;
+    for (int z = -1; z <= 1; z++) for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+        vector c = i + set(x, y, z);
+        vector j = set(vhash(c, seed + 1), vhash(c, seed + 2), vhash(c, seed + 3));
+        float d = length(c + j - p);
+        if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+    }
+}
+
+// one scalar layer, -1..1. type: 4 Value, 5 Alligator, 6 Worley, 7 Voronoi, 8 Ridged, 9 Billow, 10 Turbulence, 11 FBM, 12 Domain Warp, 13 Flow, 14 Periodic
+float layer(int type; vector q; vector period; float rot; int seed)
+{
+    float v = 0.0, f1, f2;
+    if (type == 4) v = valuenoise(q, seed);
+    else if (type == 5) v = clamp((anoise(q, 3, 0.5, 2.0) - 0.025)*12.0, -1.0, 1.0);      // anoise is 0 to 0.3, mostly near 0: centred and stretched
+    else if (type == 6) { worley(q, seed, f1, f2); v = 1.0 - 2.0*clamp(f1, 0.0, 1.0); }
+    else if (type == 7) { worley(q, seed, f1, f2); v = 1.0 - 2.0*clamp((f2 - f1)*3.0, 0.0, 1.0); }
+    else if (type == 8) v = 1.0 - 2.0*abs(snoise(q));
+    else if (type == 9) v = 2.0*abs(valuenoise(q, seed)) - 1.0;
+    else if (type == 10) v = 2.0*abs(snoise(q)) - 1.0;
+    else if (type == 11) v = snoise(q + set(seed*0.31, seed*0.17, seed*0.23));
+    else if (type == 12) { vector w = set(snoise(q*0.7 + {5.2,1.3,8.1}), snoise(q*0.7 + {9.7,2.8,3.4}), snoise(q*0.7 + {1.9,7.5,6.2})); v = snoise(q + w*1.2); }
+    else if (type == 13) v = clamp((flownoise(q, rot) - 0.5)*3.0, -1.0, 1.0);
+    else if (type == 14) v = clamp((pnoise(q, period) - 0.5)*3.5, -1.0, 1.0);
+    return clamp(v, -1.0, 1.0);
+}
+
 if (chi("../../noise_on")) {
     int type = chi("../../noise_type");
     int seed = chi("../../noise_seed");
@@ -9,6 +52,8 @@ if (chi("../../noise_on")) {
     int octaves = clamp(chi("../../noise_octaves"), 1, 8);
     float rough = clamp(chf("../../noise_rough"), 0.0, 1.0);
     vector shift = chv("../../noise_offset") + set(seed*17.137, seed*31.719, seed*7.331);
+    float lattice = max(1.0, floor(chf("../../noise_period")*freq + 0.5));            // the period in noise units, a whole number so the pattern tiles
+    vector period = set(lattice, lattice, lattice);
     vector n = {0,0,0};
     if (type == 2) {
         float key = float(@id)*3.0 + float(seed)*1000.0;
@@ -20,14 +65,21 @@ if (chi("../../noise_on")) {
             vector v;
             if (type == 0) { vector w = noise(q); v = w*2.0 - 1.0; }
             else if (type == 1) { vector w = snoise(q); v = w; }
-            else v = curlnoise(q);
+            else if (type == 3) v = curlnoise(q);
+            else {
+                v = set(layer(type, q, period, shift.x, seed),
+                        layer(type, q + {31.4,17.7,5.3}, period, shift.x, seed + 7),
+                        layer(type, q + {9.2,43.1,27.9}, period, shift.x, seed + 13));
+            }
             n += v*gain;
             total += gain;
             gain *= rough;
             q *= 2.0;
+            period *= 2.0;
         }
         n /= max(total, 1e-6);
     }
     n = set(clamp(n.x, -1.0, 1.0), clamp(n.y, -1.0, 1.0), clamp(n.z, -1.0, 1.0));
     @P += n*amp;
+    v@noise_disp = n*amp;                      // read by the Visualize display (Position Noise)
 }

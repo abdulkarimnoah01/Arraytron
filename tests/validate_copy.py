@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.23.0':'v1.22.0'}[VID];LEGACY='v0.1.5'
+PREVIOUS={'v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.24.0':'v1.23.0'}[VID];LEGACY='v0.1.5'
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS);LEGACY_TYPE=versions.type_name(LEGACY)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_copy_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -115,7 +115,7 @@ def contract():
     code=a.type().definition().sections()['PythonModule'].contents();assert 'def copy_settings(' in code and 'def import_settings(' in code and '$' not in code.split('# ---- Copy settings')[1].split('# ----')[0]
     m=a.hdaModule();assert m.copy_is_setting(a.parm('mode')) and not m.copy_is_setting(a.parm('copy_import')) and not m.copy_is_setting(a.parm('copy_info')) and not m.copy_is_setting(a.parm('rows_info'))   # buttons and read-outs are no settings
     assert 'protos' in m.copy_counters(a) and 'ovr_count' in m.copy_counters(a) or 'overrides' in m.copy_counters(a)
-    old=node(st,sc,OLD_TYPE,'Old');assert old.parm('copy_import') is None
+    old=node(st,sc,LEGACY_TYPE,'Old');assert old.parm('copy_import') is None
 
 def main():
     for name,func in (('First release: one Prototype becomes row 1 of the bank, every parameter, the same instances; automatic source; the other way is reported',legacy_node),
