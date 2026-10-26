@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.24.0':'v1.23.0'}[VID];LEGACY='v0.1.5'
+PREVIOUS={'v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0'}[VID];LEGACY='v0.1.5'
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS);LEGACY_TYPE=versions.type_name(LEGACY)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_copy_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():

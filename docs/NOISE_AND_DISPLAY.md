@@ -22,6 +22,14 @@ The noise is sampled at the position the point had before it moved, so the patte
 
 **Boxes and Spheres (v1.24.0)** work the same way but draw one shape per instance instead of a point: a box with the size and place of the bound of its prototype, or a sphere around that bound, turned and scaled like the instance and coloured by prototype (guide purpose, never rendered). Use them to check size, spacing and overlap of the whole scatter without the cost of the models.
 
+## Visualize colours, palettes and the Mask noise types (v1.25.0)
+The Visualize display can paint **vertex colours** on a copy of the scattering surface (*Surface Style*: Vertex Colours, Dots, Both; *Surface Resolution* is the number of small triangles the copy is cut into). *Palette* picks the colours (Blue to Yellow, Heat, Viridis, Magma, Rainbow, Grayscale, Red Yellow Green, Cool to Warm, Terrain, or **Custom Gradient** with its own ramp). *Range* stretches a small span of values over the whole palette and *Surface Opacity* lets you see the ground through the colours. The instances use the same palette and range. The Mask and Noise sections only have a Visualize menu; the palette settings are in the Debugging tab.
+
+The **Mask Source Noise** has a *Noise Type* menu (Perlin, Simplex, Random, Curl, Value, Alligator, Worley, Voronoi, Ridged, Billow, Turbulence, FBM, Domain Warp, Flow, Periodic). Value is the default and the original mask noise. The section that moves the points is called **Noise Positional Shift**.
+
+## A new node is a test run (v1.25.0)
+A node created in the interface with nothing wired in becomes the built-in sphere on a 5 x 5 Grid, so it shows something at once. Change Prototype 1 and the Distribution Mode to use your own. The HDA works with no input; wiring one works as before. Nodes made by scripts keep the plain defaults.
+
 ## Visualize (v1.24.0)
 Debugging tab, section VISUALIZE: *Visualize On* (Off, Scattering Surface, Instances, Both) and *Visualize* (Mask, Field Stack, Mask x Field Stack, Position Noise). The value is shown as colour, blue 0 to yellow 1: as dots over the scattering surface (Surface, Paint, Cluster and Area modes; *Surface Samples* up to 20000, evaluated with the code of the stages) and / or on the instances (a dot at every instance; with Display Points Only / Boxes / Spheres the shapes take the colour). Position Noise is shown on the instances only (how far the Noise moved each point, 0 to its Amount). The Mask section and the Noise section have their own *Visualize* menu that does the same without opening the Debugging tab; the Debugging menu wins when both are on. Guide purpose: viewport only, never rendered.
 

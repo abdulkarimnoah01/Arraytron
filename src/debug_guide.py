@@ -23,7 +23,23 @@ if dbg or view or viz:
         else:path=root.AppendChild('Debug');UsdGeom.Scope.Define(stage,path)
         UsdGeom.Imageable(stage.GetPrimAtPath(path)).CreatePurposeAttr().Set('guide');vpath=path
         size=asset.evalParm('dbg_size');LIMIT=20000
-        def heat(w):w=np.clip(np.asarray(w,dtype=np.float64),0.0,1.0);return np.column_stack([w,0.2+0.8*w,1.0-w])         # blue 0 to yellow 1
+        PALETTES=(((0,0.2,1),(1,1,0)),                                                              # 0 Blue to Yellow (the first Visualize colours)
+                  ((0,0,0),(0.7,0,0),(1,0.7,0),(1,1,1)),                                            # 1 Heat
+                  ((0.267,0.005,0.329),(0.23,0.322,0.546),(0.128,0.567,0.551),(0.37,0.789,0.383),(0.993,0.906,0.144)),   # 2 Viridis
+                  ((0,0,0.015),(0.317,0.072,0.485),(0.716,0.215,0.475),(0.987,0.535,0.382),(0.987,0.991,0.749)),         # 3 Magma
+                  ((0.19,0.07,0.23),(0.28,0.41,0.93),(0.1,0.82,0.66),(0.64,0.99,0.24),(0.97,0.74,0.22),(0.75,0.2,0.05),(0.48,0.02,0.01)),   # 4 Rainbow (turbo like)
+                  ((0,0,0),(1,1,1)),                                                                  # 5 Grayscale
+                  ((1,0,0),(1,1,0),(0,1,0)),                                                          # 6 Red Yellow Green
+                  ((0.23,0.3,0.75),(0.87,0.87,0.87),(0.71,0.016,0.15)),                              # 7 Cool to Warm
+                  ((0.1,0.25,0.6),(0.2,0.6,0.3),(0.85,0.8,0.4),(0.55,0.4,0.3),(1,1,1)))              # 8 Terrain
+        pal=asset.evalParm('viz_palette') if asset.parm('viz_palette') is not None else 0;LUT_N=256;xs_=np.linspace(0.0,1.0,LUT_N)
+        if pal>=len(PALETTES) and asset.parm('viz_ramp') is not None:                                  # 9 Custom: the Custom Gradient ramp
+            ramp_=asset.parm('viz_ramp').evalAsRamp();LUT=np.array([list(ramp_.lookup(float(x)))[:3] for x in xs_])
+        else:
+            stops=np.array(PALETTES[min(pal,len(PALETTES)-1)],dtype=np.float64);LUT=np.column_stack([np.interp(xs_,np.linspace(0.0,1.0,len(stops)),stops[:,c]) for c in range(3)])
+        vlo,vhi=(asset.evalParmTuple('viz_range') if asset.parmTuple('viz_range') is not None else (0.0,1.0))
+        def heat(w):                                                                                  # a value 0..1 (after the Range) to a colour of the palette
+            w=np.clip((np.asarray(w,dtype=np.float64)-vlo)/max(vhi-vlo,1e-9),0.0,1.0)*(LUT_N-1);k=np.minimum(np.floor(w).astype(int),LUT_N-2);f=(w-k)[:,None];return LUT[k]*(1.0-f)+LUT[k+1]*f
         def v3(a):return Vt.Vec3fArray([Gf.Vec3f(*[float(x) for x in r]) for r in a])
         def points(name,pos,color,widths=None,where=None):
             if not len(pos):return
@@ -104,7 +120,7 @@ if dbg or view or viz:
                 for attr in ('ProtoIndices','Positions','Orientations','Scales','Ids'):
                     src=getattr(pi,'Get%sAttr'%attr)().Get(t)
                     if src is not None:getattr(inst,'Create%sAttr'%attr)().Set(src)
-        if viz and vt in (1,3) and vw<3:           # the value over the scattering surface: dots on the surface, coloured like the instances
+        if viz and vt in (1,3) and vw<3:                                                              # the value over the scattering surface: vertex colours on a copy of it, and / or dots
             mode=asset.evalParm('mode');tri=None
             try:
                 if mode==5:tri=m.stage_surface(asset)
@@ -113,7 +129,23 @@ if dbg or view or viz:
                 elif mode==1:tri=m.plane_rect(0.5*asset.evalParm('area_sizex'),0.5*asset.evalParm('area_sizez'),0.0)
             except hou.Error:tri=None
             if tri is not None:
-                P_,T_,area_,normals_,vn_=tri;pos,nrm,_=m.surface_points(P_,T_,area_,normals_,vn_,asset.evalParm('viz_count'),1,False,0.0,180.0,0.0,0.0);ids_=np.arange(len(pos));what=vw;ones=np.ones(len(pos))
-                mw=m.mask_weights(asset,m.mask_values(asset,pos,ids_)) if asset.parm('mask_source') is not None and asset.evalParm('mask_source')!=0 else ones
-                fw=m.stack_weights(asset,pos,ids_) if asset.parm('fields') is not None else None;fw=ones if fw is None else fw
-                points('VizSurface',pos+nrm*size*0.6,heat((mw,fw,mw*fw)[what]))
+                P_,T_,area_,normals_,vn_=tri;what=vw;style=asset.evalParm('viz_style') if asset.parm('viz_style') is not None else 1;budget=asset.evalParm('viz_res') if asset.parm('viz_res') is not None else 20000
+                def surface_values(pos):
+                    ids_=np.arange(len(pos));ones=np.ones(len(pos))
+                    mw=m.mask_weights(asset,m.mask_values(asset,pos,ids_)) if asset.parm('mask_source') is not None and asset.evalParm('mask_source')!=0 else ones
+                    fw=m.stack_weights(asset,pos,ids_) if asset.parm('fields') is not None else None;fw=ones if fw is None else fw
+                    return (mw,fw,mw*fw)[what]
+                if style in (0,2):                                                                    # a copy of the surface cut into small triangles, a colour on every corner
+                    tris=np.asarray(P_)[np.asarray(T_)]
+                    while len(tris)*4<=budget:                                                        # every triangle into four, until the budget of triangles is used
+                        a_,b_,c_=tris[:,0],tris[:,1],tris[:,2];ab,bc,ca=(a_+b_)*0.5,(b_+c_)*0.5,(c_+a_)*0.5
+                        tris=np.concatenate([np.stack([a_,ab,ca],1),np.stack([ab,b_,bc],1),np.stack([ca,bc,c_],1),np.stack([ab,bc,ca],1)])
+                    corners=tris.reshape(-1,3);nrm=np.cross(tris[:,1]-tris[:,0],tris[:,2]-tris[:,0]);nrm=nrm/np.maximum(np.linalg.norm(nrm,axis=1),1e-12)[:,None]
+                    lifted=corners+np.repeat(nrm,3,axis=0)*size*0.3
+                    cols=heat(surface_values(corners));mesh=UsdGeom.Mesh.Define(stage,path.AppendChild('VizSurface'));UsdGeom.Imageable(mesh.GetPrim()).CreatePurposeAttr().Set('guide')
+                    mesh.CreatePointsAttr(v3(lifted));mesh.CreateFaceVertexCountsAttr(Vt.IntArray([3]*len(tris)));mesh.CreateFaceVertexIndicesAttr(Vt.IntArray(list(range(len(corners)))));mesh.CreateDoubleSidedAttr(True)
+                    mesh.CreateDisplayColorPrimvar(UsdGeom.Tokens.vertex).Set(v3(cols))
+                    UsdGeom.PrimvarsAPI(mesh).CreatePrimvar('displayOpacity',Sdf.ValueTypeNames.FloatArray,UsdGeom.Tokens.constant).Set(Vt.FloatArray([float(asset.evalParm('viz_opacity')) if asset.parm('viz_opacity') is not None else 1.0]))
+                if style in (1,2):                                                                    # dots on the surface
+                    pos,nrm,_=m.surface_points(P_,T_,area_,normals_,vn_,max(100,min(LIMIT,asset.evalParm('viz_count'))),1,False,0.0,180.0,0.0,0.0)
+                    points('VizSurface' if style==1 else 'VizSurfaceDots',pos+nrm*size*0.6,heat(surface_values(pos)))

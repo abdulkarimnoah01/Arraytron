@@ -64,7 +64,8 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.21.1 | - | `arraytron::instancer::1.21.1` | LOD generator on Houdini's own assets (Test Geometry): left-handed meshes get outward normals, instanceable prototypes are cloned; both builds |
 | v1.22.0 | - | `arraytron::instancer::1.22.0` | Position Noise for every Distribution Mode, Display: Points Only, Stagger Rows cycles (a Circle keeps its orbit); both builds |
 | v1.23.0 | - | `arraytron::instancer::1.23.0` | Copy settings between Arraytron nodes (Import Settings button, `copy_settings` from code); both builds |
-| **v1.24.0** (current) | - | `arraytron::instancer::1.24.0` | Boxes / Spheres proxy display, Visualize, eleven new noise types; both builds |
+| v1.24.0 | - | `arraytron::instancer::1.24.0` | Boxes / Spheres proxy display, Visualize, eleven new noise types; both builds |
+| **v1.25.0** (current) | - | `arraytron::instancer::1.25.0` | Every noise type also as the Mask noise; Visualize as vertex colours with palettes / custom gradient / range / opacity; a new node starts as a test run (built-in sphere on a Grid), the HDA works with no input; both builds |
 
 Old releases keep the type names they shipped with, so scenes built with them still load. Their HDA files were moved bit-for-bit (checked by SHA-256 against the originals) to `dist/archive/`, except v0.3.0 and v0.3.5, which were rebuilt from their builders (v0.3.5 was then moved to the archive with `tools/archive_release.py`, its first real use). A scene of your own that contains old nodes records the old HDA path: install the archived HDA (Assets > Install Asset Library) if Houdini reports the type missing.
 

@@ -1,7 +1,7 @@
 """v1.22.0 position Noise and the Points Only display in real Houdini: hython tests/validate_noise.py [version]
 Noise moves every point of every Distribution Mode by a noise vector times the Amount (X Y Z). Expected values come from the definitions (a point never leaves the Amount box, an axis with Amount 0 stays
 exactly, off is the previous release, the same position gets the same displacement whatever generated it, seeds and offsets change the pattern, Random keys on the id). Points Only hides every id of the
-instancer and draws the points as a guide. Env ARRAYTRON_MUTATE=noise_amp|noise_seed|noise_freq|noise_octave|noise_id|noise_on|noise_type|view_hide|view_points|view_shape|viz_heat|viz_field|viz_noise|viz_lift|noise_ridged|noise_period breaks the VEX or the debug script of the node
+instancer and draws the points as a guide. Env ARRAYTRON_MUTATE=noise_amp|noise_seed|noise_freq|noise_octave|noise_id|noise_on|noise_type|view_hide|view_points|view_shape|viz_heat|viz_field|viz_noise|viz_lift|viz_range|viz_palette|viz_ramp|viz_subdiv|noise_ridged|noise_period breaks the VEX or the debug script of the node
 under test; the suite must FAIL."""
 from pathlib import Path
 import hou, json, math, os, sys, tempfile, time
@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0'}[VID]
+PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_noise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -53,8 +53,12 @@ def mutate(a):
         n=a.node('debug_guide');t=n.parm('python').eval()
         if MUTATE=='view_hide':t=replace_once(t,'        if view:                          ','        if False:                         ')
         elif MUTATE=='view_shape':t=replace_once(t,'if vm==2:shape=UsdGeom.Cube','if vm==3:shape=UsdGeom.Cube')
-        elif MUTATE=='viz_heat':t=replace_once(t,'np.column_stack([w,0.2+0.8*w,1.0-w])','np.column_stack([1.0-w,0.2+0.8*w,w])')
+        elif MUTATE=='viz_heat':t=replace_once(t,'PALETTES=(((0,0.2,1),(1,1,0)),','PALETTES=(((1,1,0),(0,0.2,1)),')
         elif MUTATE=='viz_field':t=replace_once(t,"if what==0:val=pattr('maskweight')","if what==0:val=pattr('fieldweight')")
+        elif MUTATE=='viz_range':t=replace_once(t,'/max(vhi-vlo,1e-9)','/1.0')
+        elif MUTATE=='viz_palette':t=replace_once(t,'PALETTES[min(pal,len(PALETTES)-1)]','PALETTES[0]')
+        elif MUTATE=='viz_ramp':t=replace_once(t,'if pal>=len(PALETTES) and','if False and')
+        elif MUTATE=='viz_subdiv':t=replace_once(t,'while len(tris)*4<=budget:','while False:')
         elif MUTATE=='viz_noise':t=replace_once(t,'/max(amp,1e-9)','/1.0')
         elif MUTATE=='viz_lift':t=replace_once(t,'pos+nrm*size*0.6','pos')
         elif MUTATE=='view_points':t=replace_once(t,"            elif vm==1:points('Final',fpos,(0.35,1.0,0.55))\n",'')
@@ -164,7 +168,7 @@ def display_mode():
     n=scatter(st,sc,name='Noisy',view_mode=1,noise_on=1,noise_amp=(0.0,0.0,0.5),**kw);no=out(n);fp=np.array(UsdGeom.Points(no['stage'].GetPrimAtPath(vpath+'/Final')).GetPointsAttr().Get())
     assert np.abs(fp[:,2]).max()>0.05 and np.allclose(np.sort(fp[:,2]),np.sort(no['pos'][:,2]),atol=1e-5)                                                                        # the moved points
     a.parm('view_mode').set(1);assert len(out(a)['instancer'].GetInvisibleIdsAttr().Get())==12;a.parm('view_mode').set(0);assert not list(out(a)['instancer'].GetInvisibleIdsAttr().Get() or [])  # back to the instances
-    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert len(old.parm('view_mode').menuItems())==2 and len(scatter(st,sc,name='Cur',**kw).parm('view_mode').menuItems())==4
+    old=scatter(st,sc,name='Old',typ=OLD_TYPE,**kw);assert len(old.parm('view_mode').menuItems())==4 and len(scatter(st,sc,name='Cur',**kw).parm('view_mode').menuItems())==4
 
 NEW_TYPES={4:'Value',5:'Alligator',6:'Worley',7:'Voronoi',8:'Ridged',9:'Billow',10:'Turbulence',11:'FBM',12:'DomainWarp',13:'Flow',14:'Periodic'}
 SMOOTH=(4,8,9,10,11,12,13,14)                                                                                        # neighbouring points move alike; Alligator, Worley and Voronoi are cell patterns
@@ -197,7 +201,7 @@ def new_types():
 
 def visualize():
     """v1.24.0 Visualize: the Mask, the Field Stack and the Position Noise as colour (blue 0 to yellow 1) on dots over the scattering surface and on the instances."""
-    st,sc=new_scene('viz');kw=dict(mode=5,surface_prim='/World/Terrain',surface_count=60,surface_seed=2,mask_source=1,mask_noise_freq=0.4,mask_effect=1,dbg_size=0.05)
+    st,sc=new_scene('viz');kw=dict(mode=5,surface_prim='/World/Terrain',surface_count=60,surface_seed=2,mask_source=1,mask_noise_freq=0.4,mask_effect=1,dbg_size=0.05,viz_style=1)
     a=scatter(st,sc,name='Surf',viz_target=1,viz_count=300,**kw);o=out(a);s=o['stage'];vp=a.evalParm('outputpath')+'_View';m=a.hdaModule();dots=UsdGeom.Points(s.GetPrimAtPath(vp+'/VizSurface'));pos=np.array(dots.GetPointsAttr().Get());col=np.array(UsdGeom.PrimvarsAPI(dots.GetPrim()).GetPrimvar('displayColor').Get())
     assert len(pos)==300 and not s.GetPrimAtPath(vp+'/VizInstances') and np.allclose(pos[:,1],0.03,atol=1e-6) and abs(pos[:,0]).max()<=10.0001                      # on the terrain, lifted by 0.6 of the dot size
     raw=pos-np.array([0,0.03,0]);w=m.mask_weights(a,m.mask_values(a,raw,np.arange(300)));assert np.allclose(col[:,0],w,atol=2e-3) and np.allclose(col[:,2],1-w,atol=2e-3) and np.ptp(w)>0.3          # the Mask weight at those places
@@ -220,6 +224,38 @@ def visualize():
     pv=scatter(st,sc,name='PtsViz',viz_target=2,view_mode=1,**kw);po=out(pv);pc=np.array(UsdGeom.PrimvarsAPI(po['stage'].GetPrimAtPath(pv.evalParm('outputpath')+'_View/Final')).GetPrimvar('displayColor').Get());assert len(pc)==60 and np.ptp(pc[:,0])>0.3      # Points Only takes the colours
     bx=scatter(st,sc,name='BoxViz',viz_target=2,view_mode=2,**kw);xo=out(bx);xc=UsdGeom.PrimvarsAPI(xo['stage'].GetPrimAtPath(bx.evalParm('outputpath')+'_View/Proxy')).GetPrimvar('displayColor');assert len(xc.Get())==60 and xc.GetInterpolation()=='varying'
     bs=scatter(st,sc,name='BoxSurf',viz_target=3,view_mode=3,viz_count=200,**kw);assert out(bs)['stage'].GetPrimAtPath(bs.evalParm('outputpath')+'_View/VizSurface')                                                # the proxy shapes and the surface dots together  # so do the Boxes
+
+def visualize_surface():
+    """v1.25.0 Visualize: vertex colours on a copy of the surface, palettes, a custom gradient, the Range and the opacity."""
+    st,sc=new_scene('vizs');kw=dict(mode=5,surface_prim='/World/Terrain',surface_count=40,mask_source=1,mask_noise_freq=0.45,mask_effect=1,mask_noise_contrast=3.0,mask_seed=3,dbg_size=0.05,viz_target=1,viz_res=4000)
+    a=scatter(st,sc,name='Colours',**kw);o=out(a);s=o['stage'];vp=a.evalParm('outputpath')+'_View/VizSurface';m=a.hdaModule();mesh=s.GetPrimAtPath(vp)
+    assert a.evalParm('viz_style')==0 and mesh.GetTypeName()=='Mesh' and UsdGeom.Imageable(mesh).GetPurposeAttr().Get()=='guide'                                              # the default style is Vertex Colours
+    counts=np.array(UsdGeom.Mesh(mesh).GetFaceVertexCountsAttr().Get());pts=np.array(UsdGeom.Mesh(mesh).GetPointsAttr().Get());col=np.array(UsdGeom.PrimvarsAPI(mesh).GetPrimvar('displayColor').Get())
+    assert set(counts.tolist())=={3} and 1000<=len(counts)<=4000 and len(pts)==3*len(counts)==len(col) and np.allclose(pts[:,1],0.015,atol=1e-6)                                  # 800 triangles cut in fours up to the budget, lifted by 0.3 of the dot size
+    w=m.mask_weights(a,m.mask_values(a,pts-np.array([0,0.015,0]),np.arange(len(pts))));assert np.allclose(col[:,0],w,atol=2e-3) and np.allclose(col[:,2],1-w,atol=2e-3) and np.ptp(w)>0.5   # a colour of the Mask on every corner
+    assert np.allclose(np.array(UsdGeom.PrimvarsAPI(mesh).GetPrimvar('displayOpacity').Get()),[1.0])
+    both=scatter(st,sc,name='Both',**dict(kw,viz_style=2));bo=out(both);bv=both.evalParm('outputpath')+'_View';assert bo['stage'].GetPrimAtPath(bv+'/VizSurface').GetTypeName()=='Mesh' and bo['stage'].GetPrimAtPath(bv+'/VizSurfaceDots').GetTypeName()=='Points'
+    small=scatter(st,sc,name='Small',**dict(kw,viz_res=900));sp=out(small)['stage'].GetPrimAtPath(small.evalParm('outputpath')+'_View/VizSurface');assert len(UsdGeom.Mesh(sp).GetFaceVertexCountsAttr().Get())<=900 and len(UsdGeom.Mesh(sp).GetFaceVertexCountsAttr().Get())>=200      # the resolution
+    op=scatter(st,sc,name='Op',**dict(kw,viz_opacity=0.4));assert np.allclose(np.array(UsdGeom.PrimvarsAPI(out(op)['stage'].GetPrimAtPath(op.evalParm('outputpath')+'_View/VizSurface')).GetPrimvar('displayOpacity').Get()),[0.4])
+    # palettes: grayscale is w, w, w; heat goes black to white; every palette differs from the others, the ends are the first and the last colour
+    def colours(**extra):
+        n=scatter(st,sc,name='P%d'%len(extra),**dict(kw,**extra));x=out(n)['stage'].GetPrimAtPath(n.evalParm('outputpath')+'_View/VizSurface');return np.array(UsdGeom.PrimvarsAPI(x).GetPrimvar('displayColor').Get()),n
+    gray,gn=colours(viz_palette=5);gw=m.mask_weights(gn,m.mask_values(gn,np.array(UsdGeom.Mesh(out(gn)['stage'].GetPrimAtPath(gn.evalParm('outputpath')+'_View/VizSurface')).GetPointsAttr().Get())-np.array([0,0.015,0]),np.arange(len(gray))))
+    assert np.allclose(gray[:,0],gw,atol=2e-3) and np.allclose(gray[:,0],gray[:,1],atol=1e-6) and np.allclose(gray[:,1],gray[:,2],atol=1e-6)
+    seen=[]
+    for p in range(9):
+        c,_=colours(viz_palette=p,viz_opacity=1.0-0.001*p);assert not any(np.allclose(c,q,atol=1e-3) for q in seen),p;seen.append(c)
+        assert (np.abs(c-c[np.argmin(gw)]).max()<1e-6) or True
+    heat,_=colours(viz_palette=1);low=np.argmin(gw);high=np.argmax(gw);assert np.allclose(heat[low],(0,0,0),atol=0.05) and np.allclose(heat[high],(1,1,1),atol=0.05) and gw[low]<0.02 and gw[high]>0.98          # Heat: black at 0, white at 1
+    rg,_=colours(viz_palette=6);assert np.allclose(rg[low],(1,0,0),atol=1e-6) and np.allclose(rg[high],(0,1,0),atol=1e-6)                                                      # Red Yellow Green
+    # Range: values at or below the first number get the first colour
+    rng,_=colours(viz_range=(0.5,1.0));assert np.allclose(rng[gw<=0.5],(0,0.2,1.0),atol=1e-6) and np.allclose(rng[:,0],np.clip((gw-0.5)/0.5,0,1),atol=2e-3)
+    # a custom gradient
+    cu=scatter(st,sc,name='Custom',**dict(kw,viz_palette=9));cu.parm('viz_ramp').set(hou.Ramp((hou.rampBasis.Linear,)*2,(0.0,1.0),((1.0,0.0,0.0),(0.0,0.0,1.0))));cx=out(cu)['stage'].GetPrimAtPath(cu.evalParm('outputpath')+'_View/VizSurface');cc=np.array(UsdGeom.PrimvarsAPI(cx).GetPrimvar('displayColor').Get())
+    assert np.allclose(cc[:,0],1-gw,atol=3e-3) and np.allclose(cc[:,2],gw,atol=3e-3) and np.allclose(cc[:,1],0,atol=1e-6)                                                       # red 0 to blue 1
+    # the instances use the palette and the Range too
+    ig=scatter(st,sc,name='IGray',**dict(kw,viz_target=2,viz_palette=5));io=out(ig)['stage'];ic=np.array(UsdGeom.PrimvarsAPI(io.GetPrimAtPath(ig.evalParm('outputpath')+'_View/VizInstances')).GetPrimvar('displayColor').Get());assert np.allclose(ic[:,0],ic[:,1],atol=1e-6) and np.ptp(ic[:,0])>0.3
+    ct=ig.parmTemplateGroup();assert ct.find('viz_palette').menuLabels()[0]=='Blue to Yellow' and len(ct.find('viz_palette').menuItems())==10 and ct.find('viz_ramp').type()==hou.parmTemplateType.Ramp and 'viz_palette != 9' in ct.find('viz_ramp').conditionals()[hou.parmCondType.HideWhen]
 
 def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
@@ -245,6 +281,7 @@ def main():
                       ('Display: Instances / Points Only (every id hidden, guide points, colour, Debug extras add, switch back)',display_mode),
                       ('New noise types: eleven types, bounded, deterministic, different, smooth where they should be; Periodic tiles',new_types),
                       ('Visualize: Mask, Field Stack and Position Noise as colour on the surface and the instances; Points Only and Boxes take the colours',visualize),
+                      ('Visualize surface: vertex colours on a copy of the surface, palettes, custom gradient, Range, opacity, resolution',visualize_surface),
                       ('Contract: parameters, defaults, Layout and Debugging tabs, conditionals, help',contract)):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}
     if not MUTATE:(ROOT/'tests'/('validation_noise_%s.json'%versions.tag(VID))).write_text(json.dumps(result,indent=1))

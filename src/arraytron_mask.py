@@ -135,7 +135,9 @@ def mask_values(asset,P,ids):
     """Raw mask value in [0,1] (before Invert and the Low / High remap) for each point position."""
     source=asset.evalParm('mask_source');seed=asset.evalParm('mask_seed')
     if source==1:
-        n=fbm_noise(P,asset.evalParm('mask_noise_freq'),np.array(asset.evalParmTuple('mask_noise_offset')),asset.evalParm('mask_noise_octaves'),asset.evalParm('mask_noise_rough'),seed)
+        kind=asset.evalParm('mask_noise_type') if asset.parm('mask_noise_type') is not None else 4                # v1.25.0: any of the fifteen noise types; 4 (Value) is the original mask noise
+        period=asset.evalParm('mask_noise_period') if asset.parm('mask_noise_period') is not None else 4.0
+        n=noise_field(kind,P,asset.evalParm('mask_noise_freq'),np.array(asset.evalParmTuple('mask_noise_offset')),asset.evalParm('mask_noise_octaves'),asset.evalParm('mask_noise_rough'),seed,period,ids)
         return np.clip((n-0.5)*asset.evalParm('mask_noise_contrast')+0.5,0.0,1.0)       # fractal noise clusters around 0.5: stretch it to use the whole range
     if source==2:
         path=asset.evalParm('mask_image').strip()
