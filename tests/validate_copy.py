@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0'}[VID];LEGACY='v0.1.5'
+PREVIOUS={'v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID];LEGACY='v0.1.5'
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS);LEGACY_TYPE=versions.type_name(LEGACY)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_copy_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -78,7 +78,7 @@ def new_to_new():
     assert rep['failed']==[] and rep['missing']==[] and dst.evalParm('protos')==3 and dst.evalParm('proto_prim3')=='/World/Props/BallC' and dst.evalParm('proto_weight2')==2.0,rep
     for sp in src.parms():
         if m.copy_is_setting(sp):
-            dp=dst.parm(sp.name());assert dp is not None and dp.eval()==sp.eval() and len(dp.keyframes())==len(sp.keyframes()),sp.name()                                # every setting equal, animation too
+            dp=dst.parm(sp.name());assert dp is not None and ((dp.evalAsRamp().keys()==sp.evalAsRamp().keys() and dp.evalAsRamp().values()==sp.evalAsRamp().values()) if sp.parmTemplate().type()==hou.parmTemplateType.Ramp else dp.eval()==sp.eval()) and len(dp.keyframes())==len(sp.keyframes()),sp.name()      # a ramp is compared by its keys and values                                # every setting equal, animation too
     assert len(dst.parm('area_sizex').keyframes())==2
     hou.setFrame(12);ps,pd=points(src),points(dst);assert len(ps[0])==40 and np.allclose(ps[0],pd[0],atol=1e-4) and np.array_equal(ps[1],pd[1])                                # the same instances
     assert dst.evalParm('copy_info')==''                                                                                                                                     # copy_settings does not touch the read-out

@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.25.0':'v1.24.0'}[VID]
+PREVIOUS={'v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_masknoise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -97,7 +97,7 @@ def periodic_and_ui():
     tabs=dict((x.label(),[y.name() for y in x.parmTemplates()]) for x in g.entries() if x.type()==hou.parmTemplateType.Folder);vt=tabs[versions.tab_names(VID)['look']];assert vt.index('mask_noise_type')==vt.index('mask_source')+1    # right under Mask Source
     assert g.find('noise_on').label()=='Noise Positional Shift' and 'NOISE POSITIONAL SHIFT' in [x.columnLabels()[0] for x in g.entries()[2].parmTemplates() if x.name().startswith('ui_head')] or True
     heads=[t_.columnLabels()[0] for t_ in [x for x in g.entries() if x.label()==versions.tab_names(VID)['look']][0].parmTemplates() if t_.name().startswith('ui_head')];assert 'NOISE POSITIONAL SHIFT' in heads and 'NOISE' not in heads,heads
-    old=scatter(st,sc,name='Old',typ=OLD_TYPE);assert old.parm('mask_noise_type') is None
+    hou.hda.installFile(str(versions.hda('v1.24.0')),force_use_assets=True);old=scatter(st,sc,name='Old',typ=versions.type_name('v1.24.0'));assert old.parm('mask_noise_type') is None          # a release before the noise types
     # the Visualize display reads the same function: Mask on the surface with a new type
     vz=scatter(st,sc,name='Viz',mask_source=1,mask_noise_type=8,mask_noise_freq=0.5,mask_effect=1,mode=1,area_sizex=6.0,area_sizez=6.0,area_count=50,viz_target=1,viz_style=1,viz_count=200)
     s=vz.stage();assert not all_errors(vz),all_errors(vz);dots=UsdGeom.Points(s.GetPrimAtPath(vz.evalParm('outputpath')+'_View/VizSurface'));pos=np.array(dots.GetPointsAttr().Get());col=np.array(UsdGeom.PrimvarsAPI(dots.GetPrim()).GetPrimvar('displayColor').Get())

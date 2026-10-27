@@ -93,3 +93,4 @@ The early versions were numbered ad hoc (0.15, 0.16, 0.2, 0.21). From here follo
 - 2026-10-23: v1.23.0 copy settings between Arraytron nodes (user request, legacy shot nodes); v1.22.0 archived.
 - 2026-10-26: v1.24.0 Boxes / Spheres proxy display, Visualize (Mask / Field Stack / noise), eleven new noise types, Noise in the Variation tab (user requests); v1.23.0 archived.
 - 2026-10-26: v1.25.0 Mask noise types, Visualize vertex colours with palettes, test setup of a new node (user requests); v1.24.0 archived.
+- 2026-10-27: v1.25.1 test setup on a built-in ground plane, robust check, button (user report: nothing spawned, and a plane was meant, not a Grid); v1.25.0 archived.

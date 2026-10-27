@@ -2,6 +2,11 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.25.1 - Test setup: a ground plane, and it really runs
+* **A new node starts as a test run on a ground plane:** 30 built-in spheres scattered (Surface mode) on a built-in flat 10 x 10 test ground at `/World/TestGround/Plane`, instead of a 5 x 5 Grid layout. The plane is a Python LOP inside the HDA that adds it to the stream while **Built-in Test Ground** (Prototypes tab, section TEST SETUP) is on; wire a real surface and switch it off or change Surface Prim.
+* **Fix: the test setup did not run on a new node in the interface.** The check required every parameter to be at its default (the Visualize ramp is not), so the hook skipped real nodes. It now looks only at the wiring, the mode and Prototype 1, and prints why when it skips. New button **Start From Test Setup** makes any node a test run (one undo step).
+* `tests/validate_testsetup.py` (2 groups, 6 mutations: ts_inputs, ts_changed, ts_mode, ts_path, ts_force, ts_ground). Both builds.
+
 ## v1.25.0 - Mask noise types, Visualize colours, test setup
 * **The Mask Source Noise offers all fifteen noise types** (Variation tab, Mask > Noise Type right under Mask Source): Perlin, Simplex, Random, Curl, Value, Alligator, Worley, Voronoi, Ridged, Billow, Turbulence, FBM, Domain Warp, Flow, Periodic (with a Period). The default is Value, the original mask noise, so existing masks do not change. Frequency, Octaves, Roughness, Contrast, Offset and Seed work for all of them; Visualize shows them too. They are numpy versions (`src/arraytron_noises.py`), the same ideas as the VEX of the positional shift but not the same pattern. The Noise section is now called **Noise Positional Shift**.
 * **Visualize paints vertex colours** on a copy of the scattering surface (Surface Style: Vertex Colours / Dots / Both; Surface Resolution = the number of small triangles), with **palettes** (Blue to Yellow, Heat, Viridis, Magma, Rainbow, Grayscale, Red Yellow Green, Cool to Warm, Terrain), a **Custom Gradient** ramp, a **Range** to stretch small differences and a **Surface Opacity**. The instances use the same palette and range.

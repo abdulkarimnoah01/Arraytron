@@ -93,3 +93,4 @@ Status 2026-10-21 (latest): v1.22.0 adds position Noise, the Points Only display
 Status 2026-10-23 (latest): v1.23.0 adds copy settings between nodes. Next: competition inside a biome.
 Status 2026-10-26 (latest): v1.24.0 adds the Boxes / Spheres proxy display, Visualize and eleven new noise types. Next: competition inside a biome.
 Status 2026-10-26 (latest): v1.25.0 adds the Mask noise types, Visualize vertex colours with palettes and a test setup for new nodes. Next: competition inside a biome.
+Status 2026-10-27 (latest): v1.25.1 fixes the test setup of a new node (ground plane + button). Next: competition inside a biome.
