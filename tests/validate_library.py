@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
+PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_library_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 LIB=WORK/'lib';os.environ['ARRAYTRON_LIBRARY']=str(LIB)
@@ -152,7 +152,7 @@ def unchanged():
                 o.append(t.name())
                 if t.type() in (hou.parmTemplateType.Folder,hou.parmTemplateType.FolderSet) and hasattr(t,'parmTemplates'):walk(t.parmTemplates())
         walk(g.entries());return o
-    assert set(n for n in names(old) if not n.startswith('ui_'))<=set(names(new)) and all(n.startswith(('biome_','noise_','view_mode','copy_','viz_','mask_viz','mask_noise','ui_','mask_brush','mask_paint','mask_hpaint','mask_gamma','mask_curve','mask_outrange','mask_sym','surface_dir','surface_light','surface_spread','surface_soft','surface_opp','bound_gizmo','surface_proxy','surface_ghost','scatter_info','surface_limit','field_m','blast_','fall_mask_','mask_fade_','mask_scale_curve','mask_export_','mask_bake_go','mask_save_go','mask_load_go')) for n in set(names(new))-set(names(old)))                    # nothing removed or moved; a later release may add Biome fields only
+    assert set(n for n in names(old) if not n.startswith('ui_'))<=set(names(new)) and all(n.startswith(('mirror','tab_mirror','tab_source','biome_','noise_','view_mode','copy_','viz_','mask_viz','mask_noise','ui_','mask_brush','mask_paint','mask_hpaint','mask_gamma','mask_curve','mask_outrange','mask_sym','surface_dir','surface_light','surface_spread','surface_soft','surface_opp','bound_gizmo','surface_proxy','surface_ghost','scatter_info','surface_limit','field_m','blast_','fall_mask_','mask_fade_','mask_scale_curve','mask_export_','mask_bake_go','mask_save_go','mask_load_go')) for n in set(names(new))-set(names(old)))                    # nothing removed or moved; a later release may add Biome fields only
     for mode,extra in ((0,dict(line_count=12)),(1,dict(area_count=30)),(3,dict(circle_count=9))):
         pa,a=out(fresh_node(st,sc,name='N%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra));pb,b=out(fresh_node(st,sc,typ=OLD_TYPE,name='O%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra))
         assert len(a['ids'])>0 and np.array_equal(a['ids'],b['ids']) and np.array_equal(a['pos'],b['pos']),mode

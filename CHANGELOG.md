@@ -2,6 +2,14 @@
 
 Newest first. Versions are plain `vMAJOR.MINOR.PATCH`; every release is its own node type `arraytron::instancer::<version>`. Each release reproduces the previous one exactly with its new features off (tested). Details: `docs/VERSIONING.md`, `STATUS.md`, `docs/DECISIONS.md`.
 
+## v1.34.0 - Mirror
+
+* **A new Mirror tab (after Variation)** mirrors the finished scatter: every distribution mode, with the Mask, Field Stack, Falloff, variation, Separation, Physics, Blast and the Override Database done first, and before Grow (so Grow reveals the mirrored half too).
+* **A list of mirror operations** (the multiparm Mirror Operations) works one after the other on everything the operations above made: one plane doubles the instances, two give 4, three give 8, five give 32. Types: **Plane X / Y / Z**, **Custom Plane** (any normal) and **Radial** (Count copies turned about the X, Y, Z or a custom axis, an Angle Span for a fan, **Mirror Each Slice** for a kaleidoscope with a Mirror Plane Angle). The **Center** is the point the plane or the axis goes through.
+* **Mirror The Instances Too** (on: a true mirror image, a negative scale and a half turn; off: only the placement is mirrored and every instance keeps its handedness), **Keep Original** (off: the scatter is replaced by its mirror image, a flip), **Max Instances** (a safety limit).
+* **Ids:** the originals keep theirs; a copy has `id + 2^20 * copy number` (more when a scatter has over a million ids), the same on every cook.
+* Everything else is unchanged and Mirror is off by default. Houdini 22 and 20.5 / 21. `tests/validate_mirror.py` (8 groups, 7 mutations), demo `Arraytron_v1.34.0_mirror_demo.hip`, `docs/MIRROR.md`.
+
 ## v1.33.0 - The Field Stack reworked (Height, Distance, Exclusion, Mask) and Blast
 
 * **The Field menu offers only Height, Distance, Exclusion and Mask.** Slope, Noise and Image are no longer offered (scenes that already use them keep working).

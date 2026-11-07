@@ -73,9 +73,11 @@ VERSIONS={
  'v1.1.0':dict(old='-',type='arraytron::instancer::1.1.0',h205=True),     # adds the Houdini 20.5 / 21 build (otls_h205/); see docs/PORT_HOUDINI_205.md
  'v1.31.1':dict(old='-',type='arraytron::instancer::1.31.1',h205=True),     # faster prototype paths and point creation for a million instances, the same features
  'v1.32.0':dict(old='-',type='arraytron::instancer::1.32.0',h205=True),     # Falloff follows the shape of any mask, mask export / bake / save and load, the Layout tab is the Scatter tab and holds the Mask and the Field Stack
- 'v1.33.0':dict(old='-',type='arraytron::instancer::1.33.0',h205=True),     # the Field Stack offers Height, Distance, Exclusion and Mask (keep points off the mask, on it or around it), Mask Effect None
+ 'v1.33.0':dict(old='-',type='arraytron::instancer::1.33.0',h205=True),
+ 'v1.34.0':dict(old='-',type='arraytron::instancer::1.34.0',h205=True),     # the Mirror tab: planes, custom planes, radial and kaleidoscope, any number of operations, flipping
+     # the Field Stack offers Height, Distance, Exclusion and Mask (keep points off the mask, on it or around it), Mask Effect None
 }
-CURRENT='v1.33.0'
+CURRENT='v1.34.0'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',
@@ -161,4 +163,5 @@ def tab_names(vid):
     """The labels of the tabs that were renamed in v1.13.0: Source > Prototypes, Look > Variation, Finish > Debugging, plus the Export tab (None before v1.13.0)."""
     new=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,13,0)
     scatter=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,32,0)                  # v1.32.0: the Layout tab is the Scatter tab and holds the Mask and the Field Stack (the Variation tab no longer does)
-    return dict(source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None,layout='Scatter' if scatter else 'Layout',mask_in_layout=scatter)
+    mirror=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,34,0)                                                   # v1.34.0: the Mirror tab after Variation
+    return dict(mirror_tab=('Mirror',) if mirror else (),source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None,layout='Scatter' if scatter else 'Layout',mask_in_layout=scatter)

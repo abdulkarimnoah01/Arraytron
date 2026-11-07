@@ -1,6 +1,6 @@
-# Arraytron user guide (v1.33.0)
+# Arraytron user guide (v1.34.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.33.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.34.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -17,8 +17,9 @@ That is a working scatter. Everything else is optional and stays out of the way 
 | Tab | What it is for |
 | --- | --- |
 | **Prototypes** | The Prototype Bank (the models, their weights, scale, LOD / proxy prims), how each point picks a model, the output prim path. |
-| **Scatter** | Where the points go, and the **Mask**, the **Field Stack** and the **Falloff** that shape them (v1.32.0: they used to be in the Variation and Layout tabs), then **Blast** (v1.33.0): an overall selection of instances that is deleted or transformed all together. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show (**Rows** lay a Line, Circle or Curve out in several rows; **Biome** scatters on a terrain by elevation, slope, moisture and temperature). The mode is chosen on the **Mode Palette**, a row of icon cells at the top of the Parameters pane; the **Asset Library** under it keeps your USD assets in categories and puts them into the Prototype Bank. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
-| **Variation** | Per-instance rotation and scale, **Randomize**, (the **Mask** and the **Field Stack** moved to the Scatter tab in v1.32.0; Height, Distance, Exclusion, Mask; v1.33.0). |
+| **Scatter** | Where the points go, and the **Mask**, the **Field Stack** and the **Falloff** that shape them (v1.32.0: they used to be in the Variation and Layout tabs), then **Blast** (v1.34.0): an overall selection of instances that is deleted or transformed all together. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show (**Rows** lay a Line, Circle or Curve out in several rows; **Biome** scatters on a terrain by elevation, slope, moisture and temperature). The mode is chosen on the **Mode Palette**, a row of icon cells at the top of the Parameters pane; the **Asset Library** under it keeps your USD assets in categories and puts them into the Prototype Bank. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
+| **Mirror** | Mirror the finished scatter: planes, custom planes, radial and kaleidoscope, any number of operations, flipping (v1.34.0, `MIRROR.md`). |
+| **Variation** | Per-instance rotation and scale, **Randomize**, (the **Mask** and the **Field Stack** moved to the Scatter tab in v1.32.0; Height, Distance, Exclusion, Mask; v1.34.0). |
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
 | **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |

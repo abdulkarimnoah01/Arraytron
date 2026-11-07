@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.26.0':'v1.25.2','v1.27.0':'v1.26.0','v1.28.0':'v1.27.0','v1.29.0':'v1.28.0'}[VID]
+PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.26.0':'v1.25.2','v1.27.0':'v1.26.0','v1.28.0':'v1.27.0','v1.29.0':'v1.28.0'}[VID]
 FULL=tuple(int(x) for x in VID[1:].split('.'))>=(1,27,0)                                  # v1.27.0: the full brush (Foreground / Background, Shift and Ctrl operations, Smooth, Sample, symmetry, Fill)
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_maskpaint_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')

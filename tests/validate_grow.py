@@ -11,7 +11,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_grow_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -86,7 +86,7 @@ def flat(entries):
 
 def ui_tabs():
     st,n,a=scene();g=a.parmTemplateGroup();tabs=g.entries()
-    assert [t.label() for t in tabs]==[TN['source'],TN['layout'],TN['look'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['finish']] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['export']] if TN['export'] and any(x.name()=='export_usd' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
+    assert [t.label() for t in tabs]==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['finish']] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['export']] if TN['export'] and any(x.name()=='export_usd' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
     assert sum(len(flat([t])) for t in tabs)>=140,'every parameter is still there'
     contents={t.label():flat([t]) for t in tabs}
     exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents[TN['source']] else [])+['proto_summary'];assert contents[TN['source']][:len(exp)]==exp and [n for n in contents[TN['source']] if not n.startswith('copy_')][-1]=='outputpath'
@@ -107,7 +107,7 @@ def ui_tabs():
     # mode panels sit under headings and carry the mode condition; essential details are in collapsible sections
     for name,mode in (('line_axis',0),('area_sizex',1),('grid_count',2),('circle_radius',3),('curve_prim',4),('surface_prim',5)):assert g.find(name).conditionals()[hou.parmCondType.HideWhen].endswith('{ mode != %d }'%mode),name
     assert {t.label() for t in tabs[0].parmTemplates() if t.type()==hou.parmTemplateType.Folder}=={'Prototype Bank','Selection Details'}
-    sections=[f.label() for t in tabs for f in t.parmTemplates() if f.type()==hou.parmTemplateType.Folder and f.folderType()==hou.folderType.Collapsible];expected=['Selection Details','Pivot & Guide','Mask Details','Save, Cache And Export','Falloff Details','Variation Details','Solver Settings','Material & Forces','Collision Settings','Cache Settings'] if versions.tab_names(VID)['mask_in_layout'] else ['Selection Details','Pivot & Guide']+(['Falloff Details'] if a.parm('fall_on') is not None else [])+['Variation Details','Mask Details','Solver Settings','Material & Forces','Collision Settings','Cache Settings']
+    sections=[f.label() for t in tabs for f in t.parmTemplates() if f.type()==hou.parmTemplateType.Folder and f.folderType()==hou.folderType.Collapsible];expected=['Selection Details','Pivot & Guide','Mask Details','Save, Cache And Export','Falloff Details','Variation Details']+(['Mirror Safety'] if a.parm('mirror_on') is not None else [])+['Solver Settings','Material & Forces','Collision Settings','Cache Settings'] if versions.tab_names(VID)['mask_in_layout'] else ['Selection Details','Pivot & Guide']+(['Falloff Details'] if a.parm('fall_on') is not None else [])+['Variation Details','Mask Details','Solver Settings','Material & Forces','Collision Settings','Cache Settings']
     assert sections==expected,sections
     assert g.find('ui_pivot') and 'bound_p' in flat([g.find('ui_pivot')]) and 'show_bounds' in flat([g.find('ui_pivot')])
     # the viewport handle still binds the same 12 parameters
@@ -130,7 +130,7 @@ def ui_animate():
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
     order=[x for x in order if x!='PROTO_PATH']                # the Houdini 20.5 / 21 build adds PROTO_PATH last
     pv=['PRIMVARS'] if a.node('USD_COMPILER/PRIMVARS') else []
-    ov=(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])
+    ov=(['MIRROR'] if a.node('USD_COMPILER/MIRROR') else [])+(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])
     assert order[:3+len(pv)+len(ov)]==['OUT_POINTS']+pv+['GROW']+ov+['PHYSICS_SWITCH'],order
     assert 'Grow' in a.type().definition().sections()['ArraytronVersion'].contents()
 

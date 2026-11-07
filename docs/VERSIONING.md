@@ -66,7 +66,8 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.23.0 | - | `arraytron::instancer::1.23.0` | Copy settings between Arraytron nodes (Import Settings button, `copy_settings` from code); both builds |
 | v1.24.0 | - | `arraytron::instancer::1.24.0` | Boxes / Spheres proxy display, Visualize, eleven new noise types; both builds |
 | v1.25.0 | - | `arraytron::instancer::1.25.0` | Every noise type also as the Mask noise; Visualize as vertex colours with palettes / custom gradient / range / opacity; a new node starts as a test run (built-in sphere on a Grid), the HDA works with no input; both builds |
-| **v1.33.0** (current) | - | `arraytron::instancer::1.33.0` | The Field Stack reworked: Height, Distance, Exclusion and the Mask field (keep points off the mask, on it or around it); Mask Effect None, Blast |
+| **v1.34.0** (current) | - | `arraytron::instancer::1.34.0` | The Mirror tab: planes X / Y / Z and custom planes, radial and kaleidoscope, any number of operations, flipping, Keep Original, Max Instances; both builds |
+| v1.33.0 | - | `arraytron::instancer::1.33.0` | The Field Stack reworked: Height, Distance, Exclusion and the Mask field (keep points off the mask, on it or around it); Mask Effect None, Blast |
 | v1.32.0 | - | `arraytron::instancer::1.32.0` | Falloff from the shape of any mask, Save / Bake / Export the mask, the Layout tab is the Scatter tab (Mask and Field Stack moved into it) |
 | v1.31.1 | - | `arraytron::instancer::1.31.1` | A million instances as fast as the native Instancer: faster prototype paths and point creation (20.5 / 21) |
 | v1.31.0 | - | `arraytron::instancer::1.31.0` | Big surfaces: the surface is read once and kept, Scatter On Reduced Proxy (ghost), the Place mode retired |

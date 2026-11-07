@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.1':'v0.5.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_overlap_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
@@ -75,7 +75,7 @@ def mutate(a):
 
 def ui_contract():
     st,src=ball_scene();a=arraytron(st,src,mode=1);g=a.parmTemplateGroup();names=[t.name() for t in g.entries()]
-    if g.find('ui_solver'):assert [e.label() for e in g.entries()][3]=='Spacing' and g.find('ui_solver').label()=='Solver Settings'
+    if g.find('ui_solver'):assert [e.label() for e in g.entries()][3+len(versions.tab_names(VID)['mirror_tab'])]=='Spacing' and g.find('ui_solver').label()=='Solver Settings'
     else:assert names.index('overlap')==names.index('mask')+1 and [t for t in g.entries() if t.name()=='overlap'][0].label()=='No Overlap',names
     d=dict(overlap_mode=0,overlap_size=0,overlap_radius=0.5,overlap_tolerance=1.0,overlap_axes=1,overlap_iterations=30,overlap_strength=0.5)
     for k,v in d.items():assert a.evalParm(k)==v,(k,a.evalParm(k));assert g.find(k).help().strip(),k
@@ -85,7 +85,7 @@ def ui_contract():
     assert a.evalParm('overlap_info') in ('No Overlap is off.','Separation and Avoid Geometry are off.') and 'No Overlap' in a.type().definition().sections()['ArraytronVersion'].contents()
     order=[];n=a.node('USD_COMPILER/OUT_POINTS')
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
-    expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node('USD_COMPILER/PROTO_PATH') else [])+(['PRIMVARS'] if a.node('USD_COMPILER/PRIMVARS') else [])+(['GROW'] if a.node('USD_COMPILER/GROW') else [])+(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])+['PHYSICS_SWITCH','NO_OVERLAP','PROTOTYPE_ASSIGNMENT'];assert order[:len(expected)]==expected,order
+    expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node('USD_COMPILER/PROTO_PATH') else [])+(['PRIMVARS'] if a.node('USD_COMPILER/PRIMVARS') else [])+(['GROW'] if a.node('USD_COMPILER/GROW') else [])+(['MIRROR'] if a.node('USD_COMPILER/MIRROR') else [])+(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])+['PHYSICS_SWITCH','NO_OVERLAP','PROTOTYPE_ASSIGNMENT'];assert order[:len(expected)]==expected,order
     assert [n.name() for n in a.node('USD_COMPILER/PHYSICS_SWITCH').inputs()]==['NO_OVERLAP','PHYSICS_APPLY']
 
 def off_unchanged():
