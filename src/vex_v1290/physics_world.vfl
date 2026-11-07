@@ -1,0 +1,7 @@
+// PHYSICS_WORLD: with Physics Settle on, the stones are simulated in world space, so the Bounds Transform is applied to the points here
+// (Scale was already applied about the Pivot by the variation stage) and the USD transform of the PointInstancer stays identity.
+// Same order as the Xform LOP: scale, then rotate about the Pivot, then Position.
+vector pivot = chv("../../bound_p");
+vector4 q = eulertoquaternion(radians(chv("../../bound_r")), XFORM_XYZ);
+@P = pivot + qrotate(q, @P - pivot) + chv("../../bound_t");
+p@orient = qmultiply(q, p@orient);

@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 SLIDER=tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0)                                                          # v1.18.0: Stagger Rows is a slider (a fraction of the gap), the old tick meant 0.5
-PREVIOUS={'v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.15.0':'v1.14.0'}[VID]
 WRAP=tuple(int(x) for x in VID[1:].split('.'))>=(1,22,0)                                                            # v1.22.0: Stagger cycles and a Circle stays on its orbit
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_rows_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
@@ -176,7 +176,7 @@ def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
     for n in ('rows_count','rows_spacing','rows_center','rows_random','rows_shift','rows_stagger','rows_seed','rows_info'):assert g.find(n) is not None,n
     assert g.find('rows_count').defaultValue()==(1,) and g.find('rows_random').defaultValue()==(0.0,) and g.find('rows_shift').defaultValue()==(0.0,) and ((g.find('rows_stagger').defaultValue()==(0.0,) and g.find('rows_stagger').minValue()==0.0 and g.find('rows_stagger').maxValue()==1.0) if SLIDER else g.find('rows_stagger').defaultValue() is False)
-    layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('rows_count')>names.index('circle_count') and names.index('rows_count')<names.index('bound_t')
+    layout=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout']][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('rows_count')>names.index('circle_count') and names.index('rows_count')<names.index('bound_t')
     assert 'mode != 0' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen] and 'mode != 4' in g.find('rows_count').conditionals()[hou.parmCondType.HideWhen]
     chain=[];n=a.node('USD_COMPILER/MASK_PROCESSOR')
     while n is not None and len(chain)<4:chain.append(n.name());n=n.inputs()[0] if n.inputs() else None

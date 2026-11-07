@@ -12,6 +12,7 @@ def lod_entries(asset):
     """[(row, level 1..3, prim path)] for every enabled bank row that has LOD 1 / LOD 2 / Proxy prims, in row then level order."""
     out=[];gen='lodgen_path' in globals() and asset.parm('lodg_on') is not None and bool(asset.evalParm('lodg_on'))                  # the LOD generator (v1.8.0) fills the levels without a prim
     for r in bank_rows(asset):
+        if asset.evalParm('proto_type%d'%r)==TYPE_GROUP if 'TYPE_GROUP' in globals() else False:continue                              # a Group Children row has no LOD prims of its own (v1.29.0)
         for level,name in ((1,'proto_lod1'),(2,'proto_lod2'),(3,'proto_proxy')):
             p=asset.parm('%s%d'%(name,r))
             if p is not None and p.eval().strip():out.append((r,level,p.eval().strip()))

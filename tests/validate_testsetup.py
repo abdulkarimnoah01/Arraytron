@@ -1,7 +1,8 @@
 """v1.25.0 Test setup in real Houdini: hython tests/validate_testsetup.py [version]
 A new Arraytron node made in the interface is a working test run: the built-in sphere (a USD file inside the HDA) scattered on the built-in test ground plane (Surface mode). The hook runs only when the interface is available, so scripts and tests
 that create nodes get the plain defaults. test_setup(node) is the function the hook calls: it acts only on a node with nothing wired in that is still at its defaults. Env
-ARRAYTRON_MUTATE=ts_inputs|ts_changed|ts_mode|ts_path|ts_force|ts_ground breaks the module; the suite must FAIL."""
+ARRAYTRON_MUTATE=ts_inputs|ts_changed|ts_mode|ts_path|ts_force|ts_ground|ts_autohide|ts_wire breaks the module; the suite must FAIL.
+v1.25.2: the plane is added only while Surface Prim names it, and wiring an input into a node that still uses it switches it off."""
 from pathlib import Path
 import hou, json, os, sys, tempfile, time
 import numpy as np
@@ -10,6 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
+GROUNDAUTO=tuple(int(x) for x in VID[1:].split('.'))>=(1,25,2)                                                                                                # v1.25.2: the plane follows Surface Prim
 TYPE=versions.type_name(VID);MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[];WORK=Path(tempfile.mkdtemp(prefix='arraytron_testsetup_'))
 def new_scene(name='scene'):
     hou.hipFile.clear(suppress_save_prompt=True);hou.hda.installFile(str(versions.hda(VID)),force_use_assets=True);hou.hipFile.save(str(WORK/(name+'.hip')));return hou.node('/stage')
@@ -28,6 +30,9 @@ def mutate(a):
     elif MUTATE=='ts_force':
         code="def test_setup_button(node):\n    test_setup(node,False)\n";exec(code,g)                                                                                    # the button does not force
     elif MUTATE=='ts_path':g['BUILTIN_SPHERE']='missing.usda'
+    elif MUTATE=='ts_autohide':                                                                                                                                  # the ground script keeps adding the plane
+        a.allowEditingOfContents();p=a.node('TEST_GROUND').parm('python');p.set(p.eval().replace('GROUND_AUTO=True','GROUND_AUTO=False'))
+    elif MUTATE=='ts_wire':g['test_ground_input_changed']=lambda node:False                                                                                      # wiring a source does not switch the ground off
     else:raise SystemExit('unknown mutation '+MUTATE)
 def all_errors(n):
     o=list(n.errors())
@@ -57,9 +62,45 @@ def only_new():
     c=st.createNode(TYPE,'Again');assert m.test_setup(c) is True and m.test_setup(c) is False                                                                              # twice does nothing more
     d=st.createNode(TYPE,'Prim');d.parm('proto_prim1').set('/World/Props/Rock');assert m.test_setup(d) is False                                                          # a prototype was typed
 
+TERRAIN_SCRIPT='''from pxr import Gf, UsdGeom, Vt
+import hou
+stage=hou.pwd().editableStage()
+UsdGeom.Xform.Define(stage,'/World')
+mesh=UsdGeom.Mesh.Define(stage,'/World/Terrain')
+mesh.CreatePointsAttr(Vt.Vec3fArray([Gf.Vec3f(-10,0.5,-10),Gf.Vec3f(-10,0.5,10),Gf.Vec3f(10,0.5,10),Gf.Vec3f(10,0.5,-10)]))
+mesh.CreateFaceVertexCountsAttr(Vt.IntArray([4]))
+mesh.CreateFaceVertexIndicesAttr(Vt.IntArray([0,1,2,3]))
+mesh.CreateSubdivisionSchemeAttr('none')
+'''
+def terrain(st):
+    t=st.createNode('pythonscript','terrain');t.parm('python').set(TERRAIN_SCRIPT);return t
+def plane_in(node):return bool(node.stage().GetPrimAtPath('/World/TestGround/Plane'))
+def external_surface():
+    st=new_scene('external');t=terrain(st)
+    a=st.createNode(TYPE,'Typed');mutate(a);m=a.hdaModule();assert m.test_setup(a) is True and plane_in(a)                                                          # the test run uses the plane
+    a.setInput(0,t);a.parm('copy_test_ground').set(1);a.parm('surface_prim').set('/World/TestGround');assert plane_in(a)                                                # a wired source alone does not matter while Surface Prim names the plane
+    a.parm('surface_prim').set('/World/Terrain');assert not all_errors(a),all_errors(a);assert a.evalParm('copy_test_ground')==1 and not plane_in(a)                  # Surface Prim names the external surface: no plane in the stream
+    pos=np.array(UsdGeom.PointInstancer(a.stage().GetPrimAtPath(a.evalParm('outputpath'))).GetPositionsAttr().Get(hou.frame())).reshape(-1,3);assert len(pos)==30 and np.allclose(pos[:,1],0.5,atol=1e-5) and np.abs(pos[:,[0,2]]).max()<=10.0001 and np.abs(pos[:,[0,2]]).max()>5.0   # on the terrain, not the plane
+    a.parm('surface_prim').set('/World/TestGround/Plane');assert plane_in(a)                                                                                      # a prim under the plane still keeps it
+    b=st.createNode(TYPE,'NoGround');m.test_setup(b);b.parm('copy_test_ground').set(0);b.setInput(0,t);b.parm('surface_prim').set('/World/Terrain');assert not plane_in(b) and b.evalParm('copy_test_ground')==0 and not all_errors(b),all_errors(b)   # switch off: no plane either (as before)
+
+def wire_source():
+    st=new_scene('wire');t=terrain(st);a=st.createNode(TYPE,'Test');mutate(a);m=a.hdaModule();assert m.test_setup(a) is True and plane_in(a)
+    assert m.test_ground_input_changed(a) is False and a.evalParm('copy_test_ground')==1                                                                            # nothing wired: nothing to do
+    a.setInput(0,t)                                                                                                                                                # the OnInputChanged handler runs (here through the event, then by hand so the check does not depend on it)
+    sections=a.type().definition().sections();assert 'OnInputChanged' in sections and 'test_ground_input_changed' in sections['OnInputChanged'].contents() and a.type().definition().extraFileOptions().get('OnInputChanged/IsPython')
+    event=a.evalParm('copy_test_ground')==0
+    if not event:assert m.test_ground_input_changed(a) is True
+    assert a.evalParm('copy_test_ground')==0 and a.evalParm('surface_prim')=='/World/Terrain' and not plane_in(a) and not all_errors(a),all_errors(a)                   # the plane is gone and Surface Prim is back at its default
+    print('   the OnInputChanged event ran by itself: %s'%event)
+    assert m.test_ground_input_changed(a) is False                                                                                                                  # twice does nothing more
+    c=st.createNode(TYPE,'Own');m.test_setup(c);c.parm('surface_prim').set('/World/Mine');c.setInput(0,t);assert m.test_ground_input_changed(c) is False and c.evalParm('surface_prim')=='/World/Mine'   # a Surface Prim the user chose is never replaced
+
 def main():
     for name,func in (('A new node with nothing wired in becomes 30 built-in spheres on a built-in test ground plane, no errors, only in the interface',spawn),
-                      ('Only a new node: not when something is wired in, not when a setting was changed, not twice',only_new)):check(name,func)
+                      ('Only a new node: not when something is wired in, not when a setting was changed, not twice',only_new),
+                      *((('v1.25.2: the test plane is left out of the stream when Surface Prim names an external surface',external_surface),
+                         ('v1.25.2: wiring an external source into a node that uses the plane switches it off',wire_source)) if GROUNDAUTO else ())):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}
     if not MUTATE:(ROOT/'tests'/('validation_testsetup_%s.json'%versions.tag(VID))).write_text(json.dumps(result,indent=1))
     print('ALL PASSED',len(checks))

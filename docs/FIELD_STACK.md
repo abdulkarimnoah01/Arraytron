@@ -7,13 +7,24 @@ A Field Stack is an ordered list of **fields**. Each field gives every point a n
 | Field | Value is 1 when ... | Settings |
 | --- | --- | --- |
 | **Height** | the point's Y is between Min and Max | Min Height, Max Height, Falloff (distance over which the value fades to 0; 0 = hard edge) |
-| **Slope** | the surface under the point has a slope between Min and Max degrees | Prim (the surface judged, read from above), Min / Max Slope, Falloff. A point that is not above the prim is not judged (value 1) |
-| **Noise** | the fractal noise at the point is high | Frequency, Offset, Octaves, Roughness, Contrast, Noise Seed (the same noise as the Mask) |
-| **Image** | the image channel under the point is bright | Image, Channel, Projection (Top XZ / Front XY), Center, Size, Outside |
+| **Slope** (not offered since v1.33.0; old scenes keep it) | the surface under the point has a slope between Min and Max degrees | Prim (the surface judged, read from above), Min / Max Slope, Falloff. A point that is not above the prim is not judged (value 1) |
+| **Noise** (not offered since v1.33.0) | the fractal noise at the point is high | Frequency, Offset, Octaves, Roughness, Contrast, Noise Seed (the same noise as the Mask) |
+| **Image** (not offered since v1.33.0) | the image channel under the point is bright | Image, Channel, Projection (Top XZ / Front XY), Center, Size, Outside |
 | **Distance** | the point is far enough from the Prim (a mesh, shape or curve, e.g. a road) | Prim, Near Distance (0 at or below), Far Distance (1 at or above), Measure In (XZ ignores height, XYZ) |
 | **Exclusion** | the point is outside a closed mesh or shape and farther than the margin | Prim (closed), Margin, Falloff |
 
 Every row also has **Enable**, **Combine** and **Invert** (use 1 - value).
+
+## The Mask field (v1.33.0)
+The Field menu offers **Height, Distance, Exclusion and Mask**. The **Mask** field follows the shape of the node's Mask (Scatter tab, MASK): any Mask Source, the painted mask and the Houdini paint included. Set the Mask Effect to **None (shape only)** so the mask gives only its shape here.
+
+| Mask Mode | Result |
+|---|---|
+| **Keep Off The Mask** (default) | the points on the mask, and within **Margin** of it, are removed: the mask is a hole in the scatter |
+| **Scatter On The Mask** | points stay only where the mask is (grown by Margin) |
+| **Scatter Around The Mask** | points stay only in a ring: **Gap** off the edge of the mask, **Ring Width** wide, never on the mask |
+
+**Softness** fades the density across that distance at every edge (0 is a hard cut). **Edge Level** (default 0.5) is the mask weight that counts as the edge. With Margin 0 and Softness 0 (On / Off) the mask weight itself is the field, so a soft mask gives a soft result; with either set the shape of the mask is measured on a grid (exact distances, as the Falloff does) and the field is built from the distance to its edge. Invert, Combine, the Stack Effect and Min Scale work as for every field. Tested by `tests/validate_fieldmask.py`; demo `Arraytron_v1.33.0_fieldmask_demo.hip` (Keep Off, On and Around a Houdini Paint stroke). Not verified: how the rows read in the real parameter pane.
 
 ## Combining
 

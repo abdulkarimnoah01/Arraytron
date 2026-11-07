@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.25.1)
+# Arraytron documentation index (v1.33.0)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
@@ -20,6 +20,13 @@ Start with the **User guide**. Everything is plain Markdown in `docs/`; the proj
 * `CLUSTER_AND_SEPARATION.md` - Cluster mode, Separation priority, Avoid Geometry.
 * `CAMERA_LOD_PRIMVARS.md` - camera optimisation, LOD / proxies, extended primvars.
 * `IMPORTED_POINTS.md` - scatter on FX simulation points and any imported points (SOP or USD), percentages, scale, rotation, ids for AOVs (v1.5.0).
+* `MASK_PAINT.md` - painting the Mask: the live brush (Painted), the full brush operations, the remap, and Houdini's own Attribute Paint brush with Finish And Scatter (v1.26.0 to v1.28.0).
+* `MASK_SHAPE_AND_EXPORT.md` - Falloff from the shape of any mask, Save / Bake / Export the mask, the Scatter tab (v1.32.0).
+* `SURFACE_PROXY.md` - big surfaces: the surface cache, Scatter On Reduced Proxy with a ghost, the Place mode retired (v1.31.0).
+* `GROUPS_AND_DIRECTION.md` - the Prototype Bank source type Group Children and Surface mode Keep By Direction (v1.29.0, v1.30.1).
+* `ARRAYTRON_STAMP.md` - Arraytron Stamp, the sub-HDA for placing instances by hand, with random scale / tilt / prototype per stamp (0.1.0).
+* `BLAST.md` - Blast, an overall selection of instances (ids, random, region shapes, picked by hand with Houdini's selection tools) that is deleted or transformed together (v1.33.0).
+* `PAINT_FALLOFF_TECH.md` - how the Stamp paint falloff works (technical notes).
 * `PORT_HOUDINI_205.md` - the Houdini 20.5 / 21 build (v1.1.0): how it works, differences, gotchas, evidence, commands (probes in `tools/probes/`).
 * `OVERRIDES_DEBUG_EXPORT.md` - stable ids, instance overrides, Replace / Relax painting, debug views, export, production tests (v1.0.0).
 

@@ -162,9 +162,15 @@ def place_add(asset,position,normal=(0.0,1.0,0.0),scale=None,yaw=None,proto=None
         yaw=yaw+yaw_add
         if snap_rot:yaw=place_snap_value(yaw,snap_rot)
         scale=scale*scale_mult
-        degrees=place_euler(place_aim(normal,asset.evalParm('place_align'),yaw)) if rot is None else rot
+        r_scale,r_tx,r_tz,r_proto=np.random.RandomState(int(n*104729+asset.evalParm('place_seed')*31+5)).rand(4)                 # Arraytron Stamp: the random draws of this stamp (always the same four, whichever are used)
+        if asset.parmTuple('place_def_scalerange') is not None:lo,hi=asset.evalParmTuple('place_def_scalerange');scale=scale*(lo+(hi-lo)*r_scale)
+        q=place_aim(normal,asset.evalParm('place_align'),yaw)
+        if rot is None and asset.parm('place_def_tilt') is not None and asset.evalParm('place_def_tilt')>0:t=asset.evalParm('place_def_tilt');q=place_qmul(q,place_quat((t*(2*r_tx-1),0.0,t*(2*r_tz-1))))   # a random tilt off the up axis
+        degrees=place_euler(q) if rot is None else rot
+        if proto is None and asset.parm('place_def_protorand') is not None and asset.evalParm('place_def_protorand'):
+            bank=bank_rows(asset);w=np.array([max(asset.evalParm('proto_weight%d'%r),0.0) for r in bank]);proto=bank[int(min(np.searchsorted(np.cumsum(w)/w.sum(),r_proto,side='right'),len(bank)-1))] if len(bank) and w.sum()>0 else None   # a random enabled row, by its weight
         pos=np.asarray(position,dtype=np.float64)+np.asarray(normal,dtype=np.float64)*asset.evalParm('place_offset')
-        asset.parm('places').set(n);i=n
+        asset.parm('places').insertMultiParmInstance(n-1);i=n                                                                                  # one instance added at the end (setting the count rebuilds every row: 100 ms with 40 stamps)
         asset.parm('place_on%d'%i).set(1);asset.parm('place_id%d'%i).set(max([r['id'] for r in rows]+[0])+1 if id is None else int(id))
         asset.parmTuple('place_pos%d'%i).set(tuple(float(v) for v in pos));asset.parmTuple('place_rot%d'%i).set(tuple(float(v) for v in degrees))
         asset.parmTuple('place_scale%d'%i).set((float(scale),)*3);asset.parm('place_proto%d'%i).set(asset.evalParm('place_def_proto') if proto is None else int(proto))

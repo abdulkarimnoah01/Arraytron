@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_falloff_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -155,10 +155,11 @@ def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup()
     assert g.find('fall_axes').menuItems()==('0','1') and g.find('fall_region').menuLabels()==('Automatic (follows the mode)','Whole layout')
     for name in ('fall_on','fall_region','fall_shape','fall_curve','fall_inner','fall_density','fall_scale','fall_axes','fall_center_mode','fall_center','fall_radius_mode','fall_radius','fall_seed','fall_info'):assert g.find(name) is not None,name
-    layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('fall_on')>names.index('bound_t') and names.index('fall_info')>names.index('fall_scale')
-    assert g.find('fall_shape').menuLabels()==('Radial (circle)','Box (every edge)') and g.find('fall_curve').menuLabels()==('Linear','Smooth','Gaussian') and g.find('fall_axes').menuLabels()==('X and Z (ground plane)','X, Y and Z')
+    layout=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout']][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('fall_on')>names.index('bound_t') and names.index('fall_info')>names.index('fall_scale')
+    assert g.find('fall_shape').menuLabels()[:2]==('Radial (circle)','Box (every edge)') and g.find('fall_curve').menuLabels()==('Linear','Smooth','Gaussian') and g.find('fall_axes').menuLabels()==('X and Z (ground plane)','X, Y and Z')
     compiler=a.node('USD_COMPILER');chain=[];n=compiler.node('PROTOTYPE_ASSIGNMENT')
     while n is not None and len(chain)<12:chain.append(n.name());n=n.inputs()[0] if n.inputs() else None
+    chain=[x for x in chain if x!='PROTO_EXPAND']                                                                  # v1.29.0: the Python SOP between Variation and the assignment
     assert chain[:4]==['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR','FALLOFF','FIELD_STACK'] and 'MASK_PROCESSOR' in chain and chain.index('FIELD_STACK')<chain.index('MASK_PROCESSOR'),chain      # after the Mask and the Field Stack, before Variation
     assert '$' not in a.type().definition().sections()['PythonModule'].contents().split('# ---- Falloff')[1].split('# ----')[0] and g.find('fall_on').help() and 'every Distribution Mode' in g.find('fall_on').help()
 

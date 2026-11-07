@@ -13,12 +13,13 @@ TAG=VID
 versions.ensure_installed(VID)          # Houdini 20.5 / 21 demo scenes do not record the HDA: it comes from here
 hou.hipFile.load(str(versions.demo(VID)),suppress_save_prompt=True)
 a=hou.node('/stage/Arraytron');checks=[]
+VT=tuple(int(x) for x in VID[1:].split('.'))                                        # numeric version: the features exist from a version on
 GRID=a.parm('grid_countx') is not None
 SCALEINST=a.parm('bound_scale_instances') is not None
 BANK=a.parm('protos') is not None
 CIRCLE=a.parm('circle_radius') is not None
 VAREXTRAS=a.parm('yaw_random') is not None
-assert GRID==(VID!='v0.1.6') and SCALEINST==(VID in ('v0.2.1','v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0','v1.21.1','v1.22.0','v1.23.0','v1.24.0','v1.25.0','v1.25.1')) and BANK==(VID in ('v0.3.0','v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0','v1.21.1','v1.22.0','v1.23.0','v1.24.0','v1.25.0','v1.25.1')) and CIRCLE==(VID in ('v0.3.5','v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0','v1.21.1','v1.22.0','v1.23.0','v1.24.0','v1.25.0','v1.25.1')) and VAREXTRAS==(VID in ('v0.3.6','v0.4.0','v0.4.5','v0.4.6','v0.5.0','v0.5.1','v0.5.2','v0.6.0','v0.7.0','v0.8.0','v0.9.0','v1.0.0','v1.1.0','v1.5.0','v1.6.0','v1.6.1','v1.6.2','v1.7.0','v1.8.0','v1.9.0','v1.10.0','v1.11.0','v1.12.0','v1.13.0','v1.14.0','v1.15.0','v1.16.0','v1.17.0','v1.18.0','v1.19.0','v1.20.0','v1.21.0','v1.21.1','v1.22.0','v1.23.0','v1.24.0','v1.25.0','v1.25.1')),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
+assert GRID==(VID!='v0.1.6') and SCALEINST==(VT>=(0,2,1)) and BANK==(VT>=(0,3,0)) and CIRCLE==(VT>=(0,3,5)) and VAREXTRAS==(VT>=(0,3,6)),(VID,GRID,SCALEINST,BANK,CIRCLE,VAREXTRAS)
 COMPILER='USD_COMPILER' if BANK else 'build_pointinstancer'
 VARIATION='VARIATION_PROCESSOR' if BANK else 'modify_point_transforms'
 ASSIGNMENT='PROTOTYPE_ASSIGNMENT'
@@ -92,7 +93,7 @@ def ui_contract():
     g=a.parmTemplateGroup()
     for name in ('mode','line_axis','line_spacemode')+(('grid_spacemode',) if GRID else ()):
         t=g.find(name);assert t.menuItems()==tuple(str(i) for i in range(len(t.menuItems()))),(name,t.menuItems())
-    assert g.find('mode').menuLabels()==(('Line','Area','Grid / Matrix','Circle / Radial')+(('Curve',) if a.parm('curve_prim') is not None else ())+(('Surface',) if a.parm('surface_prim') is not None else ())+(('Paint',) if a.parm('paint_prim') is not None else ())+(('Cluster',) if a.parm('cluster_prim') is not None else ())+(('Imported Points',) if a.parm('imp_sop') is not None else ())+(('Instance Place',) if a.parm('places') is not None else ())+(('Biome',) if a.parm('biomes') is not None else ()) if CIRCLE else ('Line','Area','Grid / Matrix') if GRID else ('Line','Area'))
+    assert g.find('mode').menuLabels()==(('Line','Area','Grid / Matrix','Circle / Radial')+(('Curve',) if a.parm('curve_prim') is not None else ())+(('Surface',) if a.parm('surface_prim') is not None else ())+(('Paint',) if a.parm('paint_prim') is not None else ())+(('Cluster',) if a.parm('cluster_prim') is not None else ())+(('Imported Points',) if a.parm('imp_sop') is not None else ())+((('Place (retired)',) if a.parm('surface_proxy') is not None else ('Instance Place',)) if a.parm('places') is not None else ())+(('Biome',) if a.parm('biomes') is not None else ()) if CIRCLE else ('Line','Area','Grid / Matrix') if GRID else ('Line','Area'))
     assert g.find('line_axis').menuLabels()==('X','Y','Z','Custom') and g.find('line_spacemode').menuLabels()==('By Count','By Spacing')
     def hide(n):
         c=g.find(n).conditionals()[hou.parmCondType.HideWhen]
@@ -107,7 +108,7 @@ def ui_contract():
     for name in ('line_spacing_out','line_count_out','line_span_out'):
         assert g.find(name).conditionals()[hou.parmCondType.DisableWhen]=='{ mode >= 0 }',name
     labels=[e.label() for e in g.entries()]
-    if NEWUI:assert labels==[TN['source'],'Layout',TN['look'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if a.parm('cam_on') is not None else [])+([TN['finish']] if a.parm('dbg_on') is not None else [])+([TN['export']] if TN['export'] and a.parm('export_usd') is not None else []),labels
+    if NEWUI:assert labels==[TN['source'],TN['layout'],TN['look'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if a.parm('cam_on') is not None else [])+([TN['finish']] if a.parm('dbg_on') is not None else [])+([TN['export']] if TN['export'] and a.parm('export_usd') is not None else []),labels
     else:assert labels==['Source','Distribution','Line','Area']+(['Grid'] if GRID else [])+(['Circle'] if CIRCLE else [])+(['Curve'] if a.parm('curve_prim') is not None else [])+(['Surface'] if a.parm('surface_prim') is not None else [])+['Bounds Transform','Instance Transform','Randomize']+(['Mask'] if a.parm('mask_source') is not None else [])+(['No Overlap'] if a.parm('overlap_mode') is not None else [])+(['Physics Settle'] if a.parm('phys_on') is not None else []),labels
     names_in=lambda prefix:[n for n in flat(g.entries()) if n.startswith(prefix)]
     assert (names_in('line_') if NEWUI else [t.name() for t in g.find('line').parmTemplates()])==['line_axis','line_direction','line_spacemode','line_count','line_length','line_spacing','line_center','line_spacing_out','line_count_out','line_span_out']
@@ -122,7 +123,7 @@ def ui_contract():
         reset();assert (a.parm('rotation_random_mode').eval(),a.parm('scale_random_mode').eval(),tuple(a.parmTuple('scale_nonuniform').eval()),a.parm('yaw_random').eval(),a.parm('scale_min').eval(),a.parm('scale_max').eval())==(0,0,(0,0,0),0,.8,1.2)
     else:
         assert [t.name() for t in g.find('randomize').parmTemplates()]==['random_seed','position_random','area_keepinside','rotation_random','scale_random']
-    if NEWUI:assert [n for n in flat(g.entries()) if n.startswith('bound_') or n in ('show_bounds','reset_bounds')]==['bound_t','bound_r','bound_s','bound_scale_instances','reset_bounds','bound_p','show_bounds']
+    if NEWUI:assert [n for n in flat(g.entries()) if (n.startswith('bound_') and n!='bound_gizmo') or n in ('show_bounds','reset_bounds')]==['bound_t','bound_r','bound_s','bound_scale_instances','reset_bounds','bound_p','show_bounds']
     else:assert [t.name() for t in g.find('bounds').parmTemplates()]==['bound_t','bound_r','bound_s']+(['bound_scale_instances'] if SCALEINST else [])+['bound_p','show_bounds','reset_bounds']
     if SCALEINST:
         t=g.find('bound_scale_instances');assert t.defaultValue()==False and t.label()=='Scale Instances'
@@ -148,6 +149,7 @@ def handle_binding():
     text=a.type().definition().sections()['DialogScript'].contents()
     lines=re.findall(r'^\s*bindhandle (\w+) lopxform "Transformer" (\w+) ""',text,re.M)
     expected=[(f'bound_{g}{x}',f'{g}{x}') for g in 'trsp' for x in 'xyz']
+    if a.parm('bound_gizmo') is not None:expected=[]                       # v1.30.1: the viewer state owns the gizmo (validate_gizmo)
     assert sorted(lines)==sorted(expected),lines
     for parm,_ in lines:assert a.parm(parm),parm
 
@@ -559,12 +561,12 @@ def bank_ui():
     assert names==['proto_on#','proto_type#','proto_prim#','proto_input#','proto_inprim#','proto_file#','proto_fileprim#','proto_sop#','proto_weight#','proto_scale#','proto_scalevar#','proto_rot#']+(['proto_lod1#','proto_lod2#','proto_proxy#'] if a.parm('cam_on') is not None else []),names
     hide={t.name():(t.conditionals().get(hou.parmCondType.HideWhen) if t.conditionals() else None) for t in bank.parmTemplates()}
     a_has_lod=a.parm('cam_on') is not None
-    assert hide=={'proto_on#':None,'proto_type#':None,'proto_prim#':'{ proto_type# != 0 }','proto_input#':'{ proto_type# != 1 }','proto_inprim#':'{ proto_type# != 1 }','proto_file#':'{ proto_type# != 2 }','proto_fileprim#':'{ proto_type# != 2 }','proto_sop#':'{ proto_type# != 3 }','proto_weight#':None,'proto_scale#':None,'proto_scalevar#':None,'proto_rot#':None,**({'proto_lod1#':None,'proto_lod2#':None,'proto_proxy#':None} if a_has_lod else {})},hide
+    assert hide=={'proto_on#':None,'proto_type#':None,'proto_prim#':('{ proto_type# != 0 proto_type# != 4 }' if 'Group Children' in bank.parmTemplates()[1].menuLabels() else '{ proto_type# != 0 }'),'proto_input#':'{ proto_type# != 1 }','proto_inprim#':'{ proto_type# != 1 }','proto_file#':'{ proto_type# != 2 }','proto_fileprim#':'{ proto_type# != 2 }','proto_sop#':'{ proto_type# != 3 }','proto_weight#':None,'proto_scale#':None,'proto_scalevar#':None,'proto_rot#':None,**({'proto_lod1#':None,'proto_lod2#':None,'proto_proxy#':None} if a_has_lod else {})},hide
     t=bank.parmTemplates()
     weight=[x for x in t if x.name()=='proto_weight#'][0]
     assert weight.conditionals()[hou.parmCondType.DisableWhen]=='{ proto_mode == 0 } { proto_mode == 3 }','Weight is greyed out in Random and Cycle, which ignore it'
     kinds={x.name():x for x in t}
-    assert kinds['proto_type#'].menuLabels()==('Prim Path','Input Connection','USD File','SOP Geometry') and kinds['proto_type#'].menuItems()==('0','1','2','3')
+    assert kinds['proto_type#'].menuLabels()[:4]==('Prim Path','Input Connection','USD File','SOP Geometry') and kinds['proto_type#'].menuItems()[:4]==('0','1','2','3') and len(kinds['proto_type#'].menuItems())==(5 if a.parm('proto_type1').menuLabels()[-1]=='Group Children' else 4)
     assert kinds['proto_input#'].menuLabels()==('Input 2','Input 3','Input 4')
     assert kinds['proto_file#'].stringType()==hou.stringParmType.FileReference and kinds['proto_sop#'].stringType()==hou.stringParmType.NodeReference
     assert kinds['proto_sop#'].tags()['opfilter']=='!!SOP!!' and kinds['proto_prim#'].tags().get('sidefx::usdpathtype')=='prim'
@@ -706,11 +708,12 @@ def modular_network():
     node=compiler.node('OUT_POINTS')
     while node is not None:
         order.append(node.name());node=node.inputs()[0] if node.inputs() else None
+    order=[x for x in order if x!='PROTO_EXPAND']                                                  # v1.29.0: the Python SOP between Variation and the assignment (tested in validate_groups)
     if a.parm('phys_on') is not None:
         # Physics Settle (v0.4.0): PROTOTYPE_ASSIGNMENT > PHYSICS_WORLD > PHYSICS_SPAWN > PHYSICS_APPLY, selected by PHYSICS_SWITCH (input 0 = the unchanged path);
         # the solver branch (PROXIES > SOLVER, COLLIDERS) is not on the output path, so it only cooks while simulating
         overlap=a.node(COMPILER+'/NO_OVERLAP') is not None
-        grow=a.node(COMPILER+'/GROW') is not None;expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node(COMPILER+'/PROTO_PATH') else [])+(['PRIMVARS'] if a.node(COMPILER+'/PRIMVARS') else [])+(['GROW'] if grow else [])+(['OVERRIDES'] if a.node(COMPILER+'/OVERRIDES') else [])+['PHYSICS_SWITCH']+(['NO_OVERLAP'] if overlap else [])+['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR']+(['FALLOFF'] if a.node(COMPILER+'/FALLOFF') else [])+(['FIELD_STACK'] if a.node(COMPILER+'/FIELD_STACK') else [])+(['MASK_PROCESSOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])+(['NOISE'] if a.node(COMPILER+'/NOISE') else [])+(['ROWS'] if a.node(COMPILER+'/ROWS') else [])+(['DISTRIBUTION_GENERATOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])
+        grow=a.node(COMPILER+'/GROW') is not None;expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node(COMPILER+'/PROTO_PATH') else [])+(['PRIMVARS'] if a.node(COMPILER+'/PRIMVARS') else [])+(['GROW'] if grow else [])+(['OVERRIDES'] if a.node(COMPILER+'/OVERRIDES') else [])+(['BLAST'] if a.node(COMPILER+'/BLAST') else [])+['PHYSICS_SWITCH']+(['NO_OVERLAP'] if overlap else [])+['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR']+(['FALLOFF'] if a.node(COMPILER+'/FALLOFF') else [])+(['FIELD_STACK'] if a.node(COMPILER+'/FIELD_STACK') else [])+(['MASK_PROCESSOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])+(['NOISE'] if a.node(COMPILER+'/NOISE') else [])+(['ROWS'] if a.node(COMPILER+'/ROWS') else [])+(['DISTRIBUTION_GENERATOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])
         assert order[:len(expected)]==expected,order
         switch=compiler.node('PHYSICS_SWITCH');top='NO_OVERLAP' if overlap else 'PROTOTYPE_ASSIGNMENT';assert [n.name() for n in switch.inputs()]==[top,'PHYSICS_APPLY']
         chain=[];node=compiler.node('PHYSICS_APPLY')

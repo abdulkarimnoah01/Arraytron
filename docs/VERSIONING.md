@@ -66,7 +66,18 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.23.0 | - | `arraytron::instancer::1.23.0` | Copy settings between Arraytron nodes (Import Settings button, `copy_settings` from code); both builds |
 | v1.24.0 | - | `arraytron::instancer::1.24.0` | Boxes / Spheres proxy display, Visualize, eleven new noise types; both builds |
 | v1.25.0 | - | `arraytron::instancer::1.25.0` | Every noise type also as the Mask noise; Visualize as vertex colours with palettes / custom gradient / range / opacity; a new node starts as a test run (built-in sphere on a Grid), the HDA works with no input; both builds |
-| **v1.25.1** (current) | - | `arraytron::instancer::1.25.1` | The test setup of a new node is a built-in sphere on a built-in ground plane (Surface mode), checks only the mode and Prototype 1, has the button Start From Test Setup and the toggle Built-in Test Ground; both builds |
+| **v1.33.0** (current) | - | `arraytron::instancer::1.33.0` | The Field Stack reworked: Height, Distance, Exclusion and the Mask field (keep points off the mask, on it or around it); Mask Effect None, Blast |
+| v1.32.0 | - | `arraytron::instancer::1.32.0` | Falloff from the shape of any mask, Save / Bake / Export the mask, the Layout tab is the Scatter tab (Mask and Field Stack moved into it) |
+| v1.31.1 | - | `arraytron::instancer::1.31.1` | A million instances as fast as the native Instancer: faster prototype paths and point creation (20.5 / 21) |
+| v1.31.0 | - | `arraytron::instancer::1.31.0` | Big surfaces: the surface is read once and kept, Scatter On Reduced Proxy (ghost), the Place mode retired |
+| v1.30.1 | - | `arraytron::instancer::1.30.1` | Show Gizmo: the Bounds Transform gizmo is an option (off by default), owned by the viewer state and hidden in the brush tools |
+| v1.30.0 | - | `arraytron::instancer::1.30.0` | Surface mode, Keep By Direction: scatter only on the faces within a spread angle of a direction or of the way towards a light (hard cone or soft edge, opposite side optional); both builds |
+| v1.29.0 | - | `arraytron::instancer::1.29.0` | Prototype Bank source type Group Children: every child prim of a group (/Group/* or a name pattern) becomes a prototype; both builds |
+| v1.28.0 | - | `arraytron::instancer::1.28.0` | Mask Source Houdini Paint: paint the mask with Houdini's own Attribute Paint brush (heat map) on a paint helper, Finish And Scatter bakes it and scatters; both builds |
+| v1.27.0 | - | `arraytron::instancer::1.27.0` | The full mask brush: Foreground / Background, eleven operations (Smooth, Multiply, Maximum, Minimum, Sample ...), Shift and Ctrl menus, symmetry, Fill, drag-resize; both builds |
+| v1.26.0 | - | `arraytron::instancer::1.26.0` | Mask Source Painted: a live viewport brush with feather (Paint / Erase / Add / Subtract, Map Feather, Unpainted Value); full mask remap for every source (Gamma, Remap Curve, Output Range); both builds |
+| v1.25.2 | - | `arraytron::instancer::1.25.2` | The built-in test ground is left out when Surface Prim names an external surface; wiring an external source into a node that uses it switches it off (OnInputChanged); both builds |
+| v1.25.1 | - | `arraytron::instancer::1.25.1` | The test setup of a new node is a built-in sphere on a built-in ground plane (Surface mode), checks only the mode and Prototype 1, has the button Start From Test Setup and the toggle Built-in Test Ground; both builds |
 
 Old releases keep the type names they shipped with, so scenes built with them still load. Their HDA files were moved bit-for-bit (checked by SHA-256 against the originals) to `dist/archive/`, except v0.3.0 and v0.3.5, which were rebuilt from their builders (v0.3.5 was then moved to the archive with `tools/archive_release.py`, its first real use). A scene of your own that contains old nodes records the old HDA path: install the archived HDA (Assets > Install Asset Library) if Houdini reports the type missing.
 

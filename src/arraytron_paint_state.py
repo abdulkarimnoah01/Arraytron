@@ -1,4 +1,4 @@
-# Arraytron Paint: the Python Viewer State of arraytron::instancer (v0.6.0, shortcuts v1.6.0). Stored in the HDA as the ViewerStateModule section.
+# Arraytron Paint: the Python Viewer State of arraytron::instancer (v0.6.0, shortcuts v1.6.0, mask brush v1.26.0). Stored in the HDA as the ViewerStateModule section.
 # It only does the interaction: mouse ray -> hit on the Paint Target -> brush_add / brush_remove / brush_replace / brush_relax (src/arraytron_paint.py, tested
 # without a viewport) -> the hidden parm paint_data. Shortcuts (the prompt line shows the live values):
 #   mouse   LMB paint | Ctrl+LMB erase | Shift+LMB relax | Ctrl+Shift+LMB drag left / right: brush radius
@@ -10,8 +10,14 @@ import numpy as np
 STATE_NAME='arraytron_paint'
 CIRCLE_POINTS=48
 STRICT=False                                                                   # the tests set it: errors are raised instead of being shown in the viewer
+GIZMO_HANDLE=False                                                             # v1.30.1: the builder sets it; the state owns the Bounds Transform gizmo (Show Gizmo) instead of the node binding
+GIZMO_BINDINGS=tuple((p+a,h+a) for p,h in (('bound_t','t'),('bound_r','r'),('bound_s','s'),('bound_p','p')) for a in 'xyz')
 KINDS=('add','remove','replace','relax');KIND_NAMES=('Add','Remove','Replace','Relax');FALLOFFS=('Linear','Smooth','Gaussian','Hard')
 KIND_COLORS={'add':(1.0,0.65,0.1,1.0),'remove':(1.0,0.2,0.2,1.0),'replace':(0.3,0.6,1.0,1.0),'relax':(0.3,0.9,0.4,1.0)}
+MASK_OPS=('Paint','Erase','Add','Subtract','Smooth','Multiply','Maximum','Minimum','Paint Background','Sample Foreground','Sample Background');MASK_CURVES=('Linear','Smooth','Gaussian')
+MASK_HEAVY=(4,5,6,7)                                                                        # the menu entries that are not applied live (they are full mask operations)
+MASK_OPPOSITE={0:1,1:0,2:3,3:2,8:0}                                                         # what Ctrl does with the Opposite entry of its menu (anything else erases)
+MASK_OP_COLORS=((0.3,1.0,0.4,1.0),(1.0,0.25,0.2,1.0),(1.0,0.65,0.1,1.0),(0.75,0.4,1.0,1.0),(0.2,0.9,0.9,1.0),(1.0,0.9,0.2,1.0),(1.0,1.0,1.0,1.0),(0.6,0.6,0.6,1.0),(0.1,0.5,0.2,1.0),(0.3,0.5,1.0,1.0),(0.3,0.5,1.0,1.0))
 HELP=('LMB paint  |  Ctrl+LMB erase  |  Shift+LMB relax  |  Ctrl+Shift+LMB drag: radius  |  wheel + Shift: radius, + Ctrl: strength, + Ctrl+Shift: density  |  '
       '[ ] radius  |  - = strength  |  , . density  |  1 2 3 4: Add Remove Replace Relax  |  F falloff  |  H hide this help  |  Esc / Enter: finish')
 import time
@@ -34,6 +40,7 @@ class PaintState(object):
         self.node=None;self.data=None;self.surface=None;self.hit=None;self.painting=False;self.removing=False;self.kind='add';self.dirty=False
         self.resizing=None;self.hover_kind='add';self.show_help=True;self.loaded=False;self.picking=False;self.inst=None;self.pick_hit=None;self.placing=False;self.place_surf=None;self.place_hit=None;self.place_last=(0.0,None);self.place_drag=None;self.stroke=[];self.stroke_radius=0.0
         self.biomepaint=False;self.bsurf=None;self.bdata=None;self.bhit=None;self.bpainting=False;self.bdirty=False;self.bsign=1;self._biome_erase_hover=False
+        self.maskpaint=False;self.msurf=None;self.mdata=None;self.mhit=None;self.mpainting=False;self.mdirty=False;self.mop=0;self.morig='';self.mlast=0.0;self.mlive=False;self.mwarn='';self.mresize=None;self.mhover=None;self.msampled=None;self.mlastdab=None     # v1.26.0: the mask brush
         self.erased=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Point,'arraytron_biome_erase');self.erased.setParams({'color1':hou.Vector4((1.0,0.25,0.2,1.0)),'radius':4.0})
         self.brush=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush')
         self.core=hou.GeometryDrawable(scene_viewer,hou.drawableGeometryType.Line,'arraytron_brush_core')
@@ -56,23 +63,26 @@ class PaintState(object):
         if dev.isCtrlKey() and not dev.isShiftKey():return 'add' if op==1 else 'remove'
         if dev.isShiftKey() and not dev.isCtrlKey():return 'add' if op==3 else 'relax'
         return KINDS[op]
-    def _active(self):return self.node is not None and (self.picking or self.placing or self.biomepaint or self.node.evalParm('mode')==6)
+    def _active(self):return self.node is not None and (self.picking or self.placing or self.biomepaint or self.maskpaint or self.node.evalParm('mode')==6)
     def _ensure(self):
         """True while the node is in Paint mode. Selecting the node enters this tool by itself, so it never changes the Distribution Mode: with another mode it stays idle
         (nothing drawn, no prompt, every mouse / key event is left to Houdini) and wakes up when the mode becomes Paint (the Start Painting button sets it)."""
         if self.node is not None and not self.picking and self.node.userData('arraytron_pick'):             # the Pick Instance button asked for picking
-            self.node.destroyUserData('arraytron_pick');self.picking=True;self.placing=False;self.biomepaint=False;self.loaded=False;self.painting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_pick');self.picking=True;self.placing=False;self.biomepaint=False;self.maskpaint=False;self.loaded=False;self.painting=False;self.resizing=None
         if self.node is not None and not self.placing and self.node.userData('arraytron_place'):                          # the Place Instances button asked for placing
-            self.node.destroyUserData('arraytron_place');self.placing=True;self.picking=False;self.biomepaint=False;self.loaded=False;self.painting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_place');self.placing=True;self.picking=False;self.biomepaint=False;self.maskpaint=False;self.loaded=False;self.painting=False;self.resizing=None
         if self.node is not None and not self.biomepaint and self.node.userData('arraytron_biomepaint'):                  # the Paint Biome Map button asked for biome painting
-            self.node.destroyUserData('arraytron_biomepaint');self.biomepaint=True;self.picking=False;self.placing=False;self.loaded=False;self.painting=False;self.bpainting=False;self.resizing=None
+            self.node.destroyUserData('arraytron_biomepaint');self.biomepaint=True;self.picking=False;self.placing=False;self.maskpaint=False;self.loaded=False;self.painting=False;self.bpainting=False;self.resizing=None
+        if self.node is not None and not self.maskpaint and self.node.userData('arraytron_maskpaint'):                    # the Paint Mask button asked for mask painting
+            self.node.destroyUserData('arraytron_maskpaint');self.maskpaint=True;self.picking=False;self.placing=False;self.biomepaint=False;self.loaded=False;self.painting=False;self.mpainting=False;self.resizing=None
         if not self._active():
             if self.loaded:
-                self._commit();self.loaded=False;self.painting=False;self.bpainting=False;self.resizing=None
+                self._commit();self._mask_viz_restore();self.loaded=False;self.painting=False;self.bpainting=False;self.mpainting=False;self.resizing=None
                 self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False);self.scene_viewer.clearPromptMessage()
             return False
         if not self.loaded:
-            if self.placing:
+            if self.maskpaint:self._mask_load()
+            elif self.placing:
                 self.place_hit=None;self.brush.show(False);self.core.show(False);self.preview.show(False)
                 try:self.place_surf=self._m().place_surface(self.node)
                 except hou.Error as exc:
@@ -130,6 +140,98 @@ class PaintState(object):
         elif reason==R.Picked and left and self.bhit is not None and not self.bpainting:
             self.bsign=-1 if dev.isCtrlKey() else 1;self._biome_dab();self._commit()
         self._biome_ring();self._prompt();return True
+    # ----- the mask brush (v1.26.0): the Paint Mask button; LMB paints the Mask Source Painted, Ctrl+LMB does the opposite, the cook follows the brush while the stroke goes on
+    def _mask_op(self,dev=None):
+        """The operation of a stroke, an entry of the Brush Operation menu: the menu itself, or (v1.27.0) the Ctrl menu with Ctrl and the Shift menu with Shift. The Opposite entry of the Ctrl menu (the default)
+        flips Paint and Erase, Add and Subtract, as in v1.26.0."""
+        n=self.node;op=min(n.evalParm('mask_brush_op'),10)
+        if dev is None or dev.isCtrlKey()==dev.isShiftKey():return op
+        name='mask_brush_op_ctrl' if dev.isCtrlKey() else 'mask_brush_op_shift'
+        pick=n.evalParm(name) if n.parm(name) is not None else (11 if dev.isCtrlKey() else op)                            # a build without the Shift menu: Shift does nothing
+        if pick>=11:return MASK_OPPOSITE.get(op,1)
+        return pick
+    def _mask_load(self):
+        m=self._m();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False);self.mwarn=''
+        try:self.msurf=m.maskpaint_surface(self.node)
+        except hou.Error as exc:
+            self.msurf=m.plane_surface(1000.0,0.0);self.mwarn='no surface (%s): painting on the ground plane'%str(exc).strip().splitlines()[0][:70]
+        self.mdata=m.maskpaint_decode(self.node.evalParm('mask_paint_data'));self.mdirty=False;self.mlive=False;self.mhit=None;self._mask_viz_on();self._mask_draw_points()
+    def _mask_viz_on(self):
+        """Show the mask on the scattering surface while painting (Mask > Visualize), and remember to switch it off again."""
+        viz=self.node.parm('mask_viz')
+        if viz is not None and self.node.evalParm('mask_paint_show') and viz.eval()==0 and not self.node.userData('arraytron_maskviz'):
+            self.node.setUserData('arraytron_maskviz','1');viz.set(1)
+    def _mask_viz_restore(self):
+        if self.node is not None and self.node.userData('arraytron_maskviz'):
+            self.node.destroyUserData('arraytron_maskviz');viz=self.node.parm('mask_viz')
+            if viz is not None:viz.set(0)
+    def _mask_draw_points(self):
+        """The stamps as points on the surface: green where the mask was raised, red where it was lowered."""
+        raised=hou.Geometry();lowered=hou.Geometry()
+        if self.mdata is not None and len(self.mdata):
+            sel=self.mdata[-4000:]
+            raised.createPoints([(float(s[1]),float(s[2])+0.02,float(s[3])) for s in sel if int(s[0]) not in (1,3,7)]);lowered.createPoints([(float(s[1]),float(s[2])+0.02,float(s[3])) for s in sel if int(s[0]) in (1,3,7)])
+        self.preview.setGeometry(raised);self.preview.show(True);self.erased.setGeometry(lowered);self.erased.show(True)
+    def _mask_live(self,force=False):
+        """The realtime part: while the stroke goes on the paint is written to the node (without undo steps, about ten times a second), so the scatter follows the brush."""
+        if not self.mdirty or not self.node.evalParm('mask_paint_live') or (self.mop in MASK_HEAVY and self.node.parm('mask_brush_bg') is not None):return   # v1.27.0: the full operations (Smooth, Multiply, Maximum, Minimum) are applied when the stroke ends, not live
+        now=time.time()
+        if not force and now-self.mlast<0.1:return
+        with hou.undos.disabler():self.node.parm('mask_paint_data').set(self._m().maskpaint_encode(self.mdata))
+        self.mlast=now;self.mlive=True
+    def _mask_dab(self):
+        """One dab: the operation of the menu entry on the Foreground (or Background) value, repeated across the symmetry planes. The Sample entries read the mask under the brush into Foreground / Background instead."""
+        n=self.node;m=self._m();pos,nrm=self.mhit;r=max(n.evalParm('mask_brush_radius'),1e-4);fg=n.evalParm('mask_brush_value');bg=n.evalParm('mask_brush_bg') if n.parm('mask_brush_bg') is not None else 0.0
+        what=m.maskpaint_stamp_for(self.mop,fg,bg) if hasattr(m,'maskpaint_stamp_for') else (self.mop,fg)
+        if what is None:
+            v=m.maskpaint_value_at(n,self.mdata,float(pos[0]),float(pos[2]));self.msampled=v;n.parm('mask_brush_value' if self.mop==9 else 'mask_brush_bg').set(round(v,4));return
+        op,value=what
+        if self.mlastdab is not None and self.mlastdab[0]==self.mop and np.hypot(self.mlastdab[1]-pos[0],self.mlastdab[2]-pos[2])<0.2*r:return          # not closer than a fifth of the radius to the last dab of the stroke
+        self.mlastdab=(self.mop,float(pos[0]),float(pos[2]))
+        sym=n.parm('mask_sym_x') is not None;places=m.maskpaint_mirrors(pos,n.evalParm('mask_sym_x'),n.evalParm('mask_sym_z'),n.evalParmTuple('mask_sym_center')) if sym else [tuple(pos)];any_added=False
+        for p in places:
+            self.mdata,added=m.maskpaint_add(self.mdata,op,p,r,n.evalParm('mask_brush_strength'),n.evalParm('mask_brush_feather'),value,n.evalParm('mask_brush_curve'));any_added=any_added or added
+        if any_added:self.mdirty=True;self._mask_draw_points();self._mask_live()
+    def _mask_ring(self):
+        """The outer ring is the radius (green Paint, orange Add, red Erase, purple Subtract); the white inner ring is the hard core, where the brush is at full strength (radius x (1 - feather))."""
+        if self.mhit is None:self.brush.show(False);self.core.show(False);return
+        pos,nrm=self.mhit;r=max(self.node.evalParm('mask_brush_radius'),1e-4);op=self.mop if self.mpainting else self._mask_hover_op
+        self.brush.setParams({'color1':hou.Vector4(MASK_OP_COLORS[min(op,10)]),'line_width':2.0});self.brush.setGeometry(self._ring(pos,nrm,r));self.brush.show(True)
+        feather=min(max(self.node.evalParm('mask_brush_feather'),0.0),1.0)
+        if feather>0.02:self.core.setGeometry(self._ring(pos,nrm,r*(1.0-feather)));self.core.show(True)
+        else:self.core.show(False)
+    _mask_hover_op=0
+    def _mask_mouse(self,ev,dev,reason):
+        """Mask painting: LMB paints where the mouse hits the surface, Ctrl+LMB does the opposite operation; the paint is written live while the stroke goes on and committed as one undo step at its end."""
+        try:origin,direction=ev.ray()
+        except Exception:
+            origin,direction=ev.curViewport().mapToWorld(dev.mouseX(),dev.mouseY())
+        m=self._m();R=hou.uiEventReason;o=np.array(origin,dtype=float);d=np.array(direction,dtype=float);d=d/np.linalg.norm(d);self.mhit=None
+        if self.msurf is not None:
+            P,T,area,normals,vn=self.msurf;t,j=m.ray_triangles(o,d,P,T)
+            if j[0]>=0:
+                nrm=normals[j[0]]
+                if np.dot(nrm,d)>0:nrm=-nrm
+                self.mhit=(o+d*t[0],nrm)
+        left=dev.isLeftButton();self._mask_hover_op=self._mask_op(dev)
+        if self.mresize is not None:                                                               # Ctrl+Shift+LMB drag: the radius follows the mouse sideways (about 150 pixels per doubling)
+            if reason==R.Changed:self.mresize=None
+            else:x0,r0=self.mresize;self._set('mask_brush_radius',r0*2.0**((dev.mouseX()-x0)/150.0),0.01,100000.0)
+            self._mask_ring();self._prompt();return True
+        if reason==R.Start and left and dev.isCtrlKey() and dev.isShiftKey():
+            self.mresize=(dev.mouseX(),self.node.evalParm('mask_brush_radius'));self._mask_ring();self._prompt();return True
+        if left and reason==R.Start and self.mhit is not None:
+            self.mpainting=True;self.mop=self._mask_hover_op;self.morig=self.node.evalParm('mask_paint_data');self.mlive=False;self.mlastdab=None;self._mask_dab()
+        elif reason==R.Active and self.mpainting and self.mhit is not None:self._mask_dab()
+        elif reason==R.Changed and self.mpainting:
+            self.mpainting=False;self.mlastdab=None;self._commit()
+        elif reason==R.Picked and left and self.mhit is not None and not self.mpainting:
+            self.mop=self._mask_hover_op;self.morig=self.node.evalParm('mask_paint_data');self.mlive=False;self.mlastdab=None;self._mask_dab();self._commit()
+        self.mhover=None
+        if self.mhit is not None and not self.mpainting and self.mdata is not None:                 # the mask value under the brush, shown in the prompt line
+            try:self.mhover=m.maskpaint_value_at(self.node,self.mdata,float(self.mhit[0][0]),float(self.mhit[0][2]))
+            except Exception:self.mhover=None
+        self._mask_ring();self._prompt();return True
     def _load(self):
         m=self._m();self.data=m.paint_decode(self.node.evalParm('paint_data'))
         try:self.surface=m.paint_surface(self.node)
@@ -179,6 +281,10 @@ class PaintState(object):
     def _commit(self):
         if self.biomepaint and self.bdirty and self.bdata is not None:
             self._m().biomemap_apply(self.node,self.bdata);self.bdirty=False
+        if self.maskpaint and self.mdirty and self.mdata is not None:
+            if self.mlive:
+                with hou.undos.disabler():self.node.parm('mask_paint_data').set(self.morig)                  # back to the text before the stroke, so the one undo step covers the whole stroke
+            self._m().maskpaint_apply(self.node,self.mdata);self.mdirty=False;self.mlive=False
         if self.stroke and self.data is not None:
             self.data=self._m().paint_stroke_add(self.data,self.stroke,self.stroke_radius);self.dirty=True
         self.stroke=[]
@@ -187,6 +293,13 @@ class PaintState(object):
     def status(self):
         """The prompt line: the live brush values (and the shortcuts until H hides them)."""
         n=self.node
+        if self.maskpaint:
+            head='Arraytron Mask Paint [%s]  |  radius %.3g  strength %.2f  feather %.2f (%s)  value %.2f%s  |  %d stamps%s'%(MASK_OPS[min(self.mop if self.mpainting else self._mask_hover_op,10)],n.evalParm('mask_brush_radius'),n.evalParm('mask_brush_strength'),n.evalParm('mask_brush_feather'),MASK_CURVES[min(n.evalParm('mask_brush_curve'),2)],n.evalParm('mask_brush_value'),'  bg %.2f'%n.evalParm('mask_brush_bg') if n.parm('mask_brush_bg') is not None else '',0 if self.mdata is None else len(self.mdata),'  |  live' if n.evalParm('mask_paint_live') else '')
+            if n.parm('mask_sym_x') is not None and (n.evalParm('mask_sym_x') or n.evalParm('mask_sym_z')):head+='  |  symmetry '+('X ' if n.evalParm('mask_sym_x') else '')+('Z' if n.evalParm('mask_sym_z') else '')
+            if self.mwarn:head+='  |  '+self.mwarn
+            elif self.mhit is None:head+='  |  no surface under the mouse'
+            elif self.mhover is not None:head+='  |  mask here %.2f'%self.mhover
+            return head+('\nLMB: the Brush Operation  |  Ctrl+LMB: the Ctrl operation (the opposite)  |  Shift+LMB: the Shift operation (smooth)  |  Ctrl+Shift+LMB drag: radius  |  1-8 operation (Paint Erase Add Subtract Smooth, Paint Background, Sample FG, Sample BG)  |  X swap FG and BG  |  wheel + Shift: radius, + Ctrl: strength, + Ctrl+Shift: feather  |  [ ] radius  |  - = strength  |  , . feather  |  9 0 value  |  F curve  |  H hide this help  |  Esc / Enter: finish' if self.show_help else '')
         if self.biomepaint:
             row=self._biome_row();name=n.evalParm('biome_name%d'%row) if n.evalParm('biomes')>0 else '-';mode=('Off','Add And Erase','Only Where Painted')[min(n.evalParm('biome_map%d'%row),2)] if n.evalParm('biomes')>0 else '-'
             head='Arraytron Biome Map  |  row %d %s  (Map: %s)  radius %.3g  strength %.2f  falloff %s  |  %d stamps'%(row,name,mode,n.evalParm('biome_brush_radius'),n.evalParm('biome_brush_strength'),FALLOFFS[min(n.evalParm('biome_brush_falloff'),3)],0 if self.bdata is None else len(self.bdata))
@@ -210,25 +323,41 @@ class PaintState(object):
     def _prompt(self):
         self.scene_viewer.setPromptMessage(self.status())
 
+    def _gizmo(self):
+        """Show the Bounds Transform gizmo only when Show Gizmo is on and no brush tool is active (it is called on entering, on every mouse event and on leaving; showHandle is only called when the answer changes)."""
+        if not GIZMO_HANDLE or self.node is None:return
+        try:
+            parm=self.node.parm('bound_gizmo');want=bool(parm.eval()) and not self._active() if parm is not None else False
+            if want!=getattr(self,'_gizmo_on',None):self.scene_viewer.showHandle('Transformer',want);self._gizmo_on=want
+        except Exception:pass                                                            # a viewer without handles (the tests' stand-in): nothing to show or hide
+
     # ----- state callbacks
     @guarded
     def onEnter(self,kwargs):
-        self.node=kwargs['node'];self.loaded=False;self._ensure()
+        self.node=kwargs['node'];self.loaded=False;self._gizmo_on=None;self._gizmo()
+        if 'stamp' in self.node.type().name() and not self.placing:self.node.setUserData('arraytron_place','1')
+        if 'stamp' in self.node.type().name():
+            try:self.node.hdaModule().gallery_ensure()                                                                                               # the Layout-like panel opens with the tool
+            except Exception:pass
+        # Arraytron Stamp: entering the node's tool is placing, like the Layout tool (Esc leaves)
+        self._ensure()
     @guarded
     def onResume(self,kwargs):
-        self.loaded=False;self._ensure()
+        self.loaded=False;self._ensure();self._gizmo_on=None;self._gizmo()
     @guarded
     def onInterrupt(self,kwargs):
-        self._commit();self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False)
+        self._commit();self.mpainting=False;self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False)
     @guarded
     def onExit(self,kwargs):
-        self._commit();self.picking=False;self.placing=False;self.biomepaint=False;self.bpainting=False;self.bhit=None;self.place_hit=None;self.place_drag=None;self.inst=None;self.pick_hit=None;self.loaded=False
+        self._commit();self._mask_viz_restore();self.maskpaint=False;self.mpainting=False;self.mresize=None;self.mhover=None;self.mhit=None;self.picking=False;self.placing=False;self.biomepaint=False;self.bpainting=False;self.bhit=None;self.place_hit=None;self.place_drag=None;self.inst=None;self.pick_hit=None;self.loaded=False
         self.brush.show(False);self.core.show(False);self.preview.show(False);self.marker.show(False);self.erased.show(False);self.scene_viewer.clearPromptMessage()
     @guarded
     def onMouseEvent(self,kwargs):
-        if not self._ensure():return False
+        active=self._ensure();self._gizmo()
+        if not active:return False
         ev=kwargs['ui_event'];dev=ev.device();reason=ev.reason()
         if dev.isMiddleButton() or dev.isAltKey():return False                        # let the camera handle navigation
+        if self.maskpaint:return self._mask_mouse(ev,dev,reason)
         if self.biomepaint:return self._biome_mouse(ev,dev,reason)
         if self.placing:return self._place_mouse(ev,dev,reason)
         if self.picking:return self._pick_mouse(ev,dev,reason)
@@ -315,6 +444,14 @@ class PaintState(object):
     def onMouseWheelEvent(self,kwargs):
         """Shift + wheel: radius; Ctrl + wheel: strength; Ctrl + Shift + wheel: density (anything else scrolls / zooms the camera as usual)."""
         if not self._ensure() or self.picking:return False
+        if self.maskpaint:
+            dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
+            if sign==0 or dev.isAltKey():return False
+            if dev.isShiftKey() and dev.isCtrlKey():self._set('mask_brush_feather',self.node.evalParm('mask_brush_feather')+0.05*sign,0.0,1.0)
+            elif dev.isShiftKey():self._set('mask_brush_radius',self.node.evalParm('mask_brush_radius')*1.1**sign,0.01,100000.0)
+            elif dev.isCtrlKey():self._set('mask_brush_strength',self.node.evalParm('mask_brush_strength')+0.05*sign,0.0,1.0)
+            else:return False
+            self._prompt();self._mask_ring();return True
         if self.biomepaint:
             dev=kwargs['ui_event'].device();step=dev.mouseWheel();sign=1 if step>0 else -1 if step<0 else 0
             if sign==0 or dev.isAltKey():return False
@@ -340,6 +477,22 @@ class PaintState(object):
     def onKeyEvent(self,kwargs):
         if not self._ensure() or self.picking:return False
         key=kwargs['ui_event'].device().keyString();n=self.node
+        if self.maskpaint:
+            if key in ('[',']'):self._set('mask_brush_radius',n.evalParm('mask_brush_radius')*(1.1 if key==']' else 1/1.1),0.01,100000.0)
+            elif key in ('-','_'):self._set('mask_brush_strength',n.evalParm('mask_brush_strength')-0.05,0.0,1.0)
+            elif key in ('=','+'):self._set('mask_brush_strength',n.evalParm('mask_brush_strength')+0.05,0.0,1.0)
+            elif key==',':self._set('mask_brush_feather',n.evalParm('mask_brush_feather')-0.05,0.0,1.0)
+            elif key=='.':self._set('mask_brush_feather',n.evalParm('mask_brush_feather')+0.05,0.0,1.0)
+            elif key=='9':self._set('mask_brush_value',n.evalParm('mask_brush_value')-0.1,0.0,1.0)
+            elif key=='0':self._set('mask_brush_value',n.evalParm('mask_brush_value')+0.1,0.0,1.0)
+            elif key in ('1','2','3','4'):n.parm('mask_brush_op').set(int(key)-1)
+            elif key in ('5','6','7','8') and n.parm('mask_brush_bg') is not None:n.parm('mask_brush_op').set({'5':4,'6':8,'7':9,'8':10}[key])                          # Smooth, Paint Background, Sample Foreground, Sample Background
+            elif key in ('x','X') and n.parm('mask_brush_bg') is not None:
+                fg=n.evalParm('mask_brush_value');n.parm('mask_brush_value').set(n.evalParm('mask_brush_bg'));n.parm('mask_brush_bg').set(fg)                       # swap Foreground and Background
+            elif key in ('f','F'):n.parm('mask_brush_curve').set((n.evalParm('mask_brush_curve')+1)%3)
+            elif key in ('h','H'):self.show_help=not self.show_help
+            else:return False
+            self._mask_hover_op=self._mask_op();self._prompt();self._mask_ring();return True
         if self.biomepaint:
             if key in ('[',']'):self._set('biome_brush_radius',n.evalParm('biome_brush_radius')*(1.1 if key==']' else 1/1.1),0.01,100000.0)
             elif key in ('-','_'):self._set('biome_brush_strength',n.evalParm('biome_brush_strength')-0.05,0.0,1.0)
@@ -375,5 +528,6 @@ def createViewerStateTemplate():
     """Mandatory entry point: the state template for Solaris (LOP) nodes."""
     template=hou.ViewerStateTemplate(kwargs['type'].definition().sections()['DefaultState'].contents().strip(),'Arraytron Paint',hou.lopNodeTypeCategory())
     template.bindFactory(PaintState)
+    if GIZMO_HANDLE:template.bindHandleStatic('lopxform','Transformer',list(GIZMO_BINDINGS))               # the gizmo of the Move The Layout parameters (before 1.30.1: bound on the node, always shown)
     template.bindIcon('MISC_paint')
     return template

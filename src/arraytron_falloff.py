@@ -85,6 +85,98 @@ def falloff_scale(w,edge_scale):
     """Scale multiplier of every weight: the edge scale at the edge, 1 in the centre."""
     return edge_scale+(1.0-edge_scale)*np.asarray(w,dtype=np.float64)
 
+# ---------------------------------------------------------------- the shape of a mask (v1.32.0)
+FALL_MASK_RES=160                                 # cells along the longer side of the grid the mask is looked at
+FALL_MASK_BIG=1e9                                 # a distance where there is no edge at all (the whole grid is inside, or outside)
+
+def _min_plus(f):
+    """g[..., j] = min over k of f[..., k] + (j - k)^2 along the last axis (the exact 1D squared distance transform, done for all rows at once in chunks)."""
+    n=f.shape[-1];cost=(np.arange(n)[:,None]-np.arange(n)[None,:]).astype(np.float64)**2;g=np.empty_like(f);step=max(1,int(4e6//(n*n)))
+    for r in range(0,f.shape[0],step):g[r:r+step]=np.min(f[r:r+step,None,:]+cost[None,:,:],axis=2)
+    return g
+
+def edt_squared(feature):
+    """Exact squared Euclidean distance, in cells, from every cell of a boolean grid (rows = Z, columns = X) to the nearest cell where `feature` is True (huge where there is none)."""
+    f=np.where(feature,0.0,FALL_MASK_BIG*FALL_MASK_BIG);return _min_plus(_min_plus(f).T).T
+
+def edge_distance(inside,cell,reach=None):
+    """The distance, in scene units, from the centre of every cell of a boolean grid to the EDGE of the shape {inside}: the exact distance to the nearest cell of the OTHER kind (centre to centre) less half
+    a cell, because the edge lies between two cells (so a cell next to the edge is half a cell from it). The grid border is no edge. `reach` is kept for older callers: the distance is exact at any range."""
+    inside=np.asarray(inside,dtype=bool);d_in=np.sqrt(edt_squared(~inside))*cell;d_out=np.sqrt(edt_squared(inside))*cell
+    return np.minimum(np.maximum(np.where(inside,d_in,d_out)-0.5*cell,0.0),FALL_MASK_BIG)
+
+def mask_signed_field(weights,level,cell,reach=None):
+    """Signed distance to the edge of the shape {weights >= level}: positive inside it, negative outside (a grid, same shape as weights)."""
+    inside=np.asarray(weights)>=level;d=edge_distance(inside,cell);return np.where(inside,d+0.0,-d)
+
+def shape_regions(inside):
+    """Labels of the connected pieces (4 neighbours) of the shape {inside}: an int grid, -1 outside. Every piece of a shape has its own deepest point."""
+    h,w=inside.shape;lab=np.where(inside,np.arange(h*w).reshape(h,w),h*w+1)
+    for _ in range(2*(h+w)+8):
+        m=lab.copy();m[1:,:]=np.minimum(m[1:,:],lab[:-1,:]);m[:-1,:]=np.minimum(m[:-1,:],lab[1:,:]);m[:,1:]=np.minimum(m[:,1:],lab[:,:-1]);m[:,:-1]=np.minimum(m[:,:-1],lab[:,1:]);m=np.where(inside,m,h*w+1)
+        if np.array_equal(m,lab):break
+        lab=m
+    return np.where(inside,lab,-1)
+
+def shape_depth(inside,S):
+    """The deepest distance to the edge inside every connected piece of the shape, as a grid (the depth of the piece a cell belongs to; 0 outside)."""
+    lab=shape_regions(inside);out=np.zeros(S.shape);ok=lab>=0
+    if ok.any():
+        ids,inv=np.unique(lab[ok],return_inverse=True);top=np.zeros(len(ids));np.maximum.at(top,inv,S[ok]);out[ok]=top[inv]
+    return out
+
+def sample_grid(grid,lo,cell,xz):
+    """Bilinear lookup of a grid (rows = Z, columns = X, cell centres at lo + (i + 0.5) cell) at the points xz (n, 2); clamped at the border."""
+    h,w=grid.shape;f=(np.asarray(xz,dtype=np.float64)-lo)/cell-0.5;fx=np.clip(f[:,0],0.0,w-1.0);fz=np.clip(f[:,1],0.0,h-1.0)
+    x0=np.minimum(np.floor(fx).astype(int),w-2) if w>1 else np.zeros(len(fx),dtype=int);z0=np.minimum(np.floor(fz).astype(int),h-2) if h>1 else np.zeros(len(fz),dtype=int)
+    x1=np.minimum(x0+1,w-1);z1=np.minimum(z0+1,h-1);tx=fx-x0;tz=fz-z0
+    return grid[z0,x0]*(1-tx)*(1-tz)+grid[z0,x1]*tx*(1-tz)+grid[z1,x0]*(1-tx)*tz+grid[z1,x1]*tx*tz
+
+def mask_edge_t(P,weight_fn,edge,width,level,res=FALL_MASK_RES,depth=1):
+    """Normalised distance t (0 = full weight, 1 = no weight) of every point from the EDGE OF A MASK SHAPE, for any mask: weight_fn(P3) gives the mask weight (0..1) at positions (n, 3), the shape is
+    where it is at least `level`. `depth` 0 WHOLE SHAPE: the inside fade runs from the deepest point of the piece of the shape the point is in (t = 0) to its edge (t = 1), so a big shape fades all the way
+    in and a small piece fades over its own size; 1 FIXED: the fade is `width` wide. edge 0 Inside: t = 1 at the edge and beyond (nothing outside); 1 Outside: full inside, fading to 0 a `width` beyond the
+    edge (always a fixed width); 2 Both sides: 0.5 on the edge, 0 deep inside (a `width` in, or the whole depth), 1 a `width` outside. The mask is looked at on a grid over the X and Z extent of the points
+    (plus the width), at the mean height of the points; distances are exact."""
+    P=np.asarray(P,dtype=np.float64).reshape(-1,3)
+    if len(P)==0:return np.zeros(0),None
+    width=max(float(width),1e-9);ext0=np.maximum(P[:,[0,2]].max(axis=0)-P[:,[0,2]].min(axis=0)+2.0*width,1e-9)
+    cell=2.0**np.round(np.log2(float(ext0.max())/max(int(res),8)))                                     # a power of two on a fixed lattice: a point gets the same distance whatever the other points are (up to a doubling of the extent)
+    lo=np.floor((P[:,[0,2]].min(axis=0)-width)/cell)*cell;hi=np.ceil((P[:,[0,2]].max(axis=0)+width)/cell)*cell;nx=int(round((hi[0]-lo[0])/cell));nz=int(round((hi[1]-lo[1])/cell))
+    gx=lo[0]+(np.arange(nx)+0.5)*cell;gz=lo[1]+(np.arange(nz)+0.5)*cell;X,Z=np.meshgrid(gx,gz)
+    grid=np.stack([X.ravel(),np.full(X.size,float(P[:,1].mean())),Z.ravel()],axis=1);w=np.asarray(weight_fn(grid),dtype=np.float64).reshape(nz,nx);inside=w>=level
+    Sg=mask_signed_field(w,level,cell);S=sample_grid(Sg,lo,cell,P[:,[0,2]]);edge=int(edge)
+    if int(depth)==0:
+        Wg=np.maximum(shape_depth(inside,np.maximum(Sg,0.0)),cell);Win=np.maximum(sample_grid(Wg,lo,cell,P[:,[0,2]]),cell)                          # the depth of the piece of the shape
+    else:Win=np.full(len(P),width)
+    if edge==0:t=1.0-S/Win
+    elif edge==1:t=np.maximum(-S,0.0)/width
+    else:t=np.where(S>=0.0,0.5-0.5*S/Win,0.5-0.5*S/width)
+    return np.clip(t,0.0,None),dict(cell=cell,shape=(nz,nx),inside=float(inside.mean()),depth=float(Win.max()) if int(depth)==0 else width)
+
+def mask_fade(asset,P):
+    """The mask with its edge RE-FADED (Edge Fade, v1.32.0): the shape is where the mask the source gives is at least Fade Level; the new weight is 1 deep inside it, 0 far outside and falls from one to the other over
+    Fade Width centred on its edge (moved by Grow / Shrink), with the Fade Curve. Looked at on a grid over the X and Z extent of the points like the Falloff; the result no longer depends on how softly the mask was painted."""
+    P=np.asarray(P,dtype=np.float64).reshape(-1,3)
+    if len(P)==0:return np.zeros(0)
+    W=max(float(asset.evalParm('mask_fade_width')),1e-6);grow=float(asset.evalParm('mask_fade_grow'));level=float(asset.evalParm('mask_fade_level'));res=max(int(asset.evalParm('mask_fade_res')),16);pad=W+abs(grow)
+    cell=2.0**np.round(np.log2(W/6.0))                                                                 # about six cells across the fade, a power of two: the grid is a fixed lattice, so a point gets the same weight whatever the other points are
+    while True:
+        lo=np.floor((P[:,[0,2]].min(axis=0)-pad)/cell)*cell;hi=np.ceil((P[:,[0,2]].max(axis=0)+pad)/cell)*cell
+        if float(((hi-lo)/cell).max())<=res:break
+        cell*=2.0                                                                                      # too many cells: coarser
+    nx=int(round((hi[0]-lo[0])/cell));nz=int(round((hi[1]-lo[1])/cell))
+    gx=lo[0]+(np.arange(nx)+0.5)*cell;gz=lo[1]+(np.arange(nz)+0.5)*cell;X,Z=np.meshgrid(gx,gz);G=np.stack([X.ravel(),np.full(X.size,float(P[:,1].mean())),Z.ravel()],axis=1)
+    wg=np.clip(np.asarray(_mask_values_raw(asset,G,np.arange(len(G))),dtype=np.float64).reshape(nz,nx),0.0,1.0)
+    S=sample_grid(mask_signed_field(wg,level,cell),lo,cell,P[:,[0,2]])+grow
+    return falloff_curve(np.clip(1.0-(S+0.5*W)/W,0.0,None),asset.evalParm('mask_fade_curve'),0.0)
+
+def falloff_mask_t(asset,P,q):
+    """t of every point from the edge of the node's Mask (any Mask Source, after Invert and the remap)."""
+    if asset.evalParm('mask_source')==0:raise hou.NodeError('Falloff Shape Mask Shape follows the shape of the Mask: choose a Mask Source (Noise, Image, Painted, Houdini Paint ...) in the Mask section.')
+    def weight_fn(G):return mask_weights(asset,mask_values(asset,G,np.arange(len(G))))
+    return mask_edge_t(P,weight_fn,asset.evalParm('fall_mask_edge'),asset.evalParm('fall_mask_width'),asset.evalParm('fall_mask_level'),FALL_MASK_RES,asset.evalParm('fall_mask_depth') if asset.parm('fall_mask_depth') is not None else 1)
+
 # ---------------------------------------------------------------- the stage
 def falloff_axes_value(asset):
     """0 (X and Z) or 1 (X, Y and Z) from the Axes menu. With Region Automatic a Grid with layers in Y (a 3D matrix) always fades in all three axes, so its top and bottom boundaries count too."""
@@ -100,7 +192,7 @@ def falloff_weights(P,q):
     """(w, t, centre, reach) for the points P with the parameters q (a dict of falloff_parameters), measured over the whole layout."""
     c,R,half=falloff_region(P,q['axes'],q['center_mode'],q['center'],q['radius_mode'],q['radius']);t=falloff_distance(P,q['shape'],q['axes'],c,R,half);return falloff_curve(t,q['curve'],q['inner']),t,c,R
 
-METHODS=('Whole layout','Every cluster to its own boundary','Along the stroke paths')
+METHODS=('Whole layout','Every cluster to its own boundary','Along the stroke paths','From the edge of the Mask shape')
 
 def falloff_method(asset,geo):
     """0 whole layout, 1 per cluster, 2 along the stroke paths: Region Automatic follows the Distribution Mode when the data for it is there."""
@@ -119,12 +211,16 @@ def sop_falloff(geo,asset):
     n=geo.intrinsicValue('pointcount');geo.setGlobalAttribValue('fall_before',n);geo.setGlobalAttribValue('fall_after',n)
     if not asset.evalParm('fall_on') or n==0:return
     q=falloff_parameters(asset);P=np.array(geo.pointFloatAttribValues('P')).reshape(-1,3);ids=np.array(geo.pointIntAttribValues('id'))
-    method,strokes=falloff_method(asset,geo);geo.setGlobalAttribValue('fall_method',method);uncovered=0
+    method,strokes=falloff_method(asset,geo);uncovered=0
+    if q['shape']==2:method=3                                                      # v1.32.0: the edge of the Mask shape (any mask, also the painted ones)
+    geo.setGlobalAttribValue('fall_method',method)
     if method==1:
         C=np.array(geo.pointFloatAttribValues('ccentre')).reshape(-1,3);Rr=np.array(geo.pointFloatAttribValues('cradius'))
         t=falloff_distance_regions(P,q['axes'],q['shape'],C,Rr);w=falloff_curve(t,q['curve'],q['inner']);c=np.zeros(3);R=float(Rr.mean()) if len(Rr) else 0.0
     elif method==2:
         t=falloff_distance_strokes(P,q['axes'],strokes);w=falloff_curve(np.where(np.isfinite(t),t,0.0),q['curve'],q['inner']);uncovered=int((~np.isfinite(t)).sum());c=np.zeros(3);R=float(np.mean([r for r,_ in strokes]))   # a point no stroke made keeps its full weight
+    elif method==3:
+        t,_=falloff_mask_t(asset,P,q);w=falloff_curve(t,q['curve'],q['inner']);c=np.zeros(3);R=float(asset.evalParm('fall_mask_width'))
     else:
         w,t,c,R=falloff_weights(P,q)
     geo.setGlobalAttribValue('fall_reach',float(R));geo.setGlobalAttribValue('fall_uncovered',uncovered)
@@ -138,8 +234,11 @@ def sop_falloff(geo,asset):
         if geo.findPointAttrib('maskscale') is not None:mult=mult*np.array(geo.pointFloatAttribValues('maskscale'))
         else:geo.addAttrib(hou.attribType.Point,'maskscale',1.0)
         geo.setPointFloatAttribValues('maskscale',mult.tolist())
-    if q['edge_density']<1.0:
-        drop=np.nonzero(~falloff_keep(ids,w,q['edge_density'],q['seed']))[0]
+    beyond=method==3 and not asset.evalParm('fall_mask_keep')                                          # v1.32.0: the Mask shape removes the points beyond its fade, so the density can stay high and only the scale falls
+    if q['edge_density']<1.0 or beyond:
+        keep=falloff_keep(ids,w,q['edge_density'],q['seed'])
+        if beyond:keep=keep&(t<1.0)
+        drop=np.nonzero(~keep)[0]
         if len(drop):geo.deletePoints([geo.point(int(i)) for i in drop])
         geo.setGlobalAttribValue('fall_after',n-len(drop))
 

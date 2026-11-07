@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
-PREVIOUS={'v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_fields_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
@@ -93,11 +93,11 @@ def inside_box(p,lo=np.array([19.0,0.0,-1.0]),hi=np.array([21.0,2.0,1.0])):retur
 def ui_contract():
     st,sc=new_scene('ui');a=painted(st,sc,[[0,0,0]]);g=a.parmTemplateGroup()
     bank=g.find('fields');assert bank.folderType()==hou.folderType.MultiparmBlock and bank.defaultValue()==0
-    assert g.find('field_type#').menuLabels()==('Height','Slope','Noise','Image','Distance','Exclusion') and g.find('field_op#').menuLabels()==('Multiply','Add','Subtract','Min','Max')
+    assert g.find('field_type#').menuLabels()==(('Height','Distance','Exclusion','Mask') if g.find('field_mmode#') is not None else ('Height','Slope','Noise','Image','Distance','Exclusion')) and g.find('field_op#').menuLabels()==('Multiply','Add','Subtract','Min','Max')
     assert g.find('field_effect').menuLabels()==('Density','Scale','Density + Scale') and g.find('field_effect').defaultValue()==0
     for name in ('field_on#','field_invert#','field_hmin#','field_hmax#','field_hfall#','field_prim#','field_smin#','field_smax#','field_sfall#','field_nfreq#','field_noffset#','field_noct#','field_nrough#','field_ncontrast#','field_nseed#',
                  'field_image#','field_channel#','field_proj#','field_icenter#','field_isize#','field_ioutside#','field_dnear#','field_dfar#','field_daxes#','field_xmargin#','field_xfall#','field_minscale','field_seed','field_info'):assert g.find(name) is not None,name
-    look=[t for t in g.entries() if t.label()==TN['look']][0];names=[t.name() for t in look.parmTemplates()]
+    look=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout' if versions.tab_names(VID)['mask_in_layout'] else 'look']][0];names=[t.name() for t in look.parmTemplates()]
     assert names.index('fields')>names.index('mask_info') and 'FIELD STACK' in [t.columnLabels()[0] for t in look.parmTemplates() if t.name().startswith('ui_head')]
     inner=a.node('USD_COMPILER');chain=['MASK_PROCESSOR','FIELD_STACK']+(['FALLOFF'] if inner.node('FALLOFF') else [])+['VARIATION_PROCESSOR'];assert [inner.node(n).inputs()[0].name() for n in chain[1:]]==chain[:-1]
     old=hou.hda.definitionsInFile(str(versions.hda(PREVIOUS)))[0].parmTemplateGroup()
@@ -114,7 +114,7 @@ def ui_contract():
         if name=='rows_stagger' and tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0):continue       # v1.18.0: Stagger Rows became a 0 to 1 slider (the old tick meant 0.5), the one parameter whose type changed
         n=fn[name];assert n.type()==t.type() and n.numComponents()==t.numComponents(),name
         if hasattr(t,'defaultValue'):assert n.defaultValue()==t.defaultValue(),name
-        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and (n.menuLabels()[:len(t.menuLabels())]==t.menuLabels() or name=='overlap_mode'),name
+        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and (n.menuLabels()[:len(t.menuLabels())]==t.menuLabels() or name in ('overlap_mode','mode')),name
 def defaults_unchanged():
     st,sc=new_scene('defaults')
     for values in (dict(mode=0,line_count=7),dict(mode=1,area_count=40,area_seed=3),dict(mode=5,surface_prim='/World/Ground',surface_count=50,surface_seed=2)):

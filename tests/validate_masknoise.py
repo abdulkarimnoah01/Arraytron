@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_masknoise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -94,7 +94,7 @@ def periodic_and_ui():
     a.parm('mask_noise_type').set(0);v=m.mask_values(a,P,ids);Q=P.copy();Q[:,0]+=4.0;assert not np.allclose(v,m.mask_values(a,Q,ids),atol=1e-3)     # Perlin does not repeat
     g=a.parmTemplateGroup();t=g.find('mask_noise_type');assert len(t.menuItems())==15 and t.menuLabels()[0]=='Perlin' and t.menuLabels()[4].startswith('Value') and t.menuLabels()[14].startswith('Periodic')
     assert '{ mask_source != 1 }' in t.conditionals()[hou.parmCondType.HideWhen] and 'mask_noise_type != 14' in g.find('mask_noise_period').conditionals()[hou.parmCondType.HideWhen]
-    tabs=dict((x.label(),[y.name() for y in x.parmTemplates()]) for x in g.entries() if x.type()==hou.parmTemplateType.Folder);vt=tabs[versions.tab_names(VID)['look']];assert vt.index('mask_noise_type')==vt.index('mask_source')+1    # right under Mask Source
+    tabs=dict((x.label(),[y.name() for y in x.parmTemplates()]) for x in g.entries() if x.type()==hou.parmTemplateType.Folder);vt=tabs[versions.tab_names(VID)['layout' if versions.tab_names(VID)['mask_in_layout'] else 'look']];assert vt.index('mask_noise_type')==vt.index('mask_source')+1    # right under Mask Source
     assert g.find('noise_on').label()=='Noise Positional Shift' and 'NOISE POSITIONAL SHIFT' in [x.columnLabels()[0] for x in g.entries()[2].parmTemplates() if x.name().startswith('ui_head')] or True
     heads=[t_.columnLabels()[0] for t_ in [x for x in g.entries() if x.label()==versions.tab_names(VID)['look']][0].parmTemplates() if t_.name().startswith('ui_head')];assert 'NOISE POSITIONAL SHIFT' in heads and 'NOISE' not in heads,heads
     hou.hda.installFile(str(versions.hda('v1.24.0')),force_use_assets=True);old=scatter(st,sc,name='Old',typ=versions.type_name('v1.24.0'));assert old.parm('mask_noise_type') is None          # a release before the noise types

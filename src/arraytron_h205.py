@@ -21,6 +21,7 @@ def sop_protopath(geo,asset):
     """PROTO_PATH: the instancer picks each point's prototype by the string attribute protopath = the flat path of prototype protoindex."""
     paths=flat_paths(asset);n=len(paths)
     geo.addAttrib(hou.attribType.Point,'protopath','')
-    if geo.findPointAttrib('protoindex') is None or not geo.points():return
-    idx=geo.pointIntAttribValues('protoindex')
-    geo.setPointStringAttribValues('protopath',[paths[min(max(int(i),0),n-1)] for i in idx])
+    if geo.findPointAttrib('protoindex') is None or not geo.intrinsicValue('pointcount'):return                      # (geo.points() built a million point objects just to test for empty)
+    import numpy as np
+    idx=np.clip(np.array(geo.pointIntAttribValues('protoindex'),dtype=np.int64),0,n-1)
+    geo.setPointStringAttribValues('protopath',np.array(paths,dtype=object)[idx].tolist())

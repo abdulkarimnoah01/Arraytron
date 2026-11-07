@@ -1,13 +1,13 @@
-# Arraytron user guide (v1.25.1)
+# Arraytron user guide (v1.33.0)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.25.1`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.33.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
 1. Put your scene in LOPs: a reference to your **models** (for example `/World/Props/Rock`) and to a **terrain** (a mesh, `/World/Terrain`).
 2. Add an **Arraytron** node and wire the scene into the **first input** (the *Scene Stream*). Extra models can go into inputs 2 to 4.
 3. **Source** tab: in the Prototype Bank leave *Source Type* on *Prim Path* and type the model's prim path.
-4. **Layout** tab: set *Distribution Mode* to **Surface**, type the terrain in *Surface Prim*, set a *Count*.
+4. **Scatter** tab (called Layout before v1.32.0): set *Distribution Mode* to **Surface**, type the terrain in *Surface Prim*, set a *Count*.
 5. **Look** tab: switch *Randomize* on for scale and yaw variation.
 
 That is a working scatter. Everything else is optional and stays out of the way until you open its tab.
@@ -17,8 +17,8 @@ That is a working scatter. Everything else is optional and stays out of the way 
 | Tab | What it is for |
 | --- | --- |
 | **Prototypes** | The Prototype Bank (the models, their weights, scale, LOD / proxy prims), how each point picks a model, the output prim path. |
-| **Layout** | Where the points go. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show (**Rows** lay a Line, Circle or Curve out in several rows; **Biome** scatters on a terrain by elevation, slope, moisture and temperature). The mode is chosen on the **Mode Palette**, a row of icon cells at the top of the Parameters pane; the **Asset Library** under it keeps your USD assets in categories and puts them into the Prototype Bank. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
-| **Variation** | Per-instance rotation and scale, **Randomize**, the **Mask** (noise, image, mesh primvar) and the **Field Stack** (Height, Slope, Noise, Image, Distance, Exclusion). |
+| **Scatter** | Where the points go, and the **Mask**, the **Field Stack** and the **Falloff** that shape them (v1.32.0: they used to be in the Variation and Layout tabs), then **Blast** (v1.33.0): an overall selection of instances that is deleted or transformed all together. Distribution Mode: **Line, Area, Grid, Circle, Curve, Surface, Paint, Cluster, Imported Points**; only the active mode's settings show (**Rows** lay a Line, Circle or Curve out in several rows; **Biome** scatters on a terrain by elevation, slope, moisture and temperature). The mode is chosen on the **Mode Palette**, a row of icon cells at the top of the Parameters pane; the **Asset Library** under it keeps your USD assets in categories and puts them into the Prototype Bank. Then *Move the Layout* (Bounds Transform; a viewport handle moves it too). |
+| **Variation** | Per-instance rotation and scale, **Randomize**, (the **Mask** and the **Field Stack** moved to the Scatter tab in v1.32.0; Height, Distance, Exclusion, Mask; v1.33.0). |
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
 | **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |
@@ -49,7 +49,7 @@ Think of it as a pipeline, in this order: generate points, **Mask**, **Field Sta
 
 Every point gets a deterministic integer id. Changing rotation, scale, selection weights, masks or materials never renames a point; a density mask or a Remove only ever removes ids; adding points (a higher count, more clusters, more paint) never moves the earlier ones. Ids are what overrides, paint edits, caches and downstream FX hang on. They are written as `ids` on the PointInstancer and can be exposed as the primvar `arraytron_id`.
 
-## 6. Painting (Layout tab, Mode = Paint)
+## 6. Painting (Scatter tab, Mode = Paint)
 
 Press **Start Painting** (or select the node and press Enter in the viewport). Drag over the **Paint Target** to paint. The prompt line at the top of the viewport shows the live brush values; the brush ring is **orange** for Add, **red** for Remove, **blue** for Replace and **green** for Relax, and a white inner ring shows a strength below 1.
 
@@ -95,3 +95,5 @@ The node outputs one PointInstancer at the *Output Prim Path* (default `/World/A
 ## 11. Where to go next
 
 `docs/INDEX.md` lists every document. Problems: `docs/TROUBLESHOOTING.md`.
+
+Painting the Mask by hand (Painted, the full brush, Houdini's own Attribute Paint): [MASK_PAINT.md](MASK_PAINT.md). Group Children prototypes and Keep By Direction on a surface: [GROUPS_AND_DIRECTION.md](GROUPS_AND_DIRECTION.md).

@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_noise_'));MUTATE=os.environ.get('ARRAYTRON_MUTATE');checks=[]
 def write_scene():
@@ -264,8 +264,8 @@ def contract():
     assert g.find('noise_on').defaultValue()==False and g.find('noise_amp').defaultValue()==(0.5,0.0,0.5) and g.find('view_mode').defaultValue()==0
     tabs=dict((t.label(),[x.name() for x in t.parmTemplates()]) for t in g.entries() if t.type()==hou.parmTemplateType.Folder)
     if 'noise_period' in [x.name() for x in g.entries()[0].parmTemplates()]+list(tabs.get('x',[])) or g.find('noise_period') is not None:
-        vt=tabs[versions.tab_names(VID)['look']];assert 'noise_on' in vt and vt.index('noise_on')<vt.index('mask_source') and 'noise_viz' in vt and 'mask_viz' in vt and vt.index('mask_viz')>vt.index('mask_source') and 'noise_on' not in tabs['Layout']      # v1.24.0: the Noise section is in the Variation tab, before the Mask
-    else:layout=tabs['Layout'];assert 'noise_on' in layout and layout.index('noise_on')>layout.index('rows_count') and layout.index('noise_on')<layout.index('bound_t')
+        vt=tabs[versions.tab_names(VID)['look']];mt=tabs[versions.tab_names(VID)['layout' if versions.tab_names(VID)['mask_in_layout'] else 'look']];assert 'noise_on' in vt and 'noise_viz' in vt and 'mask_viz' in mt and 'noise_on' not in tabs[versions.tab_names(VID)['layout']] and (vt.index('noise_on')<vt.index('mask_source') if mt is vt else 'mask_source' not in vt and 'noise_on' not in mt)      # v1.24.0: the Noise section is in the Variation tab, before the Mask
+    else:layout=tabs[versions.tab_names(VID)['layout']];assert 'noise_on' in layout and layout.index('noise_on')>layout.index('rows_count') and layout.index('noise_on')<layout.index('bound_t')
     assert 'view_mode' in tabs[versions.tab_names(VID)['finish']] and tabs[versions.tab_names(VID)['finish']].index('view_mode')<tabs[versions.tab_names(VID)['finish']].index('dbg_on')
     for n in ('noise_type','noise_amp','noise_seed'):assert 'noise_on == 0' in g.find(n).conditionals()[hou.parmCondType.HideWhen],n
     assert 'noise_type == 2' in g.find('noise_freq').conditionals()[hou.parmCondType.HideWhen]

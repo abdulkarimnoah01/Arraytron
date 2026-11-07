@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.28.0':'v1.27.0','v1.27.0':'v1.26.0','v1.26.0':'v1.25.2','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_place_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -218,13 +218,13 @@ def with_other_stages():
     assert o1['ids'].tolist()==[10,30] and o2['ids'].tolist()==[30] and np.allclose(o1['scales'][1],o2['scales'][0],atol=1e-6)         # the random scale of an id does not change when another row goes
 
 def contract():
-    st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[9]=='Instance Place' and len(mode.menuLabels())==10+(1 if a.parm('biomes') is not None else 0)
+    st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[9] in ('Instance Place','Place (retired)') and len(mode.menuLabels())==10+(1 if a.parm('biomes') is not None else 0)
     for name in ('place_snap','place_snap_rot','place_dragset','place_curve','place_curve_mode','place_curve_count','place_curve_spacing','place_curve_follow','place_curve_project','place_curve_go'):assert g.find(name) is not None,name
     for name in ('place_copies#','place_ctrans#','place_crot#','place_cscale#','place_cspace#','place_def_copies','place_def_ctrans','place_def_crot','place_def_cscale','place_def_cspace'):assert g.find(name) is not None,name
     for name in ('places','place_start','place_target','place_align','place_offset','place_def_scale','place_def_yaw','place_def_yawrand','place_def_proto','place_seed','place_info','place_fix','place_clear'):assert g.find(name) is not None,name
     place=g.find('place');assert place.conditionalType()==hou.parmCondType.HideWhen if hasattr(place,'conditionalType') else True
     assert 'place_start' in g.find('place_start').scriptCallback() and 'Esc' in g.find('place_start').help() and g.find('place_id#') is None or True
-    layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert 'place_start' in names and 'places' in names
+    layout=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout']][0];names=[t.name() for t in layout.parmTemplates()];assert 'place_start' in names and 'places' in names
     inst=a.node('USD_COMPILER');gen=inst.node('DISTRIBUTION_GENERATOR');assert gen.inputs()[9].name()=='generate_place'
     assert 'place_proto' in inst.node('PROTOTYPE_ASSIGNMENT').parm('snippet').eval()
     assert '$' not in a.type().definition().sections()['PythonModule'].contents().split('# ---- Instance Place')[1]

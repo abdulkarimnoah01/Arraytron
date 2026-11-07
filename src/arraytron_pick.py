@@ -23,12 +23,13 @@ def pick_instances(asset):
     if not xf:return empty
     ids_attr=inst.GetIdsAttr();ids=ids_attr.Get(time) if ids_attr and ids_attr.HasValue() else None
     n=len(xf);ids=np.array(list(ids),dtype=np.int64) if ids is not None and len(ids)==n else np.arange(n,dtype=np.int64)
-    local=np.array([[m[3][0],m[3][1],m[3][2]] for m in xf],dtype=float)                 # USD matrices are row-major: the translation is the last row
-    to_world=UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(time)
-    P=np.array([[*to_world.Transform(Gf.Vec3d(*row))] for row in local],dtype=float)
+    to_world=UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(time);W=np.array([[to_world[i][j] for j in range(4)] for i in range(4)],dtype=float)
+    try:local=np.asarray(xf,dtype=float).reshape(n,4,4)[:,3,:3]                                  # USD matrices are row-major: the translation is the last row (the whole array at once)
+    except Exception:local=np.array([[m[3][0],m[3][1],m[3][2]] for m in xf],dtype=float)
+    P=local@W[:3,:3]+W[3,:3]
     mask=inst.ComputeMaskAtTime(time)
     if mask and len(mask)==n:
-        keep=np.array([bool(v) for v in mask]);ids=ids[keep];P=P[keep]
+        keep=np.array(list(mask),dtype=bool);ids=ids[keep];P=P[keep]
     return dict(ids=ids,P=P)
 
 def pick_nearest(origin,direction,P,ids,tolerance=PICK_TOLERANCE):

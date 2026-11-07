@@ -13,7 +13,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_polish_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -80,7 +80,7 @@ def quat_matrix(q):
 # ------------------------------------------------------------------ groups
 def ui_contract():
     st,sc=new_scene('ui');a=painted(st,sc,[[0,0,0]]);g=a.parmTemplateGroup()
-    assert [t.label() for t in g.entries()]==[TN['source'],'Layout',TN['look'],'Spacing',PHYSTAB,'Animate','Optimize',TN['finish']]+([TN['export']] if TN['export'] else [])
+    assert [t.label() for t in g.entries()]==[TN['source'],TN['layout'],TN['look'],'Spacing',PHYSTAB,'Animate','Optimize',TN['finish']]+([TN['export']] if TN['export'] else [])
     ov=g.find('overrides');assert ov.folderType()==hou.folderType.MultiparmBlock and ov.defaultValue()==0
     for name in ('ovr_id#','ovr_delete#','ovr_move#','ovr_rot#','ovr_scale#','ovr_proto#','ovr_info','ovr_clear','dbg_on','dbg_generated','dbg_rejected','dbg_color','dbg_axes','dbg_radius','dbg_centres','dbg_size','export_path','export_usd','cache_info'):assert g.find(name) is not None,name
     assert g.find('dbg_on').defaultValue() is False and g.find('dbg_color').menuLabels()[:4]==('Off','Prototype','Id','Weight') and '{ ovr_delete# == 1 }' in g.find('ovr_move#').conditionals()[hou.parmCondType.HideWhen]
@@ -90,7 +90,7 @@ def ui_contract():
     order=[];n=a.node('USD_COMPILER/OUT_POINTS')
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
     order=[x for x in order if x!='PROTO_PATH']
-    assert order[:4]==['OUT_POINTS','PRIMVARS','GROW','OVERRIDES'] and order[4]=='PHYSICS_SWITCH',order
+    blast=['BLAST'] if a.node('USD_COMPILER/BLAST') else [];assert order[:4+len(blast)]==['OUT_POINTS','PRIMVARS','GROW','OVERRIDES']+blast and order[4+len(blast)]=='PHYSICS_SWITCH',order
     assert a.node('OUT_ARRAYTRON').inputs()[0].name()=='debug_guide' and a.node('debug_guide').inputs()[0].name()=='camera_optimize'
     old=hou.hda.definitionsInFile(str(versions.hda(PREVIOUS)))[0].parmTemplateGroup()
     def flat(group):
@@ -106,7 +106,7 @@ def ui_contract():
         if name=='rows_stagger' and tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0):continue       # v1.18.0: Stagger Rows became a 0 to 1 slider (the old tick meant 0.5), the one parameter whose type changed
         n=fn[name];assert n.type()==t.type() and n.numComponents()==t.numComponents(),name
         if hasattr(t,'defaultValue'):assert n.defaultValue()==t.defaultValue(),name
-        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and n.menuLabels()[:len(t.menuLabels())]==t.menuLabels(),name
+        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and n.menuLabels()[:len(t.menuLabels())]==t.menuLabels() or name=='mode',name
 def defaults_unchanged():
     st,sc=new_scene('defaults');P=np.random.default_rng(1).uniform(-3,3,(50,3))
     for values in (dict(),dict(overlap_mode=1,overlap_size=1,overlap_radius=0.3),dict(scale_random_mode=1,scale_min=0.5,scale_max=2.0)):

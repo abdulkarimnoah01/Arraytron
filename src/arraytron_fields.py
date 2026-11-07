@@ -5,7 +5,7 @@
 import math
 import numpy as np
 
-FIELD_TYPES=('Height','Slope','Noise','Image','Distance','Exclusion')
+FIELD_TYPES=('Height','Slope','Noise','Image','Distance','Exclusion','Mask')          # v1.33.0 offers Height, Distance, Exclusion and Mask; Slope, Noise and Image still evaluate in scenes that already use them
 FIELD_OPS=('Multiply','Add','Subtract','Min','Max')
 
 # ---------------------------------------------------------------- shaping
@@ -144,6 +144,28 @@ def exclusion_value(P,tris,margin,fall):
     if fall<=0:return (d>margin).astype(np.float64)
     return ramp(d,margin,margin+fall)
 
+# ---------------------------------------------------------------- mask field
+def mask_field_value(S,mode,grow,gap,ring,soft):
+    """The Mask field from the signed distance S to the edge of the mask shape (positive inside it, negative outside). Mode 0 Scatter On The Mask: 1 inside the shape grown by `grow`, 0 beyond it, a smooth edge `soft` wide
+    outside it; 1 Keep Off The Mask: the opposite (0 on the mask and within `grow` of it); 2 Scatter Around The Mask: 1 on a ring of width `ring` that starts `gap` outside the edge, with a `soft` fall at both
+    sides of the ring, and 0 on the mask itself."""
+    S=np.asarray(S,dtype=np.float64)
+    if mode==2:
+        d=-S;v=band(d,gap,gap+ring,soft);return np.where(S>0.0,0.0,v)
+    on=smooth01(1.0+(S+grow)/soft) if soft>0.0 else ((S+grow)>=0.0).astype(np.float64)
+    return on if mode==0 else 1.0-on
+
+def mask_signed_at(P,weight_fn,level,pad,res=256):
+    """Signed distance (inside positive) of every point to the edge of the shape {weight_fn >= level}, the mask looked at on a power-of-two lattice over the X and Z extent of the points plus `pad` (the same lattice
+    as the Falloff: a point gets the same value whatever the other points are)."""
+    P=np.asarray(P,dtype=np.float64).reshape(-1,3)
+    if len(P)==0:return np.zeros(0)
+    pad=max(float(pad),1e-9);ext=np.maximum(P[:,[0,2]].max(axis=0)-P[:,[0,2]].min(axis=0)+2.0*pad,1e-9);cell=2.0**np.round(np.log2(float(ext.max())/max(int(res),8)))
+    lo=np.floor((P[:,[0,2]].min(axis=0)-pad)/cell)*cell;hi=np.ceil((P[:,[0,2]].max(axis=0)+pad)/cell)*cell;nx=int(round((hi[0]-lo[0])/cell));nz=int(round((hi[1]-lo[1])/cell))
+    gx=lo[0]+(np.arange(nx)+0.5)*cell;gz=lo[1]+(np.arange(nz)+0.5)*cell;X,Z=np.meshgrid(gx,gz)
+    G=np.stack([X.ravel(),np.full(X.size,float(P[:,1].mean())),Z.ravel()],axis=1);w=np.asarray(weight_fn(G),dtype=np.float64).reshape(nz,nx)
+    return sample_grid(mask_signed_field(w,level,cell),lo,cell,P[:,[0,2]])
+
 # ---------------------------------------------------------------- Houdini side
 import hou
 
@@ -193,6 +215,14 @@ def field_values(asset,i,P,ids):
         try:img=read_image(path,_row(asset,'field_channel',i))
         except ValueError as exc:raise hou.NodeError(str(exc))
         u,v=planar_uv(P,_row(asset,'field_proj',i),_row_tuple(asset,'field_icenter',i),_row_tuple(asset,'field_isize',i));return sample_image(img,u,v,_row(asset,'field_ioutside',i))
+    if kind==6:
+        if asset.evalParm('mask_source')==0:raise hou.NodeError('Field %d (Mask) follows the shape of the Mask: choose a Mask Source (Noise, Image, Painted, Houdini Paint ...) in the Mask section.'%i)
+        mode=_row(asset,'field_mmode',i);grow=_row(asset,'field_mgrow',i);gap=_row(asset,'field_mgap',i);ring=_row(asset,'field_mring',i);soft=_row(asset,'field_msoft',i);level=_row(asset,'field_mlevel',i)
+        def weight_fn(G):return mask_weights(asset,mask_values(asset,G,np.arange(len(G))))
+        if mode!=2 and grow==0.0 and soft==0.0:                                                        # no margin and no softness: the mask weight itself, soft where the mask is soft
+            w=np.clip(weight_fn(P),0.0,1.0);return w if mode==0 else 1.0-w
+        pad=abs(grow)+soft+(gap+ring+soft if mode==2 else 0.0)+1e-3
+        return mask_field_value(mask_signed_at(P,weight_fn,level,pad),mode,grow,gap,ring,soft)
     path=_row(asset,'field_prim',i).strip()
     if not path:raise hou.NodeError('Field %d (%s): the Prim is empty.'%(i,FIELD_TYPES[kind]))
     tris,segs=_prim_geometry(asset,path)

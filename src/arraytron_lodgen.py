@@ -215,6 +215,7 @@ def lodgen_author(asset,stage):
     entries=resolve(asset);minimum=asset.evalParm('lodg_min');stats={}
     if entries:UsdGeom.Scope.Define(stage,Sdf.Path(lodgen_root(asset)))
     for e in entries:
+        if e.get('group'):continue                                                              # a Group Children row has no LODs (v1.29.0)
         src=stage.GetPrimAtPath(e['path'])
         if not src or not src.IsValid():continue
         row={}

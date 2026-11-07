@@ -62,9 +62,20 @@ VERSIONS={
  'v1.24.0':dict(old='-',type='arraytron::instancer::1.24.0',h205=True),
  'v1.25.0':dict(old='-',type='arraytron::instancer::1.25.0',h205=True),
  'v1.25.1':dict(old='-',type='arraytron::instancer::1.25.1',h205=True),     # the test setup of a new node: robust check + button     # every noise type also as the Mask noise     # Display: Boxes / Spheres proxy     # copy settings between Arraytron nodes: code and the Import Settings button     # Stagger cycles (orbit kept), Display: Points Only, position Noise for every mode     # the LOD generator also works on instanceable prototypes
+ 'v1.25.2':dict(old='-',type='arraytron::instancer::1.25.2',h205=True),     # the built-in test ground is left out when Surface Prim points at an external surface
+ 'v1.26.0':dict(old='-',type='arraytron::instancer::1.26.0',h205=True),     # Mask Source Painted: a live viewport brush with feather; full mask remap (Gamma, Remap Curve, Output Range)
+ 'v1.27.0':dict(old='-',type='arraytron::instancer::1.27.0',h205=True),     # the full mask brush: Foreground / Background, Shift and Ctrl operations, Smooth, Sample, symmetry, Fill
+ 'v1.28.0':dict(old='-',type='arraytron::instancer::1.28.0',h205=True),     # the mask painted with Houdini's Attribute Paint brush, baked and scattered by a Finish button
+ 'v1.29.0':dict(old='-',type='arraytron::instancer::1.29.0',h205=True),     # Prototype Bank source type Group Children
+ 'v1.30.0':dict(old='-',type='arraytron::instancer::1.30.0',h205=True),     # Surface mode: Keep By Direction
+ 'v1.30.1':dict(old='-',type='arraytron::instancer::1.30.1',h205=True),     # the Bounds Transform gizmo is an option (Show Gizmo), hidden in the brush tools
+ 'v1.31.0':dict(old='-',type='arraytron::instancer::1.31.0',h205=True),     # big surfaces are read once and kept, Surface mode can scatter on a reduced proxy with a ghost, the Place mode is retired
  'v1.1.0':dict(old='-',type='arraytron::instancer::1.1.0',h205=True),     # adds the Houdini 20.5 / 21 build (otls_h205/); see docs/PORT_HOUDINI_205.md
+ 'v1.31.1':dict(old='-',type='arraytron::instancer::1.31.1',h205=True),     # faster prototype paths and point creation for a million instances, the same features
+ 'v1.32.0':dict(old='-',type='arraytron::instancer::1.32.0',h205=True),     # Falloff follows the shape of any mask, mask export / bake / save and load, the Layout tab is the Scatter tab and holds the Mask and the Field Stack
+ 'v1.33.0':dict(old='-',type='arraytron::instancer::1.33.0',h205=True),     # the Field Stack offers Height, Distance, Exclusion and Mask (keep points off the mask, on it or around it), Mask Effect None
 }
-CURRENT='v1.25.1'
+CURRENT='v1.33.0'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',
@@ -149,4 +160,5 @@ if __name__=='__main__':
 def tab_names(vid):
     """The labels of the tabs that were renamed in v1.13.0: Source > Prototypes, Look > Variation, Finish > Debugging, plus the Export tab (None before v1.13.0)."""
     new=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,13,0)
-    return dict(source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None)
+    scatter=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,32,0)                  # v1.32.0: the Layout tab is the Scatter tab and holds the Mask and the Field Stack (the Variation tab no longer does)
+    return dict(source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None,layout='Scatter' if scatter else 'Layout',mask_in_layout=scatter)

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Arraytron Stamp 0.9.3 - User Guide</title>
+<style>
+@page { size: A4; margin: 15mm 15mm 17mm 15mm; }
+:root { --ink:#1d2127; --dim:#5b636e; --accent:#d9731a; --line:#d6dae0; --soft:#f4f5f7; }
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", "Source Sans Pro", Arial, sans-serif; color: var(--ink); font-size: 10.4pt; line-height: 1.5; margin: 0; }
+h1 { font-size: 21pt; margin: 22pt 0 6pt; padding-bottom: 5pt; border-bottom: 3px solid var(--accent); page-break-after: avoid; }
+h1.pb { page-break-before: always; margin-top: 0; }
+h1.first { page-break-before: always; margin-top: 0; }
+h2 { font-size: 14pt; margin: 16pt 0 4pt; color: #11151a; }
+h3 { font-size: 11.5pt; margin: 12pt 0 3pt; color: var(--accent); }
+p { margin: 4pt 0 6pt; }
+ul, ol { margin: 3pt 0 7pt; padding-left: 18pt; }
+li { margin: 1.5pt 0; }
+code, kbd { font-family: Consolas, "Source Code Pro", monospace; font-size: 9.2pt; background: var(--soft); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
+kbd { background: #fff; border-bottom-width: 2px; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 10pt; font-size: 9.4pt; page-break-inside: avoid; }
+th { background: #2d333b; color: #fff; text-align: left; padding: 4pt 6pt; }
+td { border: 1px solid var(--line); padding: 3.5pt 6pt; vertical-align: top; }
+tr:nth-child(even) td { background: var(--soft); }
+figure { margin: 8pt 0 10pt; page-break-inside: avoid; }
+figure img { width: 100%; border-radius: 6px; border: 1px solid #2b3138; display: block; }
+figure.narrow img { width: 62%; margin: 0 auto; }
+figcaption { font-size: 8.8pt; color: var(--dim); margin-top: 3pt; text-align: center; }
+.note { border-left: 4px solid var(--accent); background: #fff6ec; padding: 6pt 10pt; margin: 8pt 0; border-radius: 0 5px 5px 0; page-break-inside: avoid; }
+.tip { border-left: 4px solid #3fa660; background: #eefaf2; padding: 6pt 10pt; margin: 8pt 0; border-radius: 0 5px 5px 0; page-break-inside: avoid; }
+.cols { display: flex; gap: 12pt; } .cols > div { flex: 1; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+.cover h0 { display: block; font-size: 40pt; font-weight: 700; line-height: 1.05; margin-top: 50mm; }
+.cover .ver { color: var(--accent); font-size: 15pt; font-weight: 600; margin-top: 8pt; }
+.cover .sub { color: var(--dim); font-size: 13pt; margin-top: 10pt; max-width: 130mm; }
+.toc { columns: 2; column-gap: 18pt; font-size: 10pt; } .toc li { list-style: none; margin: 2pt 0; } .toc ol { padding: 0; }
+.small { font-size: 8.8pt; color: var(--dim); }
+</style></head><body>
+
+<div class="cover">
+  <div>
+    <h0>Arraytron<br>Stamp</h0>
+    <div class="ver">User guide &middot; version 0.9.3</div>
+    <div class="sub">Place instances by hand in Solaris, like Houdini's Layout and Paint Instances tools, with prototype cards, brushes, groups and a sheet that edits many stamps at once.</div>
+  </div>
+  <figure><img src="../img/d_workflow.png" alt="five steps"><figcaption>From an empty node to a placed set</figcaption></figure>
+</div>
+
+<h1 class="first">Contents</h1>
+<div class="toc"><ol>
+<li><b>1</b> What it is</li><li><b>2</b> Install and update</li><li><b>3</b> Quick start</li><li><b>4</b> The Parameters pane</li><li><b>5</b> Prototypes: the bank, the cards, the stamp cycle</li><li><b>6</b> Placing: the Place brush</li><li><b>7</b> Randomization</li><li><b>8</b> Placement: up, sitting, stacking, snapping</li><li><b>9</b> The Group brush and its layouts</li><li><b>10</b> Paint and Delete</li><li><b>11</b> Edit mode</li><li><b>12</b> Managing stamps: the STAMPS sheet</li><li><b>13</b> Hotkeys</li><li><b>14</b> Every parameter</li><li><b>15</b> Performance</li><li><b>16</b> Scripting</li><li><b>17</b> Troubleshooting</li><li><b>18</b> Version notes</li>
+</ol></div>
+<figure><img src="../img/ui_overview.png" alt="the tool in Houdini"><figcaption>The tool in Houdini 20.5: the viewer with its HUD on the left, the Parameters pane (shelf, cards, STAMPS sheet, tabs) on the right. Houdini sample assets as prototypes.</figcaption></figure>
+
+<h1 class="pb">1 &nbsp;What it is</h1>
+<p>Arraytron Stamp is a Solaris (LOP) node for placing instances by hand. Pick prototypes, click in the viewport, and the node writes one <code>UsdGeomPointInstancer</code>. There is nothing to cook for each click: the stamps are one text parameter, one line per stamp, and the node is one Python LOP.</p>
+<figure><img src="../img/d_overview.png" alt="overview"><figcaption>The node, its tool and its pane. The tool and the pane both edit the same Stamps text.</figcaption></figure>
+<h3>What you get</h3>
+<ul>
+<li><b>Brushes:</b> Place (click, drag to turn and scale), Delete, Paint (a disc of stamps), Group (several prototypes at once), and an Edit mode with Houdini's edit handle.</li>
+<li><b>Ghost preview:</b> the prototype itself, translucent, under the mouse, exactly where and how it will land.</li>
+<li><b>Object aware:</b> stamps land on the ground, on meshes you choose, and on other stamps (stack them).</li>
+<li><b>Prototype Bank</b> like Arraytron's: prims, USD files, inputs, groups, with Weight, Scale, Scale Random and Rotation Offset per row, plus the Asset Library.</li>
+<li><b>Prototype cards</b> with real thumbnails, favourites, search, views, and a visible <i>stamp cycle</i>.</li>
+<li><b>Randomization</b> for the prototype, the scale and the rotation, repeatable with a Seed.</li>
+<li><b>Management:</b> the STAMPS sheet edits the selected stamps or all of them (Set, Add, Multiply), with Delete, Duplicate, Select and Clear All.</li>
+</ul>
+<p class="small">Supported: Houdini 20.5, 21 and 22 (Solaris). The node type is <code>arraytron::stamp::&lt;version&gt;</code>.</p>
+
+<h1>2 &nbsp;Install and update</h1>
+<ol>
+<li>Unpack <code>Arraytron_Stamp_v0.9.3_Release.rar</code> anywhere (WinRAR or 7-Zip).</li>
+<li>Run <code>Install Arraytron Stamp.cmd</code>. It installs for every Houdini 20.5, 21 and 22 it finds, into <code>%LOCALAPPDATA%\ArraytronStamp</code>, with its own package file (<code>arraytron_stamp.json</code>) and shelf. It never touches Arraytron's own install.</li>
+<li>Restart Houdini. In <code>/stage</code> press <kbd>Tab</kbd> and type <i>Arraytron Stamp</i>.</li>
+</ol>
+<p><b>Updating:</b> open the <b>Arraytron Stamp</b> shelf and press <b>Check for Updates</b>. It reads the release feed, checks the checksum of the download, installs the new version next to the old one (the last two are kept) and asks you to restart Houdini. <b>Uninstall:</b> run <code>Uninstall Arraytron Stamp.cmd</code>.</p>
+<div class="note">The demo (<code>Arraytron_Stamp_v0.9.3_demo.hip</code>) has three nodes: 300 stamps on a hilly ground, 11 stamps edited by hand, and <b>Stamp_C_Groups</b>, which shows the six group layouts and the group randomization. <code>Arraytron_Stamp_v0.9.3_paint_falloff_demo.hip</code> shows the Paint falloff: uniform, density only, scale only, soft natural, a long S stroke and uneven terrain.</div>
+
+<h1>3 &nbsp;Quick start</h1>
+<ol>
+<li><b>Make the node.</b> In <code>/stage</code>, create <i>Arraytron Stamp</i> and wire your scene (the ground, the props) into <b>input 1</b>.</li>
+<li><b>Fill the bank.</b> The first row is the built-in sphere. In <b>Brush &gt; Asset</b> set the Prototype Bank: type <i>Prim Path</i> with a path such as <code>/World/Props/Rock</code>, or <i>USD File</i>. Or add from the Asset Library. Each row becomes a card.</li>
+<li><b>Choose the stamp cycle.</b> Click a card; <kbd>Ctrl</kbd> + click adds more. Press <b>Random</b> to mix them.</li>
+<li><b>Place.</b> Press <b>Place</b> on the shelf (or select the node and press <kbd>Enter</kbd> in the viewer). Click to place, drag to turn and scale. <kbd>Esc</kbd> leaves the tool.</li>
+<li><b>Place On.</b> By default stamps go on the ground plane (Y = 0). To place on a mesh put its prim path in <b>Options &gt; Place On</b>.</li>
+</ol>
+<div class="tip"><b>Tip.</b> Every placement, edit and delete is one undo step. Ctrl + Z works as you expect, also in the middle of a session.</div>
+
+<h1>4 &nbsp;The Parameters pane</h1>
+<p>When you select a Stamp node, the pane shows more than parameters. From the top:</p>
+<div class="cols"><div>
+<ol>
+<li><b>Shelf</b>: Place, Delete, Paint, Group (a click enters the tool with that brush) and <b>Random</b>. The count of stamps on the right.</li>
+<li><b>Stamp cycle line</b>: which cards the wheel goes through and Random draws from.</li>
+<li><b>Cards</b>: List, Grid and Large views, search, the star filter and the Set filter. Orange frame and a number = in the stamp cycle. Right click a card: select or delete its stamps.</li>
+<li><b>STAMPS</b>: the sheet of every stamp (section 12).</li>
+<li><b>ASSET LIBRARY</b>: shared with Arraytron; Add to Bank.</li>
+<li><b>Tabs</b>: Brush, Edit, Options (section 14).</li>
+</ol></div>
+<div><figure class="narrow" style="margin-top:0"><img src="../img/panel_main.png" alt="the pane" style="width:100%"><figcaption>The shelf, the cycle line, the cards and the STAMPS sheet</figcaption></figure></div></div>
+<div class="note">If the pane below the node says <i>"Parameters pane: NOT loaded"</i>, press <b>Options &gt; Reload Stamp Pane</b> and select the node again.</div>
+
+<h1>5 &nbsp;Prototypes: the bank, the cards, the stamp cycle</h1>
+<h2>The Prototype Bank</h2>
+<p>A row of the bank is a prototype. Its <b>type</b> is <i>Prim Path</i> (a prim of input 1, space separated paths allowed), <i>Input Connection</i> (inputs 2 to 4), <i>USD File</i> or <i>Group Children</i> (a stamp takes one child of the group). Each row has <b>Weight</b> (how often Random draws it), <b>Scale</b>, <b>Scale Random</b> and <b>Rotation Offset</b> (applied by the cook, so the preview and the result agree), and an <b>On</b> switch. A row switched off is not a prototype.</p>
+<h2>The cards and the stamp cycle</h2>
+<figure><img src="../img/d_cycle.png" alt="the stamp cycle"><figcaption>The cards you chose are the stamp cycle: the wheel goes 1, 2, 3 and Random draws from them by Weight.</figcaption></figure>
+<ul>
+<li><b>Click</b> a card: it alone is the cycle. <b>Ctrl + click</b>: add or remove. With none chosen, every enabled row is in play.</li>
+<li>The mouse wheel in the viewer (Place and Paint) goes to the next prototype of the cycle. Keys <kbd>1</kbd> to <kbd>9</kbd> choose that row alone, <kbd>0</kbd> clears.</li>
+<li>The <b>HUD</b> shows the next prototype, <i>(random)</i> when Random is on, and <i>[set of n]</i> for the size of the cycle.</li>
+<li>The star keeps favourites first. The <b>Set</b> filter shows only the cycle. Thumbnails are drawn by the pane itself, one per timer tick, so a big bank never freezes it.</li>
+</ul>
+
+<h1 class="pb">6 &nbsp;Placing: the Place brush</h1>
+<figure><img src="../img/d_gestures.png" alt="gestures"><figcaption>The five mouse gestures of the Place brush (top view).</figcaption></figure>
+<p>The stamp stays where you pressed. Dragging sets its rotation and scale like Houdini's Layout tool: it turns to face the mouse and grows until its footprint reaches it. With <b>Drag Sets Rotation And Scale</b> off (Brush &gt; Placement) a click places at once.</p>
+<div class="cols"><div>
+<figure><img src="../img/viewport_drag.png" alt="the dial" style="width:100%"><figcaption>The dial while dragging: the ring is the scale, with the scale (3.09) and the angle (250&deg;).</figcaption></figure></div>
+<div>
+<h3>While you hover</h3>
+<ul>
+<li>A ring and the <b>ghost</b>: the prototype with its rotation, scale and the bank row's own Scale and Rotation Offset.</li>
+<li>The next stamp's values are in the HUD: prototype, scale, rotation, stamp count.</li>
+<li><kbd>Shift</kbd> + wheel / <kbd>[</kbd> <kbd>]</kbd>: the scale of the next stamp. <kbd>Ctrl</kbd> + wheel / <kbd>,</kbd> <kbd>.</kbd>: its rotation.</li>
+</ul></div></div>
+<p><b>Place On Stamps:</b> the ray also hits the stamps already placed, so a rock goes on a rock and stamps stack. Switch it off in Options to go through them.</p>
+
+<h1>7 &nbsp;Randomization</h1>
+<p><b>Brush &gt; Randomization</b> holds what changes between one stamp and the next, in three boxes and a Seed. The same Seed gives the same stamps, and more stamps never change the earlier ones.</p>
+<figure><img src="../img/d_random.png" alt="randomization"><figcaption>Random Prototype by weight, Random Scale around Uniform Scale, Random Rotate and Random Tilt.</figcaption></figure>
+<table><tr><th>Box</th><th>Parameters</th><th>What it does</th></tr>
+<tr><td>Prototype</td><td>Random Prototype</td><td>Every stamp takes a random card of the stamp cycle by Weight. Same as the shelf's Random button.</td></tr>
+<tr><td>Scale</td><td>Uniform Scale, Random Scale Min / Max</td><td>Base scale times a random number in the range (0.8 / 1.3: 80 % to 130 %).</td></tr>
+<tr><td>Rotation</td><td>Rotate, Random Rotate (+/- deg), Random Tilt (+/- deg)</td><td>The turn about the up axis, a random turn on top (180 = any direction), a random lean off the up axis.</td></tr>
+<tr><td>Seed</td><td>Seed</td><td>Changes the whole random sequence.</td></tr></table>
+<div class="note"><b>Groups are not randomized by these.</b> The Random Scale of this tab is for single stamps. The Group brush has its own randomization, off by default (section 9).</div>
+
+<h1>8 &nbsp;Placement: up, sitting, stacking, snapping</h1>
+<figure><img src="../img/d_align_sit.png" alt="align and sit"><figcaption>Both settings are on by default (Brush &gt; Placement).</figcaption></figure>
+<h3>Align To Surface (default 1)</h3>
+<p>The up axis of every stamp follows the surface where it lands. <b>Smooth Normals</b> (on) uses a smooth normal interpolated between the vertices of the mesh you place on, and also on stamps, so a stamp on a body or a hill leans gradually. Creases over 60&deg; stay sharp: the top of a cube stays flat. 0 keeps stamps upright in the world, in between blends.</p>
+<h3>Sit On Surface (default on)</h3>
+<p>The bottom of the prototype's box touches the surface (the bank row's Scale and the stamp's scale included), instead of its pivot. A prototype with its origin in the middle (a character, a toy) stands on the ground or on top of another stamp instead of sinking into it. Prototypes whose pivot is at their base are not moved. The preview, the click, Paint and Group members all use it.</p>
+<h3>Offset, Snap Position, Snap Rotation</h3>
+<p><b>Offset</b> moves a stamp along the normal. <b>Snap Position</b> snaps X and Z to a grid (the point is put back on the surface). <b>Snap Rotation</b> rounds the turn to a step; the Ctrl drag uses 15&deg; when it is 0.</p>
+
+<h1 class="pb">9 &nbsp;The Group brush and its layouts</h1>
+<p>One click stamps several prototypes at once. Choose the cards for the group (Ctrl + click), press <b>Group</b>, click or drag. By default a group is <b>a ring of the selected cards</b>, all the same size; change that in <b>Brush &gt; Group</b>.</p>
+<figure><img src="../img/d_layouts.png" alt="layouts"><figcaption>The six layouts, drawn with the Stamp's own layout function (seven members, Spacing 1.2).</figcaption></figure>
+<table><tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
+<tr><td>Layout</td><td>Radial</td><td>Radial, Square, Hexagon, Random Cluster (another one for every group), Line, Spiral, or Custom.</td></tr>
+<tr><td>Spacing</td><td>1.15</td><td>How far apart the members stand, as a multiple of their sizes (1 = just touching).</td></tr>
+<tr><td>Count</td><td>0</td><td>0 = one of each selected card. N = that many members, each drawn from the selected cards by Weight.</td></tr>
+<tr><td>Shuffle Order</td><td>off</td><td>The members stand in a different order for every group.</td></tr>
+<tr><td>Match Member Sizes</td><td>on</td><td>Every member is scaled to the median size of the selected prototypes, so a small one is not lost next to a big one. Off: each keeps its own size.</td></tr>
+<tr><td>Random Group Scale Min / Max</td><td>1 / 1 (off)</td><td>Every group gets its own random scale. Dragging still sets the size.</td></tr>
+<tr><td>Random Member Scale Min / Max</td><td>1 / 1 (off)</td><td>The members of one group differ from each other.</td></tr>
+<tr><td>Random Member Rotation</td><td>0 (off)</td><td>Each member is turned by a random angle up to this.</td></tr>
+<tr><td>Conform To Surface</td><td>on</td><td>Every member is dropped onto the surface (or the stamp) under it.</td></tr></table>
+<h3>A custom layout in three steps</h3>
+<ol><li>Place the stamps the way you want the cluster, with the Place brush.</li><li>Switch to Edit mode (<kbd>Shift</kbd>+<kbd>B</kbd>), select them and press <kbd>G</kbd> (or <b>Brush &gt; Group &gt; Set Layout From Selected Stamps</b>).</li><li>The Group brush is on, with Layout: Custom. Each click now stamps a copy of that cluster, with the rotations and scales you gave them. <b>Reset To Radial Layout</b> forgets it; choosing another layout in the menu does not.</li></ol>
+<p class="small">The group takes the rotation and Random Rotate / Tilt settings of the Randomization tab; dragging turns and scales the whole group (its footprint reaches the mouse). The preview shows every member as the prototype itself (up to 12; the rest as boxes).</p>
+
+<h1>10 &nbsp;Paint and Delete</h1>
+<h2>Paint</h2>
+<p>Drag to paint stamps inside a disc that follows the surface. <kbd>Ctrl</kbd> + drag erases the stamps inside it. The stamps take the Randomization settings and the stamp cycle. One undo step per stroke.</p>
+<table><tr><th>Parameter (Brush &gt; Paint)</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>Radius</td><td>1</td><td>Shift + wheel, <kbd>[</kbd> <kbd>]</kbd> in the viewer</td></tr>
+<tr><td>Density</td><td>2</td><td>Stamps per unit area a dab tries to place (Ctrl + wheel)</td></tr>
+<tr><td>Spacing</td><td>0.4</td><td>Least distance between two stamps, so painting over the same spot fills it and stops</td></tr>
+<tr><td>Edge Falloff</td><td>0.5</td><td>0 even, 1 almost nothing at the rim</td></tr></table>
+<h2>Paint falloff: density and scale (0.9.3)</h2>
+<p>The Paint brush can thin the stamps and shrink them towards the rim of the brush. Switch the two channels on in <b>Brush &gt; Paint &gt; Falloff</b>: <b>Enable Density Falloff</b> and <b>Enable Scale Falloff</b>. Both read the same field, the distance to the whole path of your stroke, so a stroke is a ribbon with a soft edge: no circles at the dabs, the same result at any mouse speed, and painting the same place again adds nothing (the Spacing).</p>
+<figure><img src="../img/d_falloff.png" alt="paint falloff"><figcaption>Left: the curves. Right: Soft Natural. Below: the stamps of the Paint Falloff demo (rocks drawn at their real size): uniform, density only, scale only, both, and one long stroke.</figcaption></figure>
+<table><tr><th>Parameter</th><th>Default</th><th>What it does</th></tr>
+<tr><td>Preset</td><td>Uniform</td><td>Sets the parameters below: <b>Uniform</b> (none), <b>Soft Natural</b> (both, gradual), <b>Sparse Edges</b> (strong density fall, mild scale fall), <b>Growth</b> (strong scale fall, moderate density fall), <b>Dense Center</b> (concentrated in the middle), <b>Custom</b> (changes nothing: edit the parameters yourself).</td></tr>
+<tr><td>Enable Density Falloff / Enable Scale Falloff</td><td>off</td><td>Off, the brush is the classic dab brush, as before.</td></tr>
+<tr><td>Edge Minimum (%)</td><td>0 density, 30 scale</td><td>The density (or the scale) at the rim, as a percentage of the middle value.</td></tr>
+<tr><td>Center Maximum (%) (scale)</td><td>100</td><td>The scale in the middle; more than 100 makes the stamps bigger there.</td></tr>
+<tr><td>Falloff Width (%)</td><td>100</td><td>How much of the radius the fall takes, counted from the rim inwards. 100 starts at the middle, 40 keeps the inner 60 % at full value, 0 is a hard edge.</td></tr>
+<tr><td>Falloff Strength (%)</td><td>100</td><td>How much of the fall is used: 0 is no falloff.</td></tr>
+<tr><td>Curve</td><td>Smoothstep</td><td>Linear, Smoothstep, Smootherstep (the two natural ones), Ease In (stays full longer, drops at the rim), Ease Out (drops early), Custom Ramp (left of the ramp is the rim, right the inner edge).</td></tr></table>
+<ul>
+<li><b>Scale falloff multiplies the stamp's scale</b> (Uniform Scale and Random Scale are in it; the bank row's Scale and Scale Random are applied on top by the cook): final = scale &times; falloff. Sit On Surface uses the final size, so small stamps still sit on the surface.</li>
+<li><b>Density stays what you set in the middle</b>: where the multiplier is 1 the stamps are the Density setting. Prototype weights and the stamp cycle are not changed by it.</li>
+<li><b>Edge Falloff (classic)</b> is the old rim thinning of the dab brush. It is used while both new falloffs are off and ignored while either is on.</li>
+<li><b>Existing stamps are never changed</b> by these settings: they only decide the stamps of a new stroke.</li>
+<li><b>In the viewport</b> the brush shows a ring at the inner edge of each fall (blue: density, orange: scale) and, standing on the surface, the two profiles: density to one side of the centre, scale to the other, the height is the multiplier. The HUD line <i>Paint falloff</i> gives the numbers.</li>
+<li>The soft edge fills in up to one radius behind the cursor (a stamp in the fall waits until the brush has passed so its size does not depend on how fast you moved); the middle of the ribbon appears under the cursor.</li>
+</ul>
+<h2>Delete</h2>
+<p>Click, or press and drag over several stamps. They turn red while you drag and are all deleted on release, in one undo step.</p>
+
+<h1>11 &nbsp;Edit mode</h1>
+<p><kbd>Shift</kbd>+<kbd>B</kbd> toggles Brush and Edit (the Edit tab of the pane follows). In Edit mode:</p>
+<ul>
+<li>Click selects a stamp (<kbd>Shift</kbd> adds or removes); drag on nothing for a box select. The selection is shared with the table.</li>
+<li>Houdini's <b>edit handle</b> appears at the centre of the selection: move, turn and scale about its pivot. One undo step per drag.</li>
+<li>Hold <kbd>Z</kbd> while dragging the handle to duplicate: the copies are selected and move, the originals stay.</li>
+<li><kbd>Del</kbd> deletes the selection. <kbd>G</kbd> makes the selection the Group layout.</li>
+</ul>
+
+<h1>12 &nbsp;Managing stamps: the STAMPS sheet</h1>
+<p>Open the <b>STAMPS</b> section of the pane: every stamp is a row (number, On, prototype Row, X Y Z, Rx Ry Rz, Scale). Cells are editable. The selection is the selection of the Edit mode, both ways.</p>
+<figure><img src="../img/d_sheet.png" alt="sheet"><figcaption>One edit, many stamps: Selected or All, Set, Add or Multiply.</figcaption></figure>
+<div class="cols"><div>
+<ul>
+<li><b>Edit: Selected | All.</b> A cell you edit changes the selected stamps when the edited row is one of them, else only that row. <i>All</i> changes every stamp.</li>
+<li><b>Set | Add | Multiply.</b> Add suits positions and rotations, Multiply the scale. Row (the prototype) and On are always set: change the prototype of 200 stamps with one edit.</li>
+<li><b>Buttons:</b> Delete, Duplicate, All, None, Invert, Clear All (asks first). <kbd>Del</kbd> in the table deletes the selection.</li>
+<li><b>Right click</b> on the table: the same, and <i>select / delete the stamps of the same prototype</i>. Right click on a <b>card</b>: select or delete every stamp of that prototype (the tooltip says how many use it).</li>
+<li><kbd>Ctrl</kbd>+<kbd>A</kbd> in the table selects all rows. One undo step and one parameter write per edit.</li>
+</ul></div>
+<div><figure class="narrow"><img src="../img/panel_sheet_selected.png" alt="sheet selected" style="width:100%"><figcaption>Four rows selected; one edit of Y moved all four.</figcaption></figure></div></div>
+
+<h1>13 &nbsp;Hotkeys</h1>
+<p>They are Houdini hotkeys: <i>Edit &gt; Preferences &gt; Hotkeys</i>, context <i>arraytron_stamp_093 Operation</i>. The viewer's HUD panel lists the hints (<kbd>Shift</kbd>+<kbd>F1</kbd> hides it).</p>
+<table><tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>B</kbd></td><td>Toggle Brush and Edit mode</td></tr>
+<tr><td><kbd>C</kbd></td><td>Brush menu: Place, Delete, Paint, Group, Edit mode</td></tr>
+<tr><td><kbd>B</kbd></td><td>Options menu: Align To Surface, Random Prototype, Drag Sets Rotation And Scale, Place On Stamps, Group: Set Layout From Selected Stamps / Reset To Radial Layout, Snap Rotation</td></tr>
+<tr><td>Wheel</td><td>Next prototype of the stamp cycle (Place, Paint). In Edit mode the wheel is the viewport's.</td></tr>
+<tr><td><kbd>Shift</kbd> + wheel, <kbd>[</kbd> <kbd>]</kbd></td><td>Scale of the next stamp (Paint: the radius)</td></tr>
+<tr><td><kbd>Ctrl</kbd> + wheel, <kbd>,</kbd> <kbd>.</kbd></td><td>Rotation of the next stamp (Paint: Ctrl + wheel is the density)</td></tr>
+<tr><td><kbd>1</kbd> &ndash; <kbd>9</kbd>, <kbd>0</kbd></td><td>That bank row alone is the cycle; 0: no cycle (all)</td></tr>
+<tr><td>Drag</td><td><kbd>Shift</kbd> scale only &middot; <kbd>Ctrl</kbd> orient to steps &middot; <kbd>Ctrl</kbd>+<kbd>Shift</kbd> orient freely</td></tr>
+<tr><td><kbd>Z</kbd> (held)</td><td>Edit mode: duplicate while dragging the handle</td></tr>
+<tr><td><kbd>Del</kbd></td><td>Edit mode: delete the selection</td></tr>
+<tr><td><kbd>G</kbd></td><td>Edit mode: the selection becomes the Group layout</td></tr>
+<tr><td><kbd>Enter</kbd>, <kbd>Esc</kbd></td><td>Finish a stroke / leave the tool</td></tr></table>
+<figure><img src="../img/d_modes.png" alt="modes"><figcaption>Modes and brushes</figcaption></figure>
+
+<h1 class="pb">14 &nbsp;Every parameter</h1>
+<h3>Brush &gt; Randomization</h3>
+<table><tr><th>Parameter</th><th>Default</th></tr><tr><td>Random Prototype</td><td>off</td></tr><tr><td>Uniform Scale</td><td>1</td></tr><tr><td>Random Scale Min / Max</td><td>1 / 1</td></tr><tr><td>Rotate</td><td>0</td></tr><tr><td>Random Rotate (+/- deg)</td><td>0</td></tr><tr><td>Random Tilt (+/- deg)</td><td>0</td></tr><tr><td>Seed</td><td>1</td></tr></table>
+<h3>Brush &gt; Asset</h3>
+<table><tr><th>Parameter</th><th>Default</th></tr><tr><td>Prototype Bank (rows: type, source, Weight, Scale, Scale Random, Rotation Offset, On)</td><td>one row, the built-in sphere</td></tr><tr><td>Prototype Row (the next stamp; the wheel and the cards set it)</td><td>0 = the first enabled row</td></tr></table>
+<h3>Brush &gt; Placement</h3>
+<table><tr><th>Parameter</th><th>Default</th></tr><tr><td>Align To Surface</td><td>1</td></tr><tr><td>Offset</td><td>0</td></tr><tr><td>Sit On Surface</td><td>on</td></tr><tr><td>Smooth Normals</td><td>on</td></tr><tr><td>Snap Position</td><td>0 (off)</td></tr><tr><td>Snap Rotation (deg)</td><td>0 (off; Ctrl drag uses 15)</td></tr><tr><td>Drag Sets Rotation And Scale</td><td>on</td></tr></table>
+<h3>Brush &gt; Paint (Radius, Density, Spacing, Edge Falloff (classic), Falloff, Density Profile, Scale Profile) and Brush &gt; Group</h3>
+<p>See sections 10 and 9.</p>
+<h3>Edit tab</h3>
+<p>Selection line, Select All, Select None, Invert Selection, Duplicate Selected, Delete Selected, Clear All Stamps.</p>
+<h3>Options tab</h3>
+<table><tr><th>Parameter</th><th>Default</th></tr><tr><td>Place Instances (enter the tool)</td><td>button</td></tr><tr><td>Place On (prim paths of input 1, space separated)</td><td>empty = the ground plane Y = 0</td></tr><tr><td>Place On Stamps</td><td>on</td></tr><tr><td>Output Prim</td><td>/World/Stamps</td></tr><tr><td>Make Prototype Source Primitives Invisible</td><td>on (USD files are always staged hidden)</td></tr><tr><td>Parameters Pane (status) and Reload Stamp Pane</td><td>&nbsp;</td></tr></table>
+
+<h1>15 &nbsp;Performance</h1>
+<p>Placing is light on purpose. A placement writes one parameter; the cook parses the text with numpy and writes the arrays; the mouse ray goes against a <code>hou.Geometry</code> (Houdini's own acceleration structure). In 0.9.2 the surface the tool places on is read <i>incrementally</i>: after a click, a group or a paint dab only the new stamps are read; the preview does not parse the whole Stamps text on every mouse move; and a group's rays test only the stamps near it.</p>
+<figure><img src="../img/d_perf.png" alt="performance"><figcaption>Milliseconds, before and after the 0.9.2 work (3000 stamps unless said; heavy prototypes; a 160 000 triangle ground; Houdini 22).</figcaption></figure>
+<ul>
+<li>A normal group of 7 costs about 3 ms per mouse move; a group of 64 about 12 ms plus drawing. Prefer a smaller <b>Count</b> for big groups while you place.</li>
+<li>Dense prototypes are shown as a lighter copy of themselves in the ghost (about 6000 triangles, points merged on a grid so the silhouette stays whole).</li>
+<li>300 stamps cook in about 5 ms; a placement in about 1 ms.</li>
+</ul>
+
+<h2>Paint falloff: measured (0.9.3)</h2>
+<p>Intel Core i9-13900K, 128 GB, Windows 11, Houdini 22.0.368 and 20.5.445. Brush radius 2, Density 3, Spacing 0.3, Soft Natural, a 200 000 triangle prototype in the bank, 400 mouse positions along a long stroke (about 1200 stamps). Milliseconds per mouse position, mean (95th percentile), from <code>tools/profile_paint_falloff.py</code>:</p>
+<table><tr><th>Stamps already there</th><th>Houdini</th><th>New brush (the tool)</th><th>A write at every move</th><th>Classic dab brush, per dab</th></tr>
+<tr><td>300</td><td>22</td><td>2.6 (4.1)</td><td>13.6 (19.2)</td><td>31.4</td></tr><tr><td>3 000</td><td>22</td><td>2.6 (7.2)</td><td>9.7 (11.4)</td><td>19.3</td></tr><tr><td>10 000</td><td>22</td><td>1.8 (2.1)</td><td>18.5 (21.0)</td><td>32.5</td></tr><tr><td>3 000</td><td>20.5</td><td>1.4 (2.5)</td><td>7.5 (9.0)</td><td>16.4</td></tr><tr><td>10 000</td><td>20.5</td><td>1.6 (2.1)</td><td>14.0 (15.6)</td><td>28.5</td></tr></table>
+<p class="small">The tool holds the writes back (at most one every 50 ms): writing the Stamps parameter costs as long as the text is. Painting the same stroke again over 12 000 stamps adds none. One machine, not a guarantee. Details: docs/PAINT_FALLOFF_TECH.md.</p>
+<h1>16 &nbsp;Scripting</h1>
+<p>The node's Python module has the same functions the tool calls, so a script places exactly what a click places: <code>m = hou.node('/stage/arraytron_stamp1').hdaModule()</code>.</p>
+<table><tr><th>Function</th><th>What it does</th></tr>
+<tr><td><code>stamp_add(node, pos, normal, bounds=None)</code></td><td>Append a stamp (Randomization settings, Seed). <code>bounds=m.stamp_proto_bounds(node)</code> adds Sit On Surface.</td></tr>
+<tr><td><code>stamp_group_add(node, surf, pos, normal, bounds=...)</code></td><td>Place a group with the Group settings.</td></tr>
+<tr><td><code>stamp_add_batch(...)</code></td><td>Many stamps, one parameter write.</td></tr>
+<tr><td><code>stamp_surface(node)</code></td><td>The surface to ray cast: <code>hit(origin, direction)</code> gives position, normal, distance.</td></tr>
+<tr><td><code>stamp_edit_rows(node, indices, op, **values)</code></td><td>Edit many stamps: <code>op</code> 'set', 'add', 'mul'.</td></tr>
+<tr><td><code>stamp_select_proto</code>, <code>stamp_delete_proto</code>, <code>stamp_counts</code></td><td>Select, delete and count the stamps of a prototype row.</td></tr>
+<tr><td><code>stamp_delete_many</code>, <code>stamp_duplicate</code>, <code>stamp_set_selection</code></td><td>Delete, copy and select stamps by line number.</td></tr>
+<tr><td><code>stamp_paint_path(node, surf, points, bounds)</code>, <code>StampPaintStroke</code>, <code>stamp_paint_preset(node, 'soft')</code></td><td>Paint a whole stroke with the tool's engine (falloff on or off); the incremental stroke object; set a falloff preset.</td></tr>
+<tr><td><code>stamp_group_capture</code>, <code>stamp_group_reset</code>, <code>stamp_group_items</code></td><td>The Group layout.</td></tr></table>
+<p class="small">The data is the hidden parameter <code>stamps</code>: one line per stamp, <code>x y z  rx ry rz  sx sy sz  proto  on</code>. Lines starting with <code>#</code> are comments.</p>
+
+<h1>17 &nbsp;Troubleshooting</h1>
+<table><tr><th>Problem</th><th>What to do</th></tr>
+<tr><td>The pane shows only a plain parameter dialog</td><td>Options &gt; Reload Stamp Pane, then select the node again.</td></tr>
+<tr><td>Nothing appears when I click</td><td>Check that input 1 is connected, Place On names prims that exist (or is empty for the ground plane), and that you see the node (display flag). The prompt line of the viewer shows errors.</td></tr>
+<tr><td>Stamps sink into the ground / float</td><td>Sit On Surface (Placement) puts the bottom of the prototype's box on the surface. For a prototype whose origin is already at its base it changes nothing; for a prototype with an odd box, switch it off and use Offset.</td></tr>
+<tr><td>Stamps are all upright on a slope</td><td>Align To Surface is 0 (nodes made before 0.9.2 kept their saved value). Set it to 1.</td></tr>
+<tr><td>The originals are still visible</td><td>Options &gt; Make Prototype Source Primitives Invisible.</td></tr>
+<tr><td>Paint falloff makes no difference</td><td>Enable Density Falloff or Enable Scale Falloff (Brush &gt; Paint &gt; Falloff); with both off the classic brush is used. Check Edge Minimum is below 100 % and Falloff Strength above 0.</td></tr>
+<tr><td>A group is the wrong size</td><td>Match Member Sizes scales members to the median prototype size; the group's own size is Uniform Scale (and the drag). Check Random Group Scale is 1 / 1.</td></tr>
+<tr><td>Check for Updates says it cannot reach the server</td><td>The feed is on GitHub (the <code>stamp-latest</code> release). Check the connection, or install the new RAR by hand.</td></tr></table>
+
+<h1>18 &nbsp;Version notes</h1>
+<table><tr><th>Version</th><th>What changed</th></tr>
+<tr><td>0.9.3</td><td>Paint falloff: Density and Scale Falloff over a swept stroke, presets, curves, custom ramps, viewport feedback, the Paint Falloff demo.</td></tr>
+<tr><td>0.9.2</td><td>Group layouts and group randomization, Match Member Sizes, Align To Surface on by default with smooth normals, Sit On Surface, faster placing, demo node C.</td></tr>
+<tr><td>0.9.1</td><td>Stamp management (buttons, menus, per-prototype select / delete), Randomization tab, visible stamp cycle, no squashed text.</td></tr>
+<tr><td>0.9.0</td><td>Group brush, Random button, the sheet edits many stamps.</td></tr>
+<tr><td>0.8.0</td><td>First public release: ghost preview, Paint brush, cards with thumbnails, installer and updater.</td></tr></table>
+<p class="small">Arraytron Stamp is part of the Arraytron family of tools but is installed, updated and versioned on its own. Full changelog: <code>CHANGELOG_STAMP.md</code>.</p>
+</body></html>

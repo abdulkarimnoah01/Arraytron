@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_imported_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
 def ref_hash(i,seed,stream=0):
@@ -108,7 +108,7 @@ def ui_contract():
     for name,cond in (('imp_sop','{ imp_source != 0 }'),('imp_prim','{ imp_source != 1 }'),('imp_offset','{ imp_source != 1 }'),('imp_idattr','{ imp_idmode != 0 }'),('imp_scale_attr','{ imp_scale == 0 }'),('imp_orient_attr','{ imp_orient != 1 }'),('imp_vel_attr','{ imp_orient != 2 }'),('imp_normal_attr','{ imp_orient != 3 }')):assert cond in g.find(name).conditionals()[hou.parmCondType.HideWhen],name
     assert g.find('imp_frame').isHidden() and g.find('imp_percent').defaultValue()==(100.0,) and g.find('imp_idattr').defaultValue()==('id',) and g.find('imp_orient').menuLabels()==('Upright','From Orient Attribute','Along Velocity','From Normal')
     assert g.find('proto_mode').menuLabels()==('Random','Weighted Random','Sequential','Cycle','Even Percent') and g.find('proto_mode').defaultValue()==1
-    layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('imp_source')>names.index('cluster_prim') and 'IMPORTED POINTS' in [t.columnLabels()[0] for t in layout.parmTemplates() if t.name().startswith('ui_head')]
+    layout=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout']][0];names=[t.name() for t in layout.parmTemplates()];assert names.index('imp_source')>names.index('cluster_prim') and 'IMPORTED POINTS' in [t.columnLabels()[0] for t in layout.parmTemplates() if t.name().startswith('ui_head')]
     assert a.node('USD_COMPILER/DISTRIBUTION_GENERATOR').inputs()[8].name()=='generate_imported' and a.node('USD_COMPILER/generate_imported').inputs()[0].name()=='imported_source' and a.node('USD_COMPILER/imported_source').type().name()=='object_merge'
     old=hou.hda.definitionsInFile(str(versions.hda(PREVIOUS)))[0].parmTemplateGroup()
     def flat(group):
@@ -124,7 +124,7 @@ def ui_contract():
         if name=='rows_stagger' and tuple(int(x) for x in VID[1:].split('.'))>=(1,18,0):continue       # v1.18.0: Stagger Rows became a 0 to 1 slider (the old tick meant 0.5), the one parameter whose type changed
         n=fn[name];assert n.type()==t.type() and n.numComponents()==t.numComponents(),name
         if hasattr(t,'defaultValue'):assert n.defaultValue()==t.defaultValue(),name
-        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and n.menuLabels()[:len(t.menuLabels())]==t.menuLabels(),name
+        if t.type()==hou.parmTemplateType.Menu:assert n.menuItems()[:len(t.menuItems())]==t.menuItems() and n.menuLabels()[:len(t.menuLabels())]==t.menuLabels() or name=='mode',name
 def defaults_unchanged():
     st,sc=new_scene('defaults');rng=np.random.default_rng(2)
     for values in (dict(mode=0,line_count=9),dict(mode=1,area_count=40,area_seed=3),dict(mode=7,cluster_prim='',cluster_count=4,cluster_per=10),dict(mode=1,area_count=60,proto_mode=3),dict(mode=1,area_count=60,proto_mode=2)):

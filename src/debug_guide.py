@@ -14,8 +14,9 @@ if vt==0 and asset.parm('mask_viz') is not None and asset.evalParm('mask_viz')>0
 if vt==0 and asset.parm('noise_viz') is not None and asset.evalParm('noise_viz')>0:vt,vw=2,3
 viz=vt>0                                                                                         # Visualize (v1.24.0): the Mask / Field Stack / noise as colour on the scattering surface and the instances
 dbg=bool(asset.evalParm('dbg_on'));vm=asset.evalParm('view_mode') if asset.parm('view_mode') is not None else 0;view=vm>0               # view: Points Only (v1.22.0), the instances are hidden and the points shown
-if dbg or view or viz:
-    asset.evalParm('cam_frame')                                                                 # follow the timeline (Grow, animated cameras)
+ghost=asset.parm('surface_ghost') is not None and asset.evalParm('mode')==5 and bool(asset.evalParm('surface_proxy')) and asset.evalParm('surface_ghost')>0        # v1.31.0: the reduced surface drawn as a ghost
+if dbg or view or viz or ghost:
+    asset.evalParm('cam_frame')                                                                # follow the timeline (Grow, animated cameras)
     m=asset.hdaModule();root=Sdf.Path(asset.evalParm('outputpath'));prim=stage.GetPrimAtPath(root)
     if prim and prim.IsValid():
         if asset.parm('view_mode') is not None:                                                    # v1.22.0 and newer: NEXT to the instancer, with its transform
@@ -120,6 +121,15 @@ if dbg or view or viz:
                 for attr in ('ProtoIndices','Positions','Orientations','Scales','Ids'):
                     src=getattr(pi,'Get%sAttr'%attr)().Get(t)
                     if src is not None:getattr(inst,'Create%sAttr'%attr)().Set(src)
+        if ghost:                                                                                         # the reduced copy of the surface the points are scattered on: a translucent guide mesh
+            try:gmesh=m.surface_proxy_mesh(asset)[0]
+            except hou.Error:gmesh=None
+            if gmesh is not None and len(gmesh[1]):
+                gp,gt=gmesh[0],gmesh[1];gm=UsdGeom.Mesh.Define(stage,path.AppendChild('GhostProxy'));UsdGeom.Imageable(gm.GetPrim()).CreatePurposeAttr().Set('guide' if asset.evalParm('surface_ghost')==1 else 'default')
+                gm.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(gp,dtype=np.float32)));gm.CreateFaceVertexCountsAttr(Vt.IntArray.FromNumpy(np.full(len(gt),3,dtype=np.int32)))
+                gm.CreateFaceVertexIndicesAttr(Vt.IntArray.FromNumpy(np.ascontiguousarray(gt.ravel(),dtype=np.int32)));gm.CreateDoubleSidedAttr(True)
+                gm.CreateDisplayColorPrimvar(UsdGeom.Tokens.constant).Set(Vt.Vec3fArray([Gf.Vec3f(0.45,0.7,1.0)]))
+                UsdGeom.PrimvarsAPI(gm).CreatePrimvar('displayOpacity',Sdf.ValueTypeNames.FloatArray,UsdGeom.Tokens.constant).Set(Vt.FloatArray([0.3]))
         if viz and vt in (1,3) and vw<3:                                                              # the value over the scattering surface: vertex colours on a copy of it, and / or dots
             mode=asset.evalParm('mode');tri=None
             try:

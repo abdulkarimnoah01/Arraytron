@@ -55,11 +55,13 @@ def sop_overrides(geo,asset):
     for name,default in (('ovr_rows',0),('ovr_missing',0),('ovr_deleted',0),('ovr_moved',0),('ovr_rotated',0),('ovr_scaled',0),('ovr_reproto',0),('ovr_badproto',0)):geo.addAttrib(hou.attribType.Global,name,default)
     rows=override_rows(asset);n=geo.intrinsicValue('pointcount');geo.setGlobalAttribValue('ovr_rows',len(rows))
     if not rows or n==0:return
-    s=read_points(geo);ords={r:k for k,r in enumerate(bank_rows(asset))};has_row=geo.findPointAttrib('proto_id') is not None
+    try:bank=[e['row'] for e in resolve(asset)]                                                  # one prototype per entry (a Group Children row has several: its first one is the target of a row number)
+    except hou.NodeError:bank=bank_rows(asset)
+    s=read_points(geo);ords={};[ords.setdefault(r,k) for k,r in enumerate(bank)];has_row=geo.findPointAttrib('proto_id') is not None
     P,orient,scale,proto,delete,stats=apply_overrides(s['id'],s['P'],s['orient'],s['scale'],s['protoindex'],rows,ords)
     geo.setPointFloatAttribValues('P',P.ravel().tolist());geo.setPointFloatAttribValues('orient',orient.ravel().tolist());geo.setPointFloatAttribValues('scale',scale.ravel().tolist());geo.setPointIntAttribValues('protoindex',proto.tolist())
     if has_row:
-        row_of=np.array(bank_rows(asset)+[0])[np.minimum(proto,len(bank_rows(asset)))] if bank_rows(asset) else np.zeros(n,dtype=np.int64);geo.setPointIntAttribValues('proto_id',row_of.tolist())
+        row_of=np.array(bank+[0])[np.minimum(proto,len(bank))] if bank else np.zeros(n,dtype=np.int64);geo.setPointIntAttribValues('proto_id',row_of.tolist())
     for key,attr in (('missing','ovr_missing'),('deleted','ovr_deleted'),('moved','ovr_moved'),('rotated','ovr_rotated'),('scaled','ovr_scaled'),('reproto','ovr_reproto'),('badproto','ovr_badproto')):geo.setGlobalAttribValue(attr,stats[key])
     drop=np.nonzero(delete)[0]
     if len(drop):geo.deletePoints([geo.point(int(i)) for i in drop])

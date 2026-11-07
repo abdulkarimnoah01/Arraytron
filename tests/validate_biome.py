@@ -11,7 +11,7 @@ def DBGP(a):return a.evalParm('outputpath')+('_View' if a.parm('view_mode') is n
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
+PREVIOUS={'v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_biome_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 STRIDE=1000000
@@ -200,7 +200,7 @@ def contract():
     st,sc=new_scene('contract');a=st.createNode(TYPE,'C');g=a.parmTemplateGroup();mode=g.find('mode');assert mode.menuLabels()[10]=='Biome' and len(mode.menuLabels())==11
     for n in ('biome_prim','biome_seed','biome_normal','biome_align','biome_offset','biome_moist_mode','biome_moist_const','biome_water','biome_water_reach','biome_moist_image','biome_moist_center','biome_moist_size','biome_moist_noise','biome_moist_bias','biome_temp','biome_temp_h','biome_lapse','biome_temp_noise','biome_warm','biome_warm_dir','biome_noise_freq','biome_info','biomes','biome_on#','biome_name#','biome_density#','biome_mix#','biome_hrange#','biome_hedge#','biome_heffect#','biome_seffect#','biome_meffect#','biome_teffect#','biome_srange#','biome_sedge#','biome_mrange#','biome_medge#','biome_trange#','biome_tedge#','biome_scale#','pv_biome'):assert g.find(n) is not None,n
     assert g.find('biome_density#').defaultValue()==(20.0,) and g.find('biome_mix#').defaultValue()==('1',) and g.find('biome_hrange#').defaultValue()==(-100000.0,100000.0) and g.find('biome_srange#').defaultValue()==(0.0,180.0) and g.find('biome_mrange#').defaultValue()==(0.0,1.0) and g.find('biomes').defaultValue()==0
-    layout=[t for t in g.entries() if t.label()=='Layout'][0];names=[t.name() for t in layout.parmTemplates()];assert 'biomes' in names and names.index('biomes')>names.index('place_info') and 'mode != 10' in g.find('biomes').conditionals().get(hou.parmCondType.HideWhen,'')
+    layout=[t for t in g.entries() if t.label()==versions.tab_names(VID)['layout']][0];names=[t.name() for t in layout.parmTemplates()];assert 'biomes' in names and names.index('biomes')>names.index('place_info') and 'mode != 10' in g.find('biomes').conditionals().get(hou.parmCondType.HideWhen,'')
     assert a.node('USD_COMPILER/DISTRIBUTION_GENERATOR').inputs()[10].name()=='generate_biome' and g.find('dbg_color').menuLabels()==('Off','Prototype','Id','Weight','Biome')
     assert '$' not in a.type().definition().sections()['PythonModule'].contents().split('# ---- Biome')[1].split('# ----')[0] and 'Whole' not in g.find('biome_density#').help() and 'only ever adds' in g.find('biome_density#').help()
 

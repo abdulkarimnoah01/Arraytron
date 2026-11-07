@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <toolshelf name="arraytron_stamp" label="Arraytron Stamp">
+    <memberTool name="arraytron_stamp_update"/>
+  </toolshelf>
+  <tool name="arraytron_stamp_update" label="Check for Updates" icon="$ARRAYTRON_STAMP/icon/Arraytron-Stamp.svg">
+    <helpText>Check whether a newer Arraytron Stamp is available and offer to install it.</helpText>
+    <script scriptType="python"><![CDATA[
+import os, sys
+folder = os.path.join(os.environ.get("ARRAYTRON_STAMP", ""), "updater")
+if folder not in sys.path:
+    sys.path.insert(0, folder)
+import stamp_update_ui
+stamp_update_ui.check_for_updates()
+]]></script>
+  </tool>
+</shelfDocument>

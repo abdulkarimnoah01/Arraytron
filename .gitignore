@@ -18,6 +18,13 @@
 !/src/**
 !/toolbar/
 !/toolbar/**
+!/installer_stamp/
+!/installer_stamp/**
+!/toolbar_stamp/
+!/toolbar_stamp/**
+!/INSTALL_STAMP.md
+!/README_STAMP.md
+!/CHANGELOG_STAMP.md
 !/tools/
 !/tools/**
 !/tests/

@@ -132,7 +132,13 @@ def _mesh_field(asset,name,dim):
     return TopDownField(meshes)
 
 def mask_values(asset,P,ids):
-    """Raw mask value in [0,1] (before Invert and the Low / High remap) for each point position."""
+    """Raw mask value in [0,1] (before Invert and the Low / High remap) for each point position. v1.32.0: with Edge Fade on, the mask is first re-faded (mask_fade, src/arraytron_falloff.py): the transition around
+    its edge gets the width, the grow / shrink and the curve you set, whatever softness it was painted with."""
+    if asset.parm('mask_fade_on') is not None and asset.evalParm('mask_fade_on') and asset.evalParm('mask_source')!=0:return mask_fade(asset,P)
+    return _mask_values_raw(asset,P,ids)
+
+def _mask_values_raw(asset,P,ids):
+    """The mask as the source gives it."""
     source=asset.evalParm('mask_source');seed=asset.evalParm('mask_seed')
     if source==1:
         kind=asset.evalParm('mask_noise_type') if asset.parm('mask_noise_type') is not None else 4                # v1.25.0: any of the fifteen noise types; 4 (Value) is the original mask noise
@@ -155,12 +161,27 @@ def mask_values(asset,P,ids):
         name=asset.evalParm('mask_primvar').strip()
         if not name:raise hou.NodeError('The Mask Primvar name is empty.')
         return _mesh_field(asset,name,1).lookup(P,asset.evalParm('mask_mesh_outside'))[:,0]
+    if source==4:return maskpaint_field(asset,P)                                  # v1.26.0: the painted mask (src/arraytron_maskpaint.py)
+    if source==5:return hpaint_field(asset,P)                                     # v1.28.0: the mask painted with Houdini's Attribute Paint (src/arraytron_hpaint.py)
     return np.ones(len(P))
 
 def mask_weights(asset,raw):
-    """Invert, then remap [Low, High] to [0, 1] (clamped)."""
+    """Invert, then remap [Low, High] to [0, 1] (clamped). v1.26.0 then adds, each only when it is not at its default: Gamma, the Remap Curve and the Output Range."""
     m=1.0-raw if asset.evalParm('mask_invert') else raw;lo=asset.evalParm('mask_low');hi=asset.evalParm('mask_high')
-    return np.clip((m-lo)/max(hi-lo,1e-9),0.0,1.0)
+    w=np.clip((m-lo)/max(hi-lo,1e-9),0.0,1.0)
+    if asset.parm('mask_gamma') is None:return w
+    gamma=asset.evalParm('mask_gamma')
+    if gamma!=1.0:w=w**(1.0/max(gamma,1e-6))                                      # Gamma above 1 lifts the middle values (more points), below 1 lowers them
+    if asset.evalParm('mask_curve_on'):
+        ramp=asset.parm('mask_curve').evalAsRamp();xs=np.linspace(0.0,1.0,257);lut=np.array([ramp.lookup(float(x)) for x in xs]);w=np.clip(np.interp(w,xs,lut),0.0,1.0)
+    out=asset.evalParmTuple('mask_outrange')
+    if out[0]!=0.0 or out[1]!=1.0:w=out[0]+(out[1]-out[0])*w                      # the weight is squeezed (or flipped) into the Output Range
+    return w
+
+def mask_scale_response(asset,w):
+    """The weight the SCALE follows (v1.32.0): the Scale Response Curve of the weight when it is on (a curve of its own, so the scale can follow the mask differently from the density), else the weight."""
+    if asset.parm('mask_scale_curve_on') is None or not asset.evalParm('mask_scale_curve_on'):return w
+    ramp=asset.parm('mask_scale_curve').evalAsRamp();xs=np.linspace(0.0,1.0,257);lut=np.array([ramp.lookup(float(x)) for x in xs]);return np.clip(np.interp(w,xs,lut),0.0,1.0)
 
 def sop_mask(geo,asset):
     """MASK_PROCESSOR: Density removes points with probability 1 - weight (a point survives if weight > its own id-keyed random number, so a
@@ -173,7 +194,7 @@ def sop_mask(geo,asset):
     geo.addAttrib(hou.attribType.Point,'maskweight',1.0);geo.setPointFloatAttribValues('maskweight',w.tolist())              # copied to the mask primvar when asked for
     geo.setGlobalAttribValue('mask_min',float(w.min()));geo.setGlobalAttribValue('mask_mean',float(w.mean()));geo.setGlobalAttribValue('mask_max',float(w.max()))
     if effect in (1,2):
-        floor=asset.evalParm('mask_minscale');geo.addAttrib(hou.attribType.Point,'maskscale',1.0);geo.setPointFloatAttribValues('maskscale',(floor+(1.0-floor)*w).tolist())
+        floor=asset.evalParm('mask_minscale');ws=mask_scale_response(asset,w);geo.addAttrib(hou.attribType.Point,'maskscale',1.0);geo.setPointFloatAttribValues('maskscale',(floor+(1.0-floor)*ws).tolist())          # v1.32.0: the Scale Response curve shapes the scale on its own
     if effect in (0,2):
         drop=np.nonzero(~(w>scatter_hash(ids,asset.evalParm('mask_seed'),11)))[0]
         if len(drop):geo.deletePoints([geo.point(int(i)) for i in drop])
@@ -184,5 +205,8 @@ def mask_info(asset):
     if asset.evalParm('mask_source')==0:return 'No mask: every point is used as generated.'
     try:
         g=asset.node('USD_COMPILER/MASK_PROCESSOR').geometry()
-        return 'Mask weight min %.3g, mean %.3g, max %.3g. Kept %d of %d points.'%(g.attribValue('mask_min'),g.attribValue('mask_mean'),g.attribValue('mask_max'),g.attribValue('mask_after'),g.attribValue('mask_before'))
+        text='Mask weight min %.3g, mean %.3g, max %.3g. Kept %d of %d points.'%(g.attribValue('mask_min'),g.attribValue('mask_mean'),g.attribValue('mask_max'),g.attribValue('mask_after'),g.attribValue('mask_before'))
     except Exception as exc:return 'Cannot evaluate the mask: %s'%exc
+    if asset.evalParm('mask_source')==4:text=maskpaint_info(asset)+'\n'+text                  # v1.26.0
+    if asset.evalParm('mask_source')==5:text=hpaint_info(asset)+'\n'+text                     # v1.28.0
+    return text
