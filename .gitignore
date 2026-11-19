@@ -46,3 +46,7 @@ __pycache__/
 /tools/team_specialist.py
 /tests/*.json
 /tests/*.usda
+
+# Rank_Array / Rank_Stamp staging trees (tools/make_rank_release.py)
+build_rank_array/
+build_rank_stamp/

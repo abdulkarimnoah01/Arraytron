@@ -22,12 +22,12 @@ if asset.evalParm('cam_on'):
             scales=np.array(pi.GetScalesAttr().Get(time) or [],dtype=np.float64).reshape(-1,3) if pi.GetScalesAttr().Get(time) else np.ones((n,3))
             xc=UsdGeom.XformCache(time);M=np.array(xc.GetLocalToWorldTransform(prim),dtype=np.float64).reshape(4,4);world=np.column_stack([pos,np.ones(n)])@M;world=world[:,:3]
             wscale=float(np.linalg.norm(M[0,:3]))
-            # bounding radius of every prototype (half the diagonal of its bounding box, about the prototype origin), times the instance scale
+            # bounding radius of every prototype (half the diagonal of its bounding box, about the prototype origin, with the transform on the prototype's own root prim: a car referenced with a scale), times the instance scale
             targets=pi.GetPrototypesRel().GetTargets();cache=UsdGeom.BBoxCache(time,[UsdGeom.Tokens.default_,UsdGeom.Tokens.render]);rad=np.zeros(max(len(targets),1))
             for k,t in enumerate(targets):
                 tp=stage.GetPrimAtPath(t)
                 if tp and tp.IsValid():
-                    box=cache.ComputeUntransformedBound(tp).ComputeAlignedRange();lo,hi=np.array(box.GetMin()),np.array(box.GetMax())
+                    box=cache.ComputeLocalBound(tp).ComputeAlignedRange();lo,hi=np.array(box.GetMin()),np.array(box.GetMax())
                     if np.all(np.isfinite(lo)) and np.all(np.isfinite(hi)) and not box.IsEmpty():rad[k]=float(max(np.linalg.norm(lo),np.linalg.norm(hi),0.5*np.linalg.norm(hi-lo)))
             radius=rad[np.minimum(proto,len(rad)-1)]*scales.max(axis=1)*wscale
             gcam=UsdGeom.Camera(cam_prim).GetCamera(time);fr=gcam.frustum;view=np.array(fr.ComputeViewMatrix(),dtype=np.float64).reshape(4,4);proj=np.array(fr.ComputeProjectionMatrix(),dtype=np.float64).reshape(4,4)

@@ -6,14 +6,14 @@ Hilly ground with a steep mound and simple rock spheres, so the falloff is easy 
   4 Soft Natural    both (the Soft Natural preset)
   5 Long stroke     one long S curve across the whole ground with the Soft Natural preset: a continuous ribbon, no circles at the dabs
   6 Uneven terrain  strokes across the steep mound and down its side, Growth preset
-Writes dist/Arraytron_Stamp_v0.9.3_paint_falloff_demo.hip, or otls_h205/..._H205_paint_falloff_demo.hip with hython 20.5. --release <folder>: into that folder, without recording the HDA library."""
+Writes dist/Arraytron_Stamp_v0.12.0_paint_falloff_demo.hip, or otls_h205/..._H205_paint_falloff_demo.hip with hython 20.5. --release <folder>: into that folder, without recording the HDA library."""
 from pathlib import Path
 import sys, json, time, hou
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import versions
-ROOT=Path(__file__).resolve().parents[1];H205=versions.is_h205();TYPE='arraytron::stamp::0.9.3'
-HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.9.3%s.hda'%('_H205' if H205 else ''));HIP=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.9.3%s_paint_falloff_demo.hip'%('_H205' if H205 else ''))
+ROOT=Path(__file__).resolve().parents[1];H205=versions.is_h205();TYPE='arraytron::stamp::0.12.0'
+HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.12.0%s.hda'%('_H205' if H205 else ''));HIP=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.12.0%s_paint_falloff_demo.hip'%('_H205' if H205 else ''))
 SCENE='''from pxr import Gf, UsdGeom, Vt
 import hou, math
 stage=hou.pwd().editableStage()

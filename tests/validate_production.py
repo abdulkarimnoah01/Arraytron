@@ -127,13 +127,15 @@ def release_hygiene():
     dist=versions.folder(VID);stem=versions.stem(VID);assert (dist/(stem+'.hda')).is_file() and versions.CURRENT==VID          # Houdini 22: dist/, Houdini 20.5 / 21: otls_h205/
     demos=sorted(dist.glob(stem+'_*demo.hip'));assert len(demos)>=8,demos                                          # every demo of the release exists
     st=None;hou.hipFile.clear(suppress_save_prompt=True);hou.hda.installFile(str(versions.hda(VID)),force_use_assets=True)
-    allhip=versions.demo_file(VID,'all_demos');assert allhip.is_file();hou.hipFile.load(str(allhip),suppress_save_prompt=True,ignore_load_warnings=True);bad={}
-    for n in hou.node('/stage').children():
-        if n.type().name().startswith('arraytron'):
-            try:n.cook(force=True)
-            except hou.OperationFailed:pass
-    for n in hou.node('/stage').allSubChildren():
-        if n.errors():bad[n.path()]=n.errors()
+    allhip=versions.demo_file(VID,'all_demos');scenes=[allhip] if allhip.is_file() else [d for d in demos if 'protosocket' not in d.name];bad={}      # the all-demos scene, or (a release without one, 1.37.0) every single demo scene that is built
+    for scene in scenes:
+        hou.hipFile.load(str(scene),suppress_save_prompt=True,ignore_load_warnings=True)
+        for n in hou.node('/stage').children():
+            if n.type().name().startswith('arraytron'):
+                try:n.cook(force=True)
+                except hou.OperationFailed:pass
+        for n in hou.node('/stage').allSubChildren():
+            if n.errors():bad[n.path()]=n.errors()
     assert not bad,list(bad.items())[:3]                                                                                      # all demos cook without errors
     manifest=json.loads((ROOT/'dist'/'manifest.json').read_text());by={Path(e['Path']).name:e['Hash'] for e in manifest if Path(e['Path']).parent.name in ('dist','otls_h205')}                   # by file name: the manifest keeps the paths of the PC it was made on
     for f in dist.iterdir():

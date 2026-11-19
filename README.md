@@ -24,9 +24,9 @@ A Solaris (LOPs) instancer for Houdini 22 and 20.5 / 21: scatter USD prototypes 
 
 **Updating:** click **Check for Updates** on the *Arraytron* shelf in Houdini. It reads the latest release from GitHub, shows what is new and installs it after you say yes; nothing is checked in the background. Details, rollback and publishing a release: `INSTALL.md`.
 
-# Arraytron v1.34.0 (current)
+# Arraytron v1.38.3 (current)
 
-`dist/Arraytron_v1.34.0.hda` (type `arraytron::instancer::1.34.0`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.34.0_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.30.0_all_demos.hip` (and `Arraytron_v1.30.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
+`dist/Arraytron_v1.38.3.hda` (type `arraytron::instancer::1.38.3`) for Houdini 22.0.368 and **`otls_h205/Arraytron_v1.38.3_H205.hda` for Houdini 20.5 and 21** (same node, same parameters, same USD output; built with hython 20.5.445, tested in 20.5.445 and 21.0.440 headless, see `docs/PORT_HOUDINI_205.md`), with the demos in `dist/` and `otls_h205/`; **`Arraytron_v1.30.0_all_demos.hip` (and `Arraytron_v1.30.0_H205_all_demos.hip`) holds every demo as a separate network in one scene.** The installer picks the right build for every Houdini it finds. Start with the **[user guide](docs/USER_GUIDE.md)**; the full list of documents is `docs/INDEX.md`.
 
 A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInstancer. Nine tabs in workflow order: **Prototypes** (Prototype Bank, selection, LOD / proxy prims), **Scatter** (Line, Area, Grid, Circle, Curve, Surface, **Paint**, **Cluster**, **Imported Points**, **Instance Place**, and **Falloff**), **Variation** (variation, Mask, **Field Stack**), **Spacing** (**Separation** with priority, **Avoid Geometry**), **Physics** (Physics Settle), **Animate** (Grow), **Optimize** (camera culling, LOD generator, primvars), **Debugging** (instance overrides, debug views), **Export** (USD export, what the node stores).
 
@@ -72,7 +72,15 @@ A Solaris instancer that scatters USD prototypes with a native UsdGeomPointInsta
 | v1.27.0 | **Full mask brush**: Foreground / Background, Smooth, Multiply, Maximum, Minimum, Sample, Shift / Ctrl operations, symmetry, Fill, drag-resize |
 | v1.28.0 | **Houdini Paint**: paint the mask with Houdini's own Attribute Paint brush (heat map) on a helper, Finish And Scatter bakes it and scatters |
 | v1.29.0 | **Group Children**: a Prototype Bank source type; every child prim of a group (/Group/* or a name pattern) becomes a prototype |
-| **v1.34.0** | **Mirror**: a new Mirror tab that mirrors the finished scatter with any number of operations (planes X / Y / Z, custom planes, radial and kaleidoscope), flipping, Keep Original, Max Instances; the copies get stable new ids |
+| **v1.38.3** | **Fix**: a USD File prototype without a default prim but with one top level prim (Quixel variant files) now works, and the Asset Library records its prim |
+| v1.38.2 | The generated LOD levels use the materials of the hero prototype copy (Lookdev colours reach every level) |
+| v1.38.1 | Camera Optimisation measures a prototype with the scale on its root prim (Frustum Culling and Screen Size LOD of a scaled car) |
+| v1.38.0 | **Saved masks**: Save Mask writes the final mask as a grid in the stage and a named primvar, Mask Source Upstream Mask reads it in the nodes below, and a window offers it when nodes are wired |
+| v1.37.0 | **Prototype sockets**: Import Prototype Inputs reads every prototype wired into Inputs 2 - 4 into the Prototype Bank and the Asset Library (also in Arraytron Stamp 0.12.0) |
+| v1.36.0 | **Paint Engine 2.0**: one brush engine with Arraytron Stamp; continuous strokes with independent density and scale falloff, the sculpt brushes (Erase, Relax, Grow / Shrink, Push, Swap, Orient / Comb, Clone), HUD levels and a radial brush menu |
+| v1.35.0 | **Edit and Lookdev**: select instances in the viewport and move, rotate, scale or delete them live (the Edit mode of Arraytron Stamp); materials per prototype and values that vary per instance in the material network, also on ready-made USD assets |
+| v1.34.1 | Check for Updates tries again when GitHub or the network is busy; the release carries the all-demos scene only |
+| v1.34.0 | **Mirror**: a new Mirror tab that mirrors the finished scatter with any number of operations (planes X / Y / Z, custom planes, radial and kaleidoscope), flipping, Keep Original, Max Instances; the copies get stable new ids |
 | v1.33.0 | **The Field Stack reworked**: Height, Distance, Exclusion and the new **Mask field** (keep points off the mask, on it, or in a ring around it); Mask Effect None; **Blast**, an overall selection of instances (ids, random, region, prototype; Invert) that is deleted or transformed all together |
 | v1.32.0 | **Falloff from the shape of any mask** (also the painted and Houdini-painted masks), **Save / Bake / Export the mask**, and the **Layout tab is the Scatter tab** with the Mask and the Field Stack |
 | v1.31.1 | **A million instances as fast as the native Instancer**: faster prototype paths and point creation in Houdini 20.5 / 21; the count is exact and the cook is as fast or faster than the native Instancer at 10 000, 100 000 and 1 000 000 instances |

@@ -1,8 +1,8 @@
-"""Arraytron Stamp 0.9.3 (the light one): hython tests/validate_stamplite.py   (hython 22 or 20.5; build it first with tools/build_stamp_light.py)
+"""Arraytron Stamp 0.11.0 (the light one): hython tests/validate_stamplite.py   (hython 22 or 20.5; build it first with tools/build_stamp_light.py)
 Groups: contract (parameters, one inner node, no multiparm) | cook (the instancer follows the Stamps text: ids, scales, orientations, prototypes, groups, hidden sources, errors) |
 placing (stamp_add: rotation, align, randomness, seed, Random Prototype, snapping, delete, clear) | surface (the ray cast on a mesh and on the plane) | speed |
 viewer (the tool through a stand-in viewport that looks straight down) | gallery (the panel, in an offscreen Qt application).
-Env STAMP_MUTATE=quat|align|on|group|snap|nearest|drag|stack|bank|delta|workset|select|keys|thumb|fav|paint|ghost|sheet|groupring|conform|manage|layout|groupscale|sit|smooth|incremental|falloff breaks the module; the suite must FAIL. Writes tests/validation_stamplite_<22|205>.json."""
+Env STAMP_MUTATE=quat|align|on|group|snap|nearest|drag|stack|bank|delta|workset|select|keys|thumb|fav|paint|ghost|sheet|groupring|conform|manage|layout|groupscale|sit|smooth|incremental|falloff|material|rays|purpose|slot breaks the module; the suite must FAIL. Writes tests/validation_stamplite_<22|205>.json."""
 import os, sys, json, time, types, tempfile
 os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 from pathlib import Path
@@ -12,13 +12,14 @@ from pxr import Usd, UsdGeom, Gf
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
+os.environ['ARRAYTRON_BRUSH_PREFS']=os.path.join(tempfile.mkdtemp(),'arraytron_brush_prefs.json')          # 0.11.0: the HUD level is a user preference; the suite never touches the user's file
 H205=versions.is_h205();MUTATE=os.environ.get('STAMP_MUTATE')
-HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.9.3%s.hda'%('_H205' if H205 else ''));TYPE='arraytron::stamp::0.9.3'
+HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.12.0%s.hda'%('_H205' if H205 else ''));TYPE='arraytron::stamp::0.12.0'
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_stamplite_'))
 out={'groups':{}}
 def check(group,cond,note=''):
     out['groups'].setdefault(group,[]).append(bool(cond))
-    if not cond:print('FAIL',group,'#%d'%len(out['groups'][group]),note)
+    if not cond:import inspect;print('FAIL',group,'#%d'%len(out['groups'][group]),'line',inspect.currentframe().f_back.f_lineno,str(note)[:300])
 
 SCENE='''from pxr import Gf, UsdGeom, Vt
 import hou, math
@@ -41,6 +42,10 @@ for i in range(NL):
     for j in range(NM):idx+=[i*NM+j,i*NM+(j+1)%NM,(i+1)*NM+(j+1)%NM,(i+1)*NM+j]
 d.CreatePointsAttr(Vt.Vec3fArray(pts));d.CreateFaceVertexCountsAttr(Vt.IntArray([4]*(NL*NM)));d.CreateFaceVertexIndicesAttr(Vt.IntArray(idx))
 UsdGeom.Xform.Define(stage,'/World/Set/A');UsdGeom.Sphere.Define(stage,'/World/Set/A/G');UsdGeom.Xform.Define(stage,'/World/Set/B');UsdGeom.Cube.Define(stage,'/World/Set/B/G');UsdGeom.Xform.Define(stage,'/World/Set/C');UsdGeom.Cone.Define(stage,'/World/Set/C/G')
+from pxr import UsdShade
+for nm in ('rock_a','rock_b','moss','Other'):UsdShade.Material.Define(stage,'/World/Mats/'+nm)
+UsdGeom.Xform.Define(stage,'/World/Mats/rock_c_notmat')
+UsdShade.MaterialBindingAPI.Apply(stage.GetPrimAtPath('/World/Props/Rock/Geom')).Bind(UsdShade.Material(stage.GetPrimAtPath('/World/Mats/Other')))
 '''
 hou.hda.installFile(str(HDA),force_use_assets=True);stage=hou.node('/stage')
 scene=stage.createNode('pythonscript','scene');scene.parm('python').set(SCENE)
@@ -51,15 +56,18 @@ def set_bank(a,rows):
     for i,r in enumerate(rows,1):
         typ,src,w=r[:3];a.parm('proto_on%d'%i).set(1);a.parm('proto_type%d'%i).set(typ);a.parm('%s%d'%(BANK[typ],i)).set(src);a.parm('proto_weight%d'%i).set(w)
         if len(r)>3:a.parm('proto_scale%d'%i).set(r[3]);a.parm('proto_scalevar%d'%i).set(r[4]);a.parmTuple('proto_rot%d'%i).set(r[5])
+def classic(a):
+    """The 0.10.0 Paint brush (Classic Dabs, no falloff): the groups written for it test it as it was; the Paint Engine 2.0 groups switch the new engine on."""
+    a.parm('paint_engine').set(1);a.parm('paint_dens_on').set(0);a.parm('paint_scale_on').set(0)
 def stamp_node(name='stamp',bank=((0,'/World/Props/Rock',1.0),(0,'/World/Props/Fir',3.0),(0,'/World/Props/Stone',1.0))):
-    a=stage.createNode(TYPE,name);a.setInput(0,scene);set_bank(a,bank);a.parm('sit').set(0);return a                                                          # the tests place at the hit point; the Sit On Surface tests switch it on
+    a=stage.createNode(TYPE,name);a.setInput(0,scene);set_bank(a,bank);a.parm('sit').set(0);classic(a);return a                                                          # the tests place at the hit point; the Sit On Surface tests switch it on
 def mutate(a):
     g=a.hdaModule().stamp_quat.__globals__
     if not MUTATE or g.get('_mutation')==MUTATE:return
     g['_mutation']=MUTATE
     if MUTATE=='quat':good=g['stamp_quat'];g['stamp_quat']=lambda d:good(np.asarray(d)[...,::-1])
     elif MUTATE=='align':g['stamp_align']=lambda normal,amount:np.array([0.0,0.0,0.0,1.0])
-    elif MUTATE=='on':good=g['stamp_rows'];g['stamp_rows']=lambda t:(lambda r:np.concatenate([r[:,:10],np.ones((len(r),1))],axis=1) if len(r) else r)(good(t))
+    elif MUTATE=='on':good=g['stamp_rows'];g['stamp_rows']=lambda t:(lambda r:np.concatenate([r[:,:10],np.ones((len(r),1)),r[:,11:]],axis=1) if len(r) else r)(good(t))
     elif MUTATE=='ids':good=g['stamp_cook'];src=good.__code__
     elif MUTATE=='group':g['_group']=lambda stage,row,text:[text.strip().rstrip('/*')]
     elif MUTATE=='snap':g['stamp_snap']=lambda v,s:float(v)
@@ -83,6 +91,10 @@ def mutate(a):
     elif MUTATE=='incremental':g['StampSurface'].near=lambda self,c,r:self;g['stamp_count']=lambda text:len(g['stamp_lines'](text))+1
     elif MUTATE=='falloff':g['falloff_multiplier']=lambda profile,r:np.ones_like(np.asarray(r,dtype=float))
     elif MUTATE=='stack':g['StampSurface']._stamps_hit=lambda self,o,d,limit:None
+    elif MUTATE=='material':g['stamp_material_index']=lambda mats,counts:np.zeros(len(np.asarray(mats)),dtype=np.int64)
+    elif MUTATE=='rays':g['stamp_select_in_rays']=lambda points,rays:np.arange(len(np.asarray(points))).tolist()
+    elif MUTATE=='purpose':g['_tool_shapes']=lambda shapes:shapes
+    elif MUTATE=='slot':g['stamp_tint']=lambda C,color,amount:np.asarray(C,dtype=np.float64)
     elif MUTATE=='nearest':g['stamp_nearest']=lambda rows,o,d,tolerance=0.03:0 if len(rows) else None
 def cooks(a):
     try:a.cook(force=True)
@@ -97,15 +109,15 @@ def apply(qwxyz,v):
 # ---- 1 contract
 a=stamp_node();m=a.hdaModule();mutate(a)
 names=[p.name() for p in a.parms()]
-check('contract',all(n in names for n in ('start','onstamps','clear','target','outputpath','protos','hidesrc','scale','scalerangex','yaw','yawrand','tilt','align','offset','seed','proto','protorand','snap','snaprot','dragset','stamps','selection','workset','brush','mode1','brush_random1','selinfo','favorites','panestatus','reload_pane','paint_radius','paint_density','paint_spacing','paint_falloff','sel_all','sel_none','sel_invert','sel_dup','sel_del')),names)
-check('contract',len(names)<160 and [t.label() for t in a.parmTemplateGroup().entries() if t.type()==hou.parmTemplateType.Folder]==['Brush','Edit','Options'],len(names))                    # the tabs Brush / Edit / Options
+check('contract',all(n in names for n in ('start','onstamps','clear','target','outputpath','protos','hidesrc','scale','scalerangex','yaw','yawrand','tilt','align','offset','seed','proto','protorand','snap','snaprot','dragset','stamps','selection','workset','brush','mode1','brush_random1','selinfo','favorites','panestatus','reload_pane','paint_radius','paint_density','paint_spacing','paint_falloff','sel_all','sel_none','sel_invert','sel_dup','sel_del','slotcolors','slotcolor_amount','slotcolor_seed')),names)
+check('contract',len(names)<200 and [t.label() for t in a.parmTemplateGroup().entries() if t.type()==hou.parmTemplateType.Folder]==['Brush','Edit','Options'],len(names))                    # the tabs Brush / Edit / Options
 check('contract',a.node('STAMPS') is not None and a.node('STAMPS').type().name()=='pythonscript' and len(a.type().definition().sections())>0)
 check('contract',a.type().definition().sections().get('ViewerStateModule') is not None and 'DefaultState' in a.type().definition().sections())
 check('contract',not a.errors() and a.stage() is not None,a.errors())
-sub=[t for t in a.parmTemplateGroup().findFolder('Brush').parmTemplates()];check('contract',[t.label() for t in sub]==['Randomization','Asset','Placement','Paint','Group'] and a.evalParm('mode1')==0 and all(a.parm(n).parmTemplate().isHidden() for n in ('stamps','selection','workset','brush')) and a.evalParm('selinfo')=='No stamps yet.',[t.label() for t in sub])   # Randomization / Asset / Placement inside Brush; the data parameters are hidden
+sub=[t for t in a.parmTemplateGroup().findFolder('Brush').parmTemplates()];check('contract',[t.label() for t in sub]==['Randomization','Asset','Placement','Paint','Group','Sculpt'] and a.evalParm('mode1')==0 and all(a.parm(n).parmTemplate().isHidden() for n in ('stamps','selection','workset','brush')) and a.evalParm('selinfo')=='No stamps yet.',[t.label() for t in sub])   # Randomization / Asset / Placement inside Brush; the data parameters are hidden
 inside=lambda tab:{p.name() for p in a.parmTemplateGroup().findFolder(('Brush',tab)).parmTemplates() for p in ([p] if p.type()!=hou.parmTemplateType.Folder else p.parmTemplates())}
 check('contract',{'protorand','scale','scalerange','yaw','yawrand','tilt','seed'}<=inside('Randomization') and 'protorand' not in inside('Asset') and {'align','offset','snap','snaprot','dragset'}<=inside('Placement') and 'align' not in inside('Randomization'),(inside('Randomization'),inside('Placement')))   # Randomization: the prototype, the scale, the rotation, the seed; Placement: where and how a stamp lands
-check('contract',[p.label() for p in a.parmTemplateGroup().findFolder(('Brush','Randomization')).parmTemplates()]==['Prototype','Scale','Rotation','Seed'])
+check('contract',[p.label() for p in a.parmTemplateGroup().findFolder(('Brush','Randomization')).parmTemplates()]==['Prototype','Material','Scale','Rotation','Seed'])
 check('contract',UsdGeom.PointInstancer(a.stage().GetPrimAtPath('/World/Stamps')).GetPositionsAttr().Get() is not None)       # no stamps: an empty instancer, no error
 
 # ---- 2 cook
@@ -118,13 +130,13 @@ a.parm('hidesrc').set(0);check('cook',UsdGeom.Imageable(a.stage().GetPrimAtPath(
 set_bank(a,[(3,'/World/Set',1.0),(0,'/World/Props/Rock',1.0)]);a.parm('stamps').set('\n'.join('%d 0 0  0 0 0  1 1 1  1 1'%k for k in range(30))+'\n0 0 0  0 0 0  1 1 1  2 1')
 pos,sc,idx,ids,q,pi=arrays(a);check('cook',len(pi.GetPrototypesRel().GetTargets())==4 and set(idx[:30].tolist())=={0,1,2} and idx[30]==3,(set(idx[:30].tolist()),idx[30]))    # a group line is its children; a stamp takes one
 set_bank(a,[(0,'/World/Nothing',1.0)]);cooks(a);check('cook',any('not a prim' in e for e in a.errors()),a.errors())
-set_bank(a,[(0,'',1.0)]);a.parm('stamps').set('1 2 3  0 0 0');cooks(a);check('cook',any('11 numbers' in e for e in a.errors()),a.errors())       # a broken line says what is wrong
+set_bank(a,[(0,'',1.0)]);a.parm('stamps').set('1 2 3  0 0 0');cooks(a);check('cook',any('a line needs 12' in e for e in a.errors()),a.errors())       # a broken line says what is wrong
 a.parm('stamps').set('1 2 3  0 0 0  1 1 1  1 1');cooks(a);pos,sc,idx,ids,q,pi=arrays(a);check('cook',not a.errors() and len(pos)==1 and len(pi.GetPrototypesRel().GetTargets())==1)     # empty Prototypes: the built-in sphere
 a.parm('stamps').set('# a comment\n1 2 3  0 0 0  1 1 1  1 1\n\n2 2 3  0 0 0  1 1 1  1 1');pos,sc,idx,ids,q,pi=arrays(a);check('cook',len(pos)==2)
 
 # ---- 3 placing
 b=stamp_node('place');m=b.hdaModule();mutate(b);b.parm('stamps').set('')
-check('placing',m.stamp_add(b,(1.0,0.0,2.0))==1 and m.stamp_rows(b.evalParm('stamps')).shape==(1,11) and np.allclose(m.stamp_rows(b.evalParm('stamps'))[0,:3],[1,0,2]))
+check('placing',m.stamp_add(b,(1.0,0.0,2.0))==1 and m.stamp_rows(b.evalParm('stamps')).shape==(1,12) and np.allclose(m.stamp_rows(b.evalParm('stamps'))[0,:3],[1,0,2]))
 n=np.array([1.0,1.0,0.0])/np.sqrt(2);b.parm('align').set(1.0);m.stamp_add(b,(0,0,0),normal=n);r=m.stamp_rows(b.evalParm('stamps'))[1];check('placing',np.allclose(apply(np.roll(m.stamp_quat(r[3:6]),1),[0,1,0]),n,atol=1e-3))   # aligned to the surface normal
 b.parm('align').set(0.0);m.stamp_add(b,(0,0,0),normal=n);r=m.stamp_rows(b.evalParm('stamps'))[2];check('placing',np.allclose(r[3:6],[0,0,0],atol=1e-3))                                    # not aligned: upright
 b.parm('stamps').set('');b.parmTuple('scalerange').set((0.5,2.0));b.parm('yawrand').set(60.0);b.parm('tilt').set(10.0);b.parm('yaw').set(30.0);b.parm('protorand').set(1);b.parm('seed').set(5)
@@ -224,7 +236,7 @@ class StubDrawable(object):
     def draw(self,handle,params=None):self.drawn+=1;self.last=params
 class StubViewport(object):
     def mapToScreen(self,p):return (p[0]*10.0,p[2]*10.0)
-    def mapToWorld(self,x,y):return hou.Vector3((x/10.0,10.0,y/10.0)),hou.Vector3((0,-1,0))
+    def mapToWorld(self,x,y):return hou.Vector3((0,-1,0)),hou.Vector3((x/10.0,10.0,y/10.0))                     # (direction, origin): the order of hou.GeometryViewport.mapToWorld
 class StubViewer(object):
     def __init__(self):self.prompt=None;self.hud_template=None;self.hud_values={};self.hud_sets=0;self.handle=None;self.undo=[]
     def setPromptMessage(self,msg,t=None):self.prompt=msg
@@ -273,8 +285,8 @@ def fresh(text='',**parms):
     e.parm('stamps').set(text);e.parm('selection').set('');e.parm('mode1').set(0);e.parm('brush').set(0);e.parm('workset').set('');e.parm('proto').set(0);e.parm('scale').set(1.0);e.parm('yaw').set(0.0);time.sleep(0.3)
     for k,v in parms.items():(e.parmTuple(k).set(v) if isinstance(v,tuple) else e.parm(k).set(v))
 keys=[r.get('key') for r in viewer.hud_template['rows'] if isinstance(r,dict)]
-check('viewer',viewer.hud_template is not None and viewer.hud_template['title']=='Arraytron Stamp' and any(r.get('key')=='Shift LMB' for g in viewer.hud_template['rows'] if g.get('rows') for p in g['rows'] if p.get('rows') for r in p['rows']),viewer.hud_template['title'])   # the hints are the HUD panel, with Houdini's wording
-check('viewer',viewer.hud_values.get('mode')=='Brush / Place' and viewer.hud_values.get('v_count')=='0' and viewer.hud_values.get('mode_page')==0,viewer.hud_values)
+check('viewer',viewer.hud_template is not None and viewer.hud_template['title']=='Arraytron Stamp' and any(r.get('key')=='Shift LMB' for r in viewer.hud_template['rows']),viewer.hud_template['title'])   # the hints are the HUD panel, with Houdini's wording
+check('viewer',viewer.hud_values.get('mode')=='Brush / Place' and viewer.hud_values.get('v_count')=='0' and viewer.hud_values.get('mode')=='Brush / Place',viewer.hud_values)
 check('viewer',mouse(3,2,R.Located) is True and state.marker.shown and state.ghost.shown and not state.box.shown and not state.dial.shown)                          # hovering: the ring and the prototype itself (the ghost), not the box
 F=m.stamp_footprint(m.stamp_proto_bounds(e)[1]);lo,hi=m.stamp_proto_bounds(e)[1];check('viewer',np.allclose(lo,[-1,-1,-1]) and np.allclose(hi,[1,1,1]) and abs(F-1.0)<1e-9,(lo,hi,F))   # the Rock (a sphere of radius 1) measured once
 sets=viewer.hud_sets;[mouse(3+k*0.01,2,R.Located) for k in range(20)];check('viewer',viewer.hud_sets==sets)                                                          # moving the mouse does not touch the HUD
@@ -324,12 +336,12 @@ e.parm('target').set('');e.parm('align').set(0.0)
 shown=[];state._popup=lambda items:shown.append([i[0] for i in items])
 check('viewer',key('c') is True and 'Place brush' in shown[-1] and 'Delete brush' in shown[-1] and 'Paint brush' in shown[-1] and 'Group brush' in shown[-1] and 'Edit mode' in shown[-1],shown)
 check('viewer',key('b') is True and 'Align To Surface' in shown[-1] and 'Random Prototype' in shown[-1],shown[-1])
-items=state.brush_menu();[i for i in items if i[0]=='Delete brush'][0][1]();check('viewer',e.evalParm('brush')==1 and e.evalParm('mode1')==0 and viewer.hud_values['mode']=='Brush / Delete' and viewer.hud_values['mode_page']==1,viewer.hud_values)
-check('viewer',key('Shift+b') is True and e.evalParm('mode1')==1 and viewer.hud_values['mode']=='Edit' and viewer.hud_values['mode_page']==3 and viewer.hud_values['mode_g']==1,viewer.hud_values)   # Shift+B: the Edit mode (the tab of the pane follows the parameter)
+items=state.brush_menu();[i for i in items if i[0]=='Delete brush'][0][1]();check('viewer',e.evalParm('brush')==1 and e.evalParm('mode1')==0 and viewer.hud_values['mode']=='Brush / Delete' and viewer.hud_values['mode']=='Brush / Delete',viewer.hud_values)
+check('viewer',key('Shift+b') is True and e.evalParm('mode1')==1 and viewer.hud_values['mode']=='Edit' and viewer.hud_values['mode']=='Edit' and viewer.hud_values['mode_g']==1,viewer.hud_values)   # Shift+B: the Edit mode (the tab of the pane follows the parameter)
 check('viewer',key('Shift+b') is True and e.evalParm('mode1')==0)
 # the Paint brush
 fresh(brush=2);e.parm('paint_radius').set(1.0);e.parm('paint_density').set(8.0);e.parm('paint_spacing').set(0.3);e.parm('paint_falloff').set(0.0);viewer.undo.clear()
-mouse(3,2,R.Located);check('viewer',state.marker.shown and not state.ghost.shown and viewer.hud_values['mode']=='Brush / Paint' and viewer.hud_values['mode_page']==2 and viewer.hud_values['v_paint']=='1 / 8',viewer.hud_values)   # a ring, no ghost
+mouse(3,2,R.Located);check('viewer',state.cursor.shown and not state.ghost.shown and viewer.hud_values['mode']=='Brush / Paint' and viewer.hud_values['v_paint']=='1 / 8 / 1',viewer.hud_values)   # a ring, no ghost
 mouse(3,2,R.Start,left=True);r=stamps();c=np.array([3.0,0.0,2.0]);check('viewer',len(r)>=4 and np.all(np.linalg.norm(r[:,[0,2]]-c[[0,2]],axis=1)<=1.0+1e-6) and np.allclose(r[:,1],0.0,atol=1e-6) and viewer.undo==['begin'],(len(r),viewer.undo))      # a dab: stamps inside the disc, on the ground
 def spaced(r,gap):
     d=np.linalg.norm(r[:,None,[0,2]]-r[None,:,[0,2]],axis=2);np.fill_diagonal(d,9);return d.min()>=gap-1e-6
@@ -339,7 +351,7 @@ mouse(3.0,3.2,R.Active,left=True);r=stamps();check('viewer',len(r)>n1 and spaced
 mouse(3.0,3.2,R.Changed);check('viewer',viewer.undo==['begin','end'] and state.stroke is None,viewer.undo)                                                                            # one undo group for the stroke
 n2=len(stamps());mouse(3,2,R.Start,left=True);mouse(3,2,R.Changed);check('viewer',len(stamps())>=n2,'painting over the same place again only fills the gaps')
 mouse(3,2,R.Start,left=True,ctrl=True);check('viewer',np.all(np.linalg.norm(stamps()[:,[0,2]]-[3,2],axis=1)>1.0) and state.stroke['erase'],len(stamps()));mouse(3,2,R.Changed,ctrl=True)    # Ctrl: erase inside the radius
-mouse(3,2,R.Located,ctrl=True);check('viewer',state.ring_color==glob['RED'])
+mouse(3,2,R.Located,ctrl=True);check('viewer',state.cursor_color==tuple(m.BC_COLORS['erase']),state.cursor_color)                                                 # 0.11.0: the erasing cursor is BrushCore's warm orange
 fresh(brush=2);e.parm('paint_radius').set(1.0);e.parm('paint_density').set(8.0);e.parm('paint_spacing').set(0.0);e.parm('paint_falloff').set(1.0);mouse(3,2,R.Start,left=True);mouse(3,2,R.Changed);r=stamps();rr=np.linalg.norm(r[:,[0,2]]-[3,2],axis=1)
 check('viewer',len(r)>=3 and rr.mean()<0.62,(len(r),rr.mean()))                                                                                                                  # the edge falloff thins the rim (an even disc has a mean radius of 0.667)
 fresh(brush=2);e.parm('paint_radius').set(1.0);e.parm('paint_density').set(8.0);e.parm('paint_spacing').set(0.3);e.parm('paint_falloff').set(0.0);e.parm('protorand').set(1);e.parm('seed').set(3);mouse(3,2,R.Start,left=True);mouse(3,2,R.Changed)
@@ -351,7 +363,7 @@ e.parm('paint_density').set(8.0);check('viewer',wheel(1) is True and e.evalParm(
 e.parm('target').set('/World/Ramp');fresh(brush=2);e.parm('paint_radius').set(1.0);e.parm('paint_density').set(8.0);e.parm('paint_spacing').set(0.3);e.parm('paint_falloff').set(0.0);e.parm('target').set('/World/Ramp');mouse(0,0,R.Start,left=True);mouse(0,0,R.Changed);r=stamps()
 check('viewer',len(r)>=3 and np.allclose(r[:,1],(5.0-r[:,2])/2.0,atol=2e-3) and np.all(np.hypot(r[:,0],r[:,2])<=1.0/np.cos(np.arctan(0.5))+0.05),(len(r),np.abs(r[:,1]-(5.0-r[:,2])/2.0).max() if len(r) else None))    # on a slope: on the surface, in a disc of the tangent plane
 e.parm('target').set('')
-key('Shift+b');check('viewer',viewer.hud_values['mode_page']==3 and viewer.hud_values['mode']=='Edit');key('Shift+b')
+key('Shift+b');check('viewer',viewer.hud_values['mode']=='Edit' and viewer.hud_values['mode']=='Edit');key('Shift+b')
 # the Delete brush
 fresh('0 0 0  0 0 0  1 1 1  1 1\n3 0 0  0 0 0  1 1 1  1 1\n6 0 0  0 0 0  1 1 1  1 1',brush=1);mouse(3.1,0,R.Located);check('viewer',state.gone.shown and not state.marker.shown and not state.box.shown)    # the stamp under the mouse shows red
 mouse(3.1,0,R.Start,left=True);mouse(3.1,0,R.Changed);check('viewer',stamps()[:,0].tolist()==[0.0,6.0],stamps())                                                          # a click deletes it
@@ -364,7 +376,9 @@ mouse(3.1,0,R.Start,left=True);mouse(3.1,0,R.Changed);check('viewer',list(m.stam
 mouse(6.1,0,R.Start,left=True,shift=True);mouse(6.1,0,R.Changed);check('viewer',list(m.stamp_get_selection(e))==[1,2])                                                    # Shift: add
 mouse(3.1,0,R.Start,left=True,shift=True);mouse(3.1,0,R.Changed);check('viewer',list(m.stamp_get_selection(e))==[2])                                                     # Shift on a selected one: remove
 mouse(30,30,R.Start,left=True);mouse(30,30,R.Changed);check('viewer',list(m.stamp_get_selection(e))==[] and viewer.handle==('edit_handle',False))                           # a click on nothing: nothing selected
-px(-5,-5,R.Start,left=True);px(45,20,R.Active,left=True);check('viewer',state.frame.shown,'the box select shows');px(45,20,R.Changed)
+px(-5,-5,R.Start,left=True);px(45,20,R.Active,left=True);check('viewer',state.frame.shown,'the box select shows')
+fp=np.array([tuple(p_.position()) for p_ in state.frame.geo.points()]);check('viewer',np.allclose(sorted(set(np.round(fp[:,0],6).tolist())),[-0.5,4.5]) and np.allclose(sorted(set(np.round(fp[:,2],6).tolist())),[-0.5,2.0]),fp)   # the rectangle stands on the rays of the mouse (0.10.0 drew it round the world origin)
+px(45,20,R.Changed)
 check('viewer',list(m.stamp_get_selection(e))==[0,1],e.evalParm('selection'))                                                                                               # a box over screen x -5..45, y -5..20 holds the stamps at (0, 0) and (30, 0)
 px(-5,-5,R.Start,left=True,shift=True);px(150,60,R.Active,left=True,shift=True);px(150,60,R.Changed);check('viewer',list(m.stamp_get_selection(e))==[0,1,2,3])
 rows0=stamps().copy();pk={};state.onStateToHandle({'handle':'edit_handle','parms':pk})
@@ -395,7 +409,7 @@ e.parm('protorand').set(0)
 fresh(brush=3);e.parm('workset').set('1 2 3');e.parm('group_spacing').set(1.15);bounds=m.stamp_proto_bounds(e);items,rad=m.stamp_group_items(e,1,bounds)
 dist=lambda P:min(np.linalg.norm(P[i,[0,2]]-P[j,[0,2]]) for i in range(len(P)) for j in range(i))
 Pm=np.array([it['off'] for it in items]);check('group',[it['row'] for it in items]==[1,2,3] and abs(dist(Pm)-2.3)<1e-6 and abs(rad-(2.3/np.sqrt(3)+1.0))<1e-6,(len(items),rad))   # a ring: one member per card, their footprints (radius 1) times Spacing 1.15 apart
-mouse(3,2,R.Located);check('group',state.marker.shown and not state.ghost.shown and sum(1 for g_ in state.gpool if g_[0].shown)==3 and viewer.hud_values['mode']=='Brush / Group' and viewer.hud_values['mode_page']==4 and 'radial, 3 prototypes' in viewer.hud_values['v_proto'],viewer.hud_values)   # the preview: every member as the prototype itself
+mouse(3,2,R.Located);check('group',state.marker.shown and not state.ghost.shown and sum(1 for g_ in state.gpool if g_[0].shown)==3 and viewer.hud_values['mode']=='Brush / Group' and viewer.hud_values['mode']=='Brush / Group' and 'radial, 3 prototypes' in viewer.hud_values['v_proto'],viewer.hud_values)   # the preview: every member as the prototype itself
 time.sleep(0.3);mouse(3,2,R.Start,left=True);mouse(3,2,R.Changed);r=stamps();check('group',len(r)==3 and sorted(r[:,9].astype(int).tolist())==[1,2,3] and np.allclose(r[:,[0,2]].mean(0),[3,2],atol=1e-3) and np.allclose(r[:,1],0.0) and abs(dist(r)-2.3)<1e-3 and viewer.hud_values['v_count']=='3',r[:,:3])   # one click: three stamps around the click, on the ground
 time.sleep(0.3);px(60,50,R.Start,left=True);px(110,50,R.Active,left=True);px(110,50,R.Changed);r=stamps()[3:];sc_=5.0/rad;check('group',len(r)==3 and np.allclose(r[:,6:9],sc_,atol=1e-3) and abs(dist(r)-2.3*sc_)<1e-2 and np.allclose(r[:,[0,2]].mean(0),[6,5],atol=1e-3),(r[:,6],dist(r)))   # the drag scales the whole group (its footprint reaches the mouse) and turns it
 # a custom layout: the stamps the artist placed and selected
@@ -403,7 +417,7 @@ fresh('10 0 10  0 0 0  1 1 1  1 1\n14 0 10  0 0 0  1 1 1  2 1\n10 1 13  0 0 0  2
 check('group',m.stamp_group_capture_selected(e)==3 and e.evalParm('brush')==3 and e.evalParm('mode1')==0 and len(m.stamp_group_custom(e))==3 and 'custom layout, 3 stamps' in m.stamp_group_info(e))
 c_=m.stamp_group_custom(e);check('group',np.allclose(c_[:,1:4],[[-4/3,0,-1],[8/3,0,-1],[-4/3,1,2]],atol=1e-3) and c_[:,0].tolist()==[1,2,3] and np.allclose(c_[:,7],[1,1,2]),c_[:,1:4])   # around their centre, the lowest at 0, scales kept
 e.parm('stamps').set('');time.sleep(0.3);mouse(3,2,R.Start,left=True);mouse(3,2,R.Changed);r=stamps();check('group',len(r)==3 and np.allclose(r[:,0],[3-4/3,3+8/3,3-4/3],atol=1e-3) and np.allclose(r[:,2],[1,1,4],atol=1e-3) and np.allclose(r[:,1],[0,0,1],atol=1e-3) and r[:,9].tolist()==[1,2,3] and np.allclose(r[:,6],[1,1,2]),r[:,:3])   # stamping the layout
-check('group',m.stamp_group_info(e).startswith('Group: custom'));m.stamp_group_reset(e);check('group',m.stamp_group_custom(e).shape==(0,8) and 'radial' in m.stamp_group_info(e))
+check('group',m.stamp_group_info(e).startswith('Group: custom'));m.stamp_group_reset(e);check('group',m.stamp_group_custom(e).shape==(0,9) and 'radial' in m.stamp_group_info(e))
 fresh('0 0 0  0 0 0  1 1 1  1 1\n4 0 0  0 0 0  1 1 1  2 1',mode1=1);m.stamp_set_selection(e,[0,1]);check('group',key('g') is True and e.evalParm('brush')==3 and e.evalParm('mode1')==0 and len(m.stamp_group_custom(e))==2 and viewer.prompt is not None and '2 stamps' in viewer.prompt,viewer.prompt)   # G in the Edit mode
 m.stamp_group_reset(e)
 # on a slope the members stand on the surface under each; Conform To Surface off keeps the group flat
@@ -516,7 +530,7 @@ check('falloff',np.allclose(fc('linear',u_),u_) and abs(fc('smoothstep',0.5)-0.5
 setfo(dens_on=1,dens_min=20,dens_width=60);pd=mf.stamp_falloff_profile(fo,'dens');rr=np.array([0,0.3,0.4,0.7,1.0,1.5])
 mm=mf.falloff_multiplier(pd,rr);check('falloff',np.allclose(mm[:3],1.0) and abs(mm[4]-0.2)<1e-9 and abs(mm[5]-0.2)<1e-9 and np.all(np.diff(mm)<=1e-12) and 0.2<mm[3]<1.0 and abs(mf.falloff_multiplier(pd,0.7)-(0.2+0.8*(1-fc('smoothstep',(0.7-0.4)/0.6))))<1e-9,mm)   # the plateau (inner 40 %), the smooth fall, the minimum at the rim and beyond
 setfo(scale_on=1,scale_min=30,scale_max=150,scale_strength=50);ps=mf.stamp_falloff_profile(fo,'scale');check('falloff',abs(mf.falloff_multiplier(ps,0.0)-1.25)<1e-9 and abs(mf.falloff_multiplier(ps,1.0)-0.65)<1e-9 and mf.falloff_multiplier(None,0.5)==1.0)   # Center Maximum and Strength blend with 1
-check('falloff',not mf.stamp_paint_active(stamp_node('legacy')) and mf.stamp_falloff_text(stamp_node('legacy')).startswith('off'))                                                                              # a new node paints as before
+check('falloff',not mf.stamp_paint_active(stamp_node('legacy')) and mf.stamp_falloff_text(stamp_node('legacy')).startswith('classic'))                                                                              # a new node paints as before
 # the custom ramp
 setfo(dens_on=1);fo.parm('paint_dens_curve').set(5);lt=mf.falloff_lut(fo,'dens');check('falloff',abs(lt[0]-1)<1e-6 and abs(lt[-1])<1e-6 and np.all(np.diff(lt)<=1e-9) and abs(lt[128]-0.5)<0.02,lt[[0,128,256]])  # the default ramp is a straight fall
 fo.parm('paint_dens_ramp').set(hou.Ramp((hou.rampBasis.Linear,hou.rampBasis.Linear),(0.0,1.0),(1.0,1.0)));check('falloff',np.allclose(mf.falloff_lut(fo,'dens'),1.0));fo.parm('paint_dens_ramp').set(hou.Ramp((hou.rampBasis.Linear,hou.rampBasis.Linear),(0.0,1.0),(0.0,1.0)))
@@ -561,7 +575,7 @@ mf.stamp_paint_preset(fo,'uniform');check('falloff',fo.evalParm('paint_dens_on')
 tabs=[p.label() for p in a.parmTemplateGroup().findFolder(('Brush','Paint')).parmTemplates()];check('contract',tabs[-3:]==['Falloff','Density Profile','Scale Profile'] and a.evalParm('paint_dens_on')==0 and a.evalParm('paint_scale_on')==0 and a.evalParm('paint_falloff')==0.5,tabs)
 # through the tool: live feedback, one undo group, the profile drawn, the HUD
 glob['PAINT_FLUSH_S']=0.0;state.onEnter({'node':e});fresh(brush=2);e.parm('paint_radius').set(3.0);e.parm('paint_density').set(4.0);e.parm('paint_spacing').set(0.0);e.parm('seed').set(5);mf2=e.hdaModule();mf2.stamp_paint_preset(e,'soft');viewer.undo.clear()
-mouse(0,0,R.Located);check('viewer',state.marker.shown and state.ring_d.shown and state.ring_s.shown and 'Density' in viewer.hud_values['v_falloff'] and 'Scale' in viewer.hud_values['v_falloff'],viewer.hud_values.get('v_falloff'))
+mouse(0,0,R.Located);check('viewer',state.cursor.shown and state.ring_d.shown and state.ring_s.shown and 'Density' in viewer.hud_values['v_falloff'] and 'Scale' in viewer.hud_values['v_falloff'],viewer.hud_values.get('v_falloff'))
 mouse(-12,0,R.Start,left=True);mid=None
 for k in range(1,41):
     mouse(-12+0.6*k,0,R.Active,left=True)
@@ -585,6 +599,70 @@ sk=mb2.StampPaintStroke(big2,sb2,bb2);sk.FLUSH_S=0.05;tms=[]
 for k in range(120):
     t1=time.time();sk.move((-40.0+0.5*k,0.0,30.0),(0,1,0));tms.append((time.time()-t1)*1000);sb2.update(big2)
 sk.finish();check('speed',np.mean(tms)<12.0 and max(tms)<150.0,(np.mean(tms),max(tms)))                                                                                                        # a move of a brush radius 2 with 10 000 stamps in the scene: a few ms
+
+# ---- material variants (0.10.0): a material number per stamp, a prototype per row and material in use, edited afterwards
+from pxr import UsdShade
+ma=stamp_node('mats');m=ma.hdaModule();mutate(ma)
+old='1 0 0  0 0 0  1 1 1  1 1\n2 0 0  0 0 0  1 1 1  2 1'
+r=m.stamp_rows(old);check('material',r.shape==(2,12) and np.all(r[:,11]==0) and r[1,9]==2,r)                                                                          # a text from before 0.10.0: 11 numbers a line, material 0
+r=m.stamp_rows(old+'\n3 0 0  0 0 0  1 1 1  1 1 2');check('material',r.shape==(3,12) and r[2,11]==2 and r[2,0]==3 and r[0,11]==0 and r[1,9]==2,r)                    # old and new lines mixed
+try:m.stamp_rows(old+'\n3 0 0  0 0 0  1 1 1  1');check('material',False)
+except hou.Error as exc:check('material','line 3' in str(exc) and '12' in str(exc),str(exc))                                                                         # a broken line is named
+ma.parm('proto_mats1').set('/World/Mats/rock_*');ma.parm('proto_mats2').set('/World/Mats/moss, /World/Mats/rock_a')
+mt=m.stamp_materials(ma);check('material',mt=={1:['/World/Mats/rock_a','/World/Mats/rock_b'],2:['/World/Mats/moss','/World/Mats/rock_a'],3:[]},mt)                  # a pattern takes the Material prims only (not rock_c_notmat), a list in its order
+check('material',m.stamp_material_names(ma)[2]==['moss','rock_a'] and m.stamp_material_label(2,['moss','rock_a'])=='2 rock_a' and m.stamp_material_label(0,['moss'])=='own' and m.stamp_material_label(3,['moss','rock_a'])=='3 moss')
+check('material',m.stamp_material_index([0,1,2,3,4,2],[2,2,2,2,2,0]).tolist()==[0,1,2,1,2,0])                                                                         # a number past the end of the list wraps round; a row without materials is 0
+ma.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1 0\n1 0 0  0 0 0  1 1 1  1 1 1\n2 0 0  0 0 0  1 1 1  1 1 2\n3 0 0  0 0 0  1 1 1  1 1 3\n4 0 0  0 0 0  1 1 1  2 1 2\n5 0 0  0 0 0  1 1 1  3 1 1\n6 0 0  0 0 0  1 1 1  1 1')
+pos,sc,idx,ids,q,pi=arrays(ma);tg=[str(t) for t in pi.GetPrototypesRel().GetTargets()];st_=ma.stage()
+check('material',len(tg)==6 and idx.tolist()==[0,1,2,1,4,5,0] and tg[0].endswith('/p1_0') and tg[1].endswith('/p1_0_m1') and tg[4].endswith('/p2_0_m2'),(tg,idx))   # a prototype per row and material in use; material 0 keeps the paths of 0.9
+bound=lambda path:str(UsdShade.MaterialBindingAPI(st_.GetPrimAtPath(path)).ComputeBoundMaterial()[0].GetPath())
+check('material',bound(tg[1]+'/Geom')=='/World/Mats/rock_a' and bound(tg[2]+'/Geom')=='/World/Mats/rock_b' and bound(tg[4]+'/Geom')=='/World/Mats/rock_a' and bound(tg[0]+'/Geom')=='/World/Mats/Other',[bound(t+'/Geom') for t in tg[:3]])   # the variant's material wins over the one inside the source; own keeps it
+check('material',UsdShade.MaterialBindingAPI(st_.GetPrimAtPath(tg[1])).GetDirectBindingRel().GetMetadata('bindMaterialAs')=='strongerThanDescendants' and len(pos)==7)
+ma.parm('proto_mats3').set('/World/Mats/nothing');cooks(ma);check('material',any('not a Material prim' in e_ for e_ in ma.errors()),ma.errors());ma.parm('proto_mats3').set('')
+# new stamps: Random (by Seed), Fixed Number, the prototype's own; the first five random draws are those of 0.9
+ma.parm('stamps').set('');ma.parm('matmode').set(0);ma.parm('proto').set(1);ma.parmTuple('scalerange').set((0.5,2.0));ma.parm('seed').set(3)
+for k in range(30):m.stamp_add(ma,(k,0,0))
+r=m.stamp_rows(ma.evalParm('stamps'));check('material',set(r[:,11].astype(int).tolist())=={1,2},set(r[:,11].tolist()))
+cfg=m.stamp_settings(ma);check('material',all(abs(m.stamp_make(cfg,k)['scale']-(0.5+1.5*np.random.RandomState(int(k*104729+3*31+5)%(2**32)).rand(5)[1]))<1e-12 for k in (1,7,30)))   # the material is a sixth draw: the scale (and the rest) as before
+ma.parm('stamps').set('');[m.stamp_add(ma,(k,0,0)) for k in range(30)];check('material',np.allclose(m.stamp_rows(ma.evalParm('stamps'))[:,11],r[:,11]))                   # the same Seed, the same materials
+ma.parm('matmode').set(1);ma.parm('matnum').set(2);ma.parm('stamps').set('');m.stamp_add(ma,(0,0,0));ma.parm('matnum').set(3);m.stamp_add(ma,(1,0,0));ma.parm('matmode').set(2);m.stamp_add(ma,(2,0,0))
+ma.parm('matmode').set(0);m.stamp_add(ma,(3,0,0),proto=3);check('material',m.stamp_rows(ma.evalParm('stamps'))[:,11].tolist()==[2,1,0,0],m.stamp_rows(ma.evalParm('stamps'))[:,11])   # Fixed 2, Fixed 3 wraps to 1, own, a row without materials
+# afterwards: next / prev / random / set, each stamp within its own row's list
+ma.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1 0\n1 0 0  0 0 0  1 1 1  3 1 0\n2 0 0  0 0 0  1 1 1  2 1 2');mats_=lambda:m.stamp_rows(ma.evalParm('stamps'))[:,11].astype(int).tolist()
+check('material',m.stamp_material_edit(ma,[0,1,2],'next')==3 and mats_()==[1,0,0]);m.stamp_material_edit(ma,[0],'next');check('material',mats_()==[2,0,0]);m.stamp_material_edit(ma,[0],'next');check('material',mats_()==[0,0,0])   # own, 1, 2, own
+m.stamp_material_edit(ma,[0],'prev');check('material',mats_()==[2,0,0]);m.stamp_material_edit(ma,[0,1],'set',1);check('material',mats_()==[1,0,0])
+m.stamp_set_selection(ma,[0,2]);m.stamp_material_random_selected(ma);mm=mats_();check('material',mm[0] in (1,2) and mm[2] in (1,2) and mm[1]==0);m.stamp_material_own_selected(ma);check('material',mats_()==[0,0,0])
+m.stamp_material_next_selected(ma);check('material',mats_()==[1,0,1] and m.stamp_edit_rows(ma,[1],mat=2)==1 and mats_()==[1,2,1] and m.stamp_rows(ma.evalParm('stamps'))[1,9]==3)   # the table edits it like any column
+# the Paint brush and the Group brush give materials too; a captured layout keeps them
+ma.parm('stamps').set('');ma.parm('paint_dens_on').set(1);ma.parm('paint_radius').set(2.0);ma.parm('paint_density').set(3.0);ma.parm('paint_spacing').set(0.3);sfm=m.stamp_surface(ma)
+m.stamp_paint_path(ma,sfm,[(x,0.0,0.0) for x in np.arange(-6,6,0.25)],m.stamp_proto_bounds(ma));r=m.stamp_rows(ma.evalParm('stamps'));check('material',len(r)>20 and set(r[:,11].astype(int).tolist())=={1,2},(len(r),set(r[:,11].tolist())))
+ma.parm('paint_dens_on').set(0);ma.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1 2\n3 0 0  0 0 0  1 1 1  1 1 1');m.stamp_set_selection(ma,[0,1]);m.stamp_group_capture_selected(ma);check('material',m.stamp_group_custom(ma)[:,8].tolist()==[2,1])
+ma.parm('group').set('1 0 0 0  0 0 0  1\n1 3 0 0  0 0 0  1');check('material',m.stamp_group_custom(ma)[:,8].tolist()==[0,0])                                           # a layout captured before 0.10.0: 8 numbers, material 0
+m.stamp_group_capture_selected(ma);ma.parm('stamps').set('');m.stamp_group_add(ma,sfm,(10.0,0.0,10.0),(0.0,1.0,0.0));check('material',m.stamp_rows(ma.evalParm('stamps'))[:,11].tolist()==[2,1])
+m.stamp_group_reset(ma);ma.parm('workset').set('1 2');ma.parm('stamps').set('');[m.stamp_group_add(ma,sfm,(k*10.0,0.0,0.0),(0.0,1.0,0.0)) for k in range(8)];r=m.stamp_rows(ma.evalParm('stamps'))
+check('material',len(r)==16 and set(r[:,11].astype(int).tolist())=={1,2},r[:,[9,11]])                                 # the members of a radial group draw a material of their row
+# the viewer: M in the Edit mode, the HUD
+e.parm('proto_mats1').set('/World/Mats/rock_a /World/Mats/rock_b');fresh('0 0 0  0 0 0  1 1 1  1 1 0\n3 0 0  0 0 0  1 1 1  2 1 0',mode1=1);m=e.hdaModule();m.stamp_set_selection(e,[0,1])
+check('viewer',key('m') is True and m.stamp_rows(e.evalParm('stamps'))[:,11].tolist()==[1,0] and 'next material' in (viewer.prompt or ''),viewer.prompt)                    # M: the next material of row 1; row 2 has none
+fresh(mode1=0,proto=1);e.parm('matmode').set(0);mouse(3,2,R.Located);check('viewer','(random of 2)' in viewer.hud_values.get('v_mat','') and viewer.hud_values['v_mat'][0] in '12',viewer.hud_values.get('v_mat'))
+e.parm('proto_mats1').set('')
+
+# ---- the Edit mode with many stamps: the selection boxes are built once, not on every mouse move; box select is a few rays and numpy; the table selects in one call (the lag of 0.9)
+P_=np.array([[float(k%100),0.0,float(k//100)] for k in range(10000)])
+check('select',sorted(m.stamp_select_in_rays(P_,[glob['_ray'](StubViewport(),x,y) for x,y in ((95,-5),(455,-5),(455,205),(95,205))]))==sorted(m.stamp_select_in_box(types.SimpleNamespace(evalParm=lambda n:'\n'.join('%g 0 %g  0 0 0  1 1 1  1 1'%(p[0],p[2]) for p in P_)),StubViewport().mapToScreen,95,-5,455,205)))   # the rays give what projecting every stamp gives
+o_=hou.Vector3((0.0,10.0,0.0));rays=[(o_,hou.Vector3((x,-10.0,z))) for x,z in ((-1,-1),(1,-1),(1,1),(-1,1))]                                                                                # a perspective camera at (0, 10, 0) looking down: the box is |x|, |z| <= 1 on the ground, 0.5 halfway up
+check('select',m.stamp_select_in_rays([(0.9,0,0.9),(0.9,5,0),(0.4,5,0),(0,20,0),(1.2,0,0)],rays)==[0,2])
+text_=chr(10).join('%g 0 %g  0 0 0  1 1 1  %d 1 0'%(k%100*0.5,k//100*0.5,1+k%3) for k in range(10000));fresh(text_,mode1=1);m.stamp_set_selection(e,range(0,10000,5));mouse(1,1,R.Located);geo0=state.sel.geo
+tm_=[]
+for k in range(20):t1=time.time();mouse(1+k*0.01,1,R.Located);tm_.append((time.time()-t1)*1000)
+check('select',state.sel.geo is geo0 and state.sel.shown and np.mean(tm_)<15.0,(np.mean(tm_),state.sel.geo is geo0))                                                    # 2000 selected of 10 000: a mouse move does not build the boxes again (it was 145 ms)
+px(-5,-5,R.Start,left=True);tm_=[]
+for k in range(20):t1=time.time();px(10+k*20,10+k*20,R.Active,left=True);tm_.append((time.time()-t1)*1000)
+px(410,410,R.Changed);check('select',np.mean(tm_)<3.0 and state.frame.shown is False,np.mean(tm_))                                                                    # the box grows without a ray cast, parsing or the HUD
+t1=time.time();px(-5,-5,R.Start,left=True);px(600,600,R.Active,left=True);px(600,600,R.Changed);bx=(time.time()-t1)*1000;check('select',len(m.stamp_get_selection(e))==10000 and bx<150.0,(bx,len(m.stamp_get_selection(e))))   # box select of 10 000 (it was 380 ms)
+check('select',len(state.sel.geo.prims())==12*glob['MAX_BOXES'] and state.sel.geo is not geo0)                                                                         # the boxes of the new selection, built once (12 edges a box)
+t1=time.time();m.stamp_set_selection(e,[]);m.stamp_get_selection(e);m.stamp_set_selection(e,range(10000));check('select',len(m.stamp_get_selection(e,10000))==10000 and (time.time()-t1)*1000<60.0)
+fresh()
 # ---- 7 the Prototype Bank: the per-row Scale / Scale Random / Rotation Offset, an input, a USD file, the Asset Library's Add to Bank
 bk=stamp_node('bank',((0,'/World/Props/Rock',1.0,2.0,0.0,(0,90,0)),(0,'/World/Props/Fir',1.0,1.0,0.5,(0,0,0))));m=bk.hdaModule();mutate(bk)
 bk.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1\n2 0 0  0 0 0  1 1 1  1 1\n4 0 0  0 0 0  3 3 3  2 1\n6 0 0  0 0 0  1 1 1  2 1\n8 0 0  0 0 0  1 1 1  2 1')
@@ -636,12 +714,12 @@ w.cards.select(2,add=True);check('gallery',g.evalParm('workset')=='3' and g.eval
 g.parm('protorand').set(1);w.cards.refresh();check('gallery','random' in w.cards.info.text())
 calls=[];gm.stamp_start.__globals__['stamp_start']=lambda asset:calls.append(asset.name())
 w.cards.brush(1);check('gallery',g.evalParm('brush')==1 and g.evalParm('mode1')==0 and calls==['gal'] and w.cards.shelf[1].isChecked() and not w.cards.shelf[0].isChecked())                                      # the shelf: the Delete brush, the tool is entered
-check('gallery',len(w.cards.shelf)==4 and w.cards.random.isChecked() and w.cards.random.text()=='Random');w.cards.random.click();check('gallery',g.evalParm('protorand')==0 and 'random' not in w.cards.info.text());w.cards.random.click();check('gallery',g.evalParm('protorand')==1 and w.cards.random.isChecked() and 'random' in w.cards.info.text())   # the shelf: Random Prototype is a button
+check('gallery',len(w.cards.shelf)==11 and w.cards.random.isChecked() and w.cards.random.text()=='Random');w.cards.random.click();check('gallery',g.evalParm('protorand')==0 and 'random' not in w.cards.info.text());w.cards.random.click();check('gallery',g.evalParm('protorand')==1 and w.cards.random.isChecked() and 'random' in w.cards.info.text())   # the shelf: Random Prototype is a button
 w.cards.brush(3);check('gallery',g.evalParm('brush')==3 and g.evalParm('mode1')==0 and w.cards.shelf[3].isChecked() and calls[-1]=='gal');w.cards.brush(1)                                       # the Group brush, from the shelf
 g.parm('mode1').set(1);w.cards.refresh();check('gallery',not w.cards.shelf[0].isChecked() and not w.cards.shelf[1].isChecked() and w.cards.info.text().startswith('Edit'));g.parm('mode1').set(0);w.cards.brush(0)
 # the stamps table
 for k in range(4):gm.stamp_add(g,(k*2.0,0,k))
-w.table.toggle.setChecked(True);w.table.refresh(force=True);app.processEvents();mod=w.table.model;check('gallery',mod.rowCount()==4 and mod.columnCount()==10 and mod.headerData(3,QtCore.Qt.Horizontal)=='X' and w.table.toggle.text().endswith('4'),w.table.toggle.text())
+w.table.toggle.setChecked(True);w.table.refresh(force=True);app.processEvents();mod=w.table.model;check('gallery',mod.rowCount()==4 and mod.columnCount()==11 and mod.headerData(3,QtCore.Qt.Horizontal)=='X' and w.table.toggle.text().endswith('4'),w.table.toggle.text())
 check('gallery',mod.data(mod.index(1,3))=='2.000' and mod.data(mod.index(1,5))=='1.000' and mod.data(mod.index(2,9))=='1.00' and mod.data(mod.index(0,1),QtCore.Qt.CheckStateRole)==QtCore.Qt.Checked and mod.data(mod.index(3,0))=='3')
 check('gallery',mod.setData(mod.index(1,3),'7.5') and abs(gm.stamp_rows(g.evalParm('stamps'))[1,0]-7.5)<1e-6 and mod.data(mod.index(1,3))=='7.500')                                                         # an edit of a cell edits the stamp
 check('gallery',mod.setData(mod.index(2,9),'2') and np.allclose(gm.stamp_rows(g.evalParm('stamps'))[2,6:9],2.0) and mod.setData(mod.index(2,8),'30') and abs(gm.stamp_rows(g.evalParm('stamps'))[2,5]-30)<1e-6)
@@ -661,6 +739,12 @@ w.table.scope.setCurrentIndex(1);app.processEvents();check('gallery',mod.setData
 check('gallery',mod.setData(mod.index(0,4),'0') and np.allclose(rows_()[:,1],0.0));w.table.scope.setCurrentIndex(0);gm.stamp_set_selection(g,[])
 check('gallery',gm.stamp_edit_rows(g,[0,1,99],'add',x=1.0,on=1)==2 and np.all(rows_()[:2,10]==1) and gm.stamp_edit_rows(g,[],x=1)==0 and gm.stamp_edit_rows(g,[0],'mul',x=2.0)==1)   # out of range indices are ignored; On is always set, not added
 gm.stamp_edit_rows(g,range(5),on=1)
+# the Material column (0.10.0): the number and the name, edited like the others; the menu of the selected stamps
+g.parm('proto_mats1').set('/World/Mats/rock_a /World/Mats/rock_b');gm.stamp_edit_rows(g,[0],mat=2,proto=1);w.table.refresh(force=True);app.processEvents()
+check('gallery',mod.headerData(10,QtCore.Qt.Horizontal)=='Material' and mod.data(mod.index(0,10))=='2 rock_b' and mod.data(mod.index(0,10),QtCore.Qt.EditRole)=='2' and mod.data(mod.index(1,10))=='own',mod.data(mod.index(0,10)))
+check('gallery',mod.setData(mod.index(0,10),'1') and rows_()[0,11]==1 and mod.data(mod.index(0,10))=='1 rock_a')
+gm.stamp_set_selection(g,[0]);w.table.refresh();labels=[i[0] for i in w.table.material_items()];check('gallery',any(l.startswith('2') and 'rock_b' in l for l in labels) and 'Random material' in labels,labels)
+w.table.set_material('next');check('gallery',rows_()[0,11]==2);w.table.set_material('set',0);check('gallery',rows_()[0,11]==0);g.parm('proto_mats1').set('');gm.stamp_set_selection(g,[])
 # managing the stamps: counts per prototype, delete / duplicate / select by prototype, the buttons, Del
 gm.stamp_set_workset(g,[]);g.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1\n1 0 0  0 0 0  1 1 1  1 1\n2 0 0  0 0 0  1 1 1  2 1\n3 0 0  0 0 0  1 1 1  2 1\n4 0 0  0 0 0  1 1 1  2 1\n5 0 0  0 0 0  1 1 1  3 1');w.table.refresh(force=True);w.cards.ctext=None;w.cards.refresh()
 check('gallery',gm.stamp_counts(g)=={1:2,2:3,3:1} and '3 stamp' in w.cards.cardmap[2].toolTip(),gm.stamp_counts(g))
@@ -683,6 +767,13 @@ other=stage.createNode('null','not_a_stamp');w.set_node(other);check('gallery',w
 w.library.set_node(g);w.library.data={'version':1,'categories':['Props'],'assets':[dict(id='a1',name='Crate',file=fp,prim='',category='Props',tags=[],thumb='',nothumb=9,source='file')]};w.library.reload_categories();w.library.grid.selectAll();w.library.add_selected()
 check('gallery',g.evalParm('protos')==4 and g.evalParm('proto_type4')==2 and g.evalParm('proto_file4')==fp,g.evalParm('protos'));g.parm('proto_prim1').set('/World/Props/Rock')                                                  # Add to Bank of the library panel puts a USD File row into the Stamp's bank
 w.cards.refresh();check('gallery',w.cards.grid.count()==4 and 'cube' in w.cards.grid.itemAt(3).widget().text())             # and its card shows
+# the table with 10 000 stamps: the viewport's selection in one call, Select All by ranges (0.10.0; a select per row took seconds)
+g.parm('stamps').set(chr(10).join('%d 0 0  0 0 0  1 1 1  1 1 0'%k for k in range(10000)));w.table.refresh(force=True);app.processEvents()
+cpu=time.process_time                                                                                                                                                     # CPU time: hython's offscreen event loop sleeps while Qt waits, the wall clock would count it
+t=cpu();gm.stamp_set_selection(g,range(0,10000,2));w.table.refresh();app.processEvents();ts=(cpu()-t)*1000;check('gallery',len(w.table.view.selectionModel().selectedRows())==5000 and ts<800.0,ts)      # 5000 separate runs
+t=cpu();gm.stamp_set_selection(g,range(2000,9000));w.table.refresh();app.processEvents();tr=(cpu()-t)*1000;check('gallery',len(w.table.view.selectionModel().selectedRows())==7000 and tr<400.0,tr)       # one run, replacing those 5000
+t=cpu();w.table.view.selectAll();app.processEvents();ta=(cpu()-t)*1000;check('gallery',len(gm.stamp_get_selection(g))==10000 and ta<1500.0,ta)                                                             # Ctrl + A (Qt asks the flags of every cell: one tuple lookup each)
+g.parm('stamps').set('');gm.stamp_set_selection(g,[]);w.table.refresh(force=True)
 # ---- thumbnails, views, search, favourites, filters (0.8.0)
 res=gm.stamp_thumb_triangles(g,('stage','/World/Props/Rock'));img=panel['stamp_render_thumb'](res)
 check('gallery',res is not None and len(res[1])>0 and img is not None and img.width()==128 and len({img.pixel(x,y) for x in range(0,128,8) for y in range(0,128,8)})>3)          # a software render of the prototype, not a flat tile
@@ -709,6 +800,47 @@ check('gallery',viewer.hud_template['icon']==a.type().definition().icon() and vi
 t=time.time()
 for k in range(50):w.tick()
 check('gallery',(time.time()-t)/50*1000<10.0,(time.time()-t)/50*1000)                                                      # a refresh is a few parameter reads (the table is not read while it is folded)
+
+# ---- heavy prototypes (0.11.0): the tool reads the proxy (as the viewport draws it), once per version of the source, shared by the rays, the ghost and the thumbnails; slot colours
+def heavy_file(name,proxy=True,render_n=80):
+    """An asset like a scanned rock: a dense render mesh (a sphere of radius 1.5, 2 x render_n x render_n triangles), a 12 triangle proxy cube (size 2) and a guide plane far above."""
+    path=(WORK/name).as_posix();s_=Usd.Stage.CreateNew(path);UsdGeom.Xform.Define(s_,'/Rock');s_.SetDefaultPrim(s_.GetPrimAtPath('/Rock'))
+    th=np.linspace(0,np.pi,render_n+1);ph=np.linspace(0,2*np.pi,render_n+1);P_=[(1.5*np.sin(t_)*np.cos(p_),1.5*np.cos(t_),1.5*np.sin(t_)*np.sin(p_)) for t_ in th for p_ in ph];I_=[]
+    for i_ in range(render_n):
+        for j_ in range(render_n):a_=i_*(render_n+1)+j_;I_+=[a_,a_+1,a_+render_n+2,a_+render_n+1]
+    UsdGeom.Xform.Define(s_,'/Rock/geo');UsdGeom.Xform.Define(s_,'/Rock/geo/render');rm=UsdGeom.Mesh.Define(s_,'/Rock/geo/render/renderPLY');rm.CreatePointsAttr([tuple(map(float,p_)) for p_ in P_]);rm.CreateFaceVertexCountsAttr([4]*(render_n*render_n));rm.CreateFaceVertexIndicesAttr(I_)
+    UsdGeom.Imageable(s_.GetPrimAtPath('/Rock/geo/render')).CreatePurposeAttr('render')
+    if proxy:
+        UsdGeom.Xform.Define(s_,'/Rock/geo/proxy');UsdGeom.Imageable(s_.GetPrimAtPath('/Rock/geo/proxy')).CreatePurposeAttr('proxy')
+        cp=[(x_,y_,z_) for x_ in (-1.0,1.0) for y_ in (-1.0,1.0) for z_ in (-1.0,1.0)];pm_=UsdGeom.Mesh.Define(s_,'/Rock/geo/proxy/proxyPLY');pm_.CreatePointsAttr(cp);pm_.CreateFaceVertexCountsAttr([4]*6)
+        pm_.CreateFaceVertexIndicesAttr([0,1,3,2, 4,6,7,5, 0,4,5,1, 2,3,7,6, 0,2,6,4, 1,5,7,3])
+    gd=UsdGeom.Mesh.Define(s_,'/Rock/guide');gd.CreatePointsAttr([(-9,50,-9),(9,50,-9),(9,50,9),(-9,50,9)]);gd.CreateFaceVertexCountsAttr([4]);gd.CreateFaceVertexIndicesAttr([0,1,2,3]);gd.CreatePurposeAttr('guide')
+    s_.GetRootLayer().Save();return path
+hp=heavy_file('heavy_rock.usda');hv=stamp_node('heavy',((2,hp,1.0),(0,'/World/Props/Fir',1.0)));hm=hv.hdaModule();mutate(hv);hsrc=('file',hp,'');hg=hm.stamp_source_mesh.__globals__
+whole=hm.prim_triangles(hm._src_prim(None,hsrc))[1];mesh_=hm.stamp_source_mesh(hv,hsrc)
+check('heavy',mesh_ is not None and len(mesh_[1])==12 and len(whole)==12+2*80*80+2 and np.allclose(mesh_[0].max(0),1.0),(None if mesh_ is None else len(mesh_[1]),len(whole)))   # the proxy (12 triangles), not the 12 800 of the render mesh nor the guide
+check('heavy',hm.stamp_source_mesh(hv,hsrc) is mesh_ and len(hm.stamp_thumb_triangles(hv,hsrc)[1])==12 and len(hm.stamp_ghost_arrays(hv,hsrc)[1])==12 and hm.stamp_ghost_arrays(hv,hsrc) is hm.stamp_ghost_arrays(hv,hsrc))   # read once: the thumbnail and the ghost use the same copy
+hv.parm('stamps').set('0 0 0  0 0 0  1 1 1  1 1 0');s1=hm.stamp_surface(hv);h=s1.hit((0.2,10,0.1),(0,-1,0));check('heavy',h is not None and abs(h[0][1]-1.0)<1e-5 and s1.last_stamp==0,h)   # the rays hit the proxy cube (its top at 1), as the viewport shows it
+t=time.time();s2=hm.stamp_surface(hv);h2=s2.hit((0.2,10,0.1),(0,-1,0));t2=(time.time()-t)*1000;check('heavy',s2._proto(hsrc) is s1._proto(hsrc) and abs(h2[0][1]-1.0)<1e-5 and t2<100.0,t2)   # the tool resumes: a new surface reuses the ray geometry (and its smooth normals)
+os.utime(hp,(time.time()+5,time.time()+5));check('heavy',hm.stamp_source_mesh(hv,hsrc) is not mesh_)                                                             # a changed file is read again
+np_=heavy_file('heavy_noproxy.usda',proxy=False);old_=hg['RAY_TRIANGLES'];hg['RAY_TRIANGLES']=3000;mn=hm.stamp_source_mesh(hv,('file',np_,''));hg['RAY_TRIANGLES']=old_
+check('heavy',mn is not None and 0<len(mn[1])<=3000 and abs(mn[0][:,1].max()-1.5)<0.2,None if mn is None else len(mn[1]))                                   # no proxy: the render mesh, as a lighter copy when it is denser than RAY_TRIANGLES (the guide still left out)
+# slot colours: a random colour per bank row, on the card and over the ghost
+cols=[np.array(hm.stamp_slot_color(r_)) for r_ in range(1,9)];dmin=min(np.linalg.norm(cols[i_]-cols[j_]) for i_ in range(8) for j_ in range(i_+1,8))
+check('heavy',all(c_.min()>=0 and c_.max()<=1 for c_ in cols) and dmin>0.12 and np.allclose(hm.stamp_slot_color(3),hm.stamp_slot_color(3)) and not np.allclose(hm.stamp_slot_color(3),hm.stamp_slot_color(3,seed=7)),dmin)   # distinct, the same every time, another set with the Color Seed
+check('heavy',hv.evalParm('slotcolors')==1 and abs(hv.evalParm('slotcolor_amount')-0.5)<1e-9 and set(hm.stamp_slot_colors(hv))=={1,2} and hm.stamp_slot_amount(hv)==0.5)
+C0=np.full((4,3),0.6);check('heavy',np.allclose(hm.stamp_tint(C0,(1,0,0),0.0),C0) and (lambda T_:T_[0,0]>0.6 and T_[0,1]<0.1)(hm.stamp_tint(C0,(1,0,0),1.0)))
+node_before=state.node;state.node=hv;state.entries_key=None;state.ghosts={};ents_=state._entries();cd=lambda geo_:np.array(geo_.pointFloatAttribValues('Cd')).reshape(-1,3).mean(0)
+k1,k2=hm.stamp_slot_colors(hv)[1],hm.stamp_slot_colors(hv)[2];g1=state._ghost_geo(ents_,1,0);g2=state._ghost_geo(ents_,2,0);cos=lambda a_,b_:float(np.dot(a_,b_)/np.linalg.norm(a_)/np.linalg.norm(b_))
+check('heavy',g1 is not None and g2 is not None and cos(cd(g1)-cd(g1).mean(),np.array(k1)-np.mean(k1))>0.5 and cos(cd(g2)-cd(g2).mean(),np.array(k2)-np.mean(k2))>0.5,(cd(g1),k1,cd(g2),k2))   # the ghost of each slot leans to its colour
+check('heavy',np.allclose(state._slot_box_color(2)[:3],k2))
+hv.parm('slotcolors').set(0);g0=state._ghost_geo(ents_,1,0);check('heavy',np.allclose(np.array(g0.pointFloatAttribValues('Cd')).reshape(-1,3),hm.stamp_ghost_arrays(hv,hsrc)[2],atol=1e-5) and state._slot_box_color(1)==glob['GREY'] and hm.stamp_slot_colors(hv)=={})   # off: the prototype's own colours
+hv.parm('slotcolors').set(1);state.node=node_before;state.entries_key=None;state.ghosts={}
+pm0=QtGui.QPixmap(64,64);pm0.fill(QtGui.QColor(128,128,128));ov=panel['slot_overlay'](pm0,(1.0,0.0,0.0),0.5).toImage();bot=QtGui.QColor(ov.pixel(32,62));top=QtGui.QColor(ov.pixel(32,10))
+check('heavy',bot.red()>240 and bot.green()<15 and top.red()>top.green()+20 and panel['slot_overlay'](pm0,None,0.5) is pm0,(bot.getRgb(),top.getRgb()))      # a band of the colour along the bottom, a wash over the picture
+w.set_node(hv);w.cards.process_thumbs();w.cards.refresh();px=lambda r_:QtGui.QColor(w.cards.cardmap[r_].icon().pixmap(52,52).toImage().pixel(26,50))
+p1=px(1);check('heavy',abs(p1.redF()-k1[0])<0.12 and abs(p1.greenF()-k1[1])<0.12 and abs(p1.blueF()-k1[2])<0.12,(p1.getRgbF(),k1))                                # the card of row 1 carries the colour of its ghost
+hv.parm('slotcolors').set(0);w.cards.refresh();p0=px(1);check('heavy',abs(p0.redF()-k1[0])+abs(p0.greenF()-k1[1])+abs(p0.blueF()-k1[2])>0.3,(p0.getRgbF(),k1));hv.parm('slotcolors').set(1)   # off: the plain thumbnail
 w.close_down()
 
 ok=all(all(v) for v in out['groups'].values());out['ALL_PASSED']=ok;out['speed_ms']=dict(add=round(add,2),cook300=round(cook,1),one=round(one,1))

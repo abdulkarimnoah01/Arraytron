@@ -69,6 +69,7 @@ def main():
     for build,hython,name in (('h22',HYTHON,'Arraytron_Stamp_v%s_demo.hip'%VER),('h205',HYTHON205,'Arraytron_Stamp_v%s_H205_demo.hip'%VER)):
         folder=stage/('demo_'+build);run([str(hython),str(ROOT/'tools'/'build_demo_stamplite.py'),'--release',str(folder)],cwd=str(ROOT));demos[build]=folder/name
         run([str(hython),str(ROOT/'tools'/'build_demo_paintfalloff.py'),'--release',str(folder)],cwd=str(ROOT))
+        run([str(hython),str(ROOT/'tools'/'build_demo_materials.py'),'--release',str(folder)],cwd=str(ROOT))
     for old in list(out.glob('*%s*'%VER)):old.unlink()
     top=build_package(stage,a.update_source,demos)
     release_rar=out/('Arraytron_Stamp_v%s_Release.rar'%VER)

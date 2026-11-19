@@ -66,7 +66,15 @@ Adopted 2026-10-04 (first as zero-padded `vMM.mm.pp`, then simplified the same d
 | v1.23.0 | - | `arraytron::instancer::1.23.0` | Copy settings between Arraytron nodes (Import Settings button, `copy_settings` from code); both builds |
 | v1.24.0 | - | `arraytron::instancer::1.24.0` | Boxes / Spheres proxy display, Visualize, eleven new noise types; both builds |
 | v1.25.0 | - | `arraytron::instancer::1.25.0` | Every noise type also as the Mask noise; Visualize as vertex colours with palettes / custom gradient / range / opacity; a new node starts as a test run (built-in sphere on a Grid), the HDA works with no input; both builds |
-| **v1.34.0** (current) | - | `arraytron::instancer::1.34.0` | The Mirror tab: planes X / Y / Z and custom planes, radial and kaleidoscope, any number of operations, flipping, Keep Original, Max Instances; both builds |
+| v1.37.0 | - | `arraytron::instancer::1.37.0` | Prototype sockets: Import Prototype Inputs fills the Prototype Bank and the Asset Library from Prototype Inputs 2 - 4; Arraytron Stamp 0.12.0 has it too; both builds |
+| v1.38.0 | - | `arraytron::instancer::1.38.0` | Saved masks: Save Mask (a grid in the stage and a named primvar), Mask Source Upstream Mask, the offer when nodes are wired; both builds |
+| v1.38.1 | - | `arraytron::instancer::1.38.1` | Camera Optimisation measures a prototype with the scale on its root prim (Frustum Culling, Screen Size LOD); both builds |
+| **v1.38.3** (current) | - | `arraytron::instancer::1.38.3` | A USD File prototype without a default prim but with one top level prim uses that prim (Quixel variants); the Asset Library records it; both builds |
+| v1.38.2 | - | `arraytron::instancer::1.38.2` | The generated LOD levels use the materials of the hero prototype copy; both builds |
+| v1.36.0 | - | `arraytron::instancer::1.36.0` | Paint Engine 2.0: BrushCore shared with Arraytron Stamp 0.11.0 (continuous strokes, independent density and scale falloff, the sculpt brushes, HUD levels, a radial menu); Classic Dabs keeps the v0.6.0 brush; both builds |
+| v1.35.0 | - | `arraytron::instancer::1.35.0` | The Edit tab (select and edit instances live, the Edit mode of Arraytron Stamp) and the Lookdev tab (materials per prototype, per-instance values in the material network); both builds |
+| v1.34.1 | - | `arraytron::instancer::1.34.1` | Check for Updates tries again when GitHub or the network is busy; the release carries the all-demos scene only (the node is v1.34.0) |
+| v1.34.0 | - | `arraytron::instancer::1.34.0` | The Mirror tab: planes X / Y / Z and custom planes, radial and kaleidoscope, any number of operations, flipping, Keep Original, Max Instances; both builds |
 | v1.33.0 | - | `arraytron::instancer::1.33.0` | The Field Stack reworked: Height, Distance, Exclusion and the Mask field (keep points off the mask, on it or around it); Mask Effect None, Blast |
 | v1.32.0 | - | `arraytron::instancer::1.32.0` | Falloff from the shape of any mask, Save / Bake / Export the mask, the Layout tab is the Scatter tab (Mask and Field Stack moved into it) |
 | v1.31.1 | - | `arraytron::instancer::1.31.1` | A million instances as fast as the native Instancer: faster prototype paths and point creation (20.5 / 21) |

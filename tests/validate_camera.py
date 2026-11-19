@@ -12,7 +12,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_camera_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE');M64=(1<<64)-1
 HAP,VAP,FOCAL=36.0,20.25,50.0;HX,HY=HAP/(2*FOCAL),VAP/(2*FOCAL);NEAR,FAR=0.5,150.0          # camera: tangent of the half fields of view 0.36 / 0.2025, clipping range
@@ -32,6 +32,7 @@ def write_scene():
     path=WORK/'camera.usda';s=Usd.Stage.CreateNew(str(path));root=UsdGeom.Xform.Define(s,'/World');s.SetDefaultPrim(root.GetPrim());UsdGeom.SetStageUpAxis(s,UsdGeom.Tokens.y);s.SetStartTimeCode(1);s.SetEndTimeCode(10)
     for name,size in (('Ball',0.2),('BallB',0.2),('Lod1',0.2),('Lod2',0.2),('Proxy',0.2)):
         UsdGeom.Xform.Define(s,'/World/Props/'+name);UsdGeom.Cube.Define(s,'/World/Props/%s/C'%name).CreateSizeAttr(size)
+    sc=UsdGeom.Xform.Define(s,'/World/Props/Scaled');UsdGeom.Xformable(sc).AddScaleOp().Set(Gf.Vec3f(0.01,0.01,0.01));UsdGeom.Cube.Define(s,'/World/Props/Scaled/C').CreateSizeAttr(20.0)       # the same 0.2 cube, but a 20 cube scaled by 0.01 on its root (a car referenced with a scale)
     add_camera(s,'/World/Cam',(0,0,10),(0,0,0))                                             # looks down -Z from z = 10
     add_camera(s,'/World/CamSide',(10,0,0),(0,0,0))                                         # looks down -X from x = 10
     cam=add_camera(s,'/World/CamMove',(0,0,10),(0,0,0));op=UsdGeom.Xformable(cam).GetOrderedXformOps()[0]                       # slides along +X from frame 1 to 10, same orientation
@@ -94,7 +95,7 @@ def ui_contract():
     for n in names:assert g.find(n) is not None,n
     assert g.find('cam_on').defaultValue() is False and g.find('cam_lod').defaultValue() is False and g.find('cam_behind').menuLabels()==('Keep All','Reduce','Hide') and g.find('lod_by').menuLabels()==('Distance','Screen Size')
     assert g.find('cam_frame').isHidden() and g.find('cam_prim').defaultValue()==('/cameras/camera1',)
-    tabs=[t.label() for t in g.entries()];assert tabs[:7+len(TN['mirror_tab'])]==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate','Optimize'],tabs
+    tabs=[t.label() for t in g.entries()];assert tabs[:7+len(TN['mirror_tab'])+len(TN['edit_tabs'])]==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate',*TN['edit_tabs'],'Optimize'],tabs
     opt=[t for t in g.entries() if t.label()=='Optimize'][0];heads=[t.columnLabels()[0] for t in opt.parmTemplates() if t.name().startswith('ui_head')];assert heads==['CAMERA','LEVEL OF DETAIL']+(['LOD GENERATOR'] if a.parm('lodg_on') is not None else [])+['PRIMVARS']
     assert '{ cam_on == 0 }' in g.find('cam_frustum').conditionals()[hou.parmCondType.HideWhen] and '{ lod_by != 0 }' in g.find('lod_d1').conditionals()[hou.parmCondType.HideWhen]
     assert a.node('camera_optimize').inputs()[0].name()=='transform_distribution' and a.node('OUT_ARRAYTRON').inputs()[0].name()==('debug_guide' if a.node('debug_guide') else 'camera_optimize')
@@ -172,6 +173,13 @@ def frustum_node():
     a.parm('cam_seed').set(1);a.parm('cam_behind').set(0);a.parm('cam_frustum').set(1);a.parm('cam_margin').set(0.0);a.parm('cam_distcull').set(1);a.parm('cam_maxdist').set(25.0);a.parm('cam_densityon').set(1)
     d=out(a);h=set(hidden_ref(0.0,maxdist=25.0,density=(8.0,30.0,0.2)));assert set(d['hidden'])==h                                      # everything at once: the union
     a.parm('cam_on').set(0);assert out(a)['hidden']==[] and 'off' in a.parm('cam_info').eval()                                              # reversible: off brings everything back
+def scaled_prototype():
+    """v1.38.1: the bounding radius of a prototype includes the scale on its root prim (a 20 cube scaled by 0.01 hides and levels exactly like the 0.2 cube)."""
+    st,sc=new_scene('scaled');P=spread();a=painted(st,sc,P,cam_on=1,cam_prim='/World/Cam',cam_frustum=1,cam_margin=0.0);b=painted(st,sc,P,name='CamScaled',cam_on=1,cam_prim='/World/Cam',cam_frustum=1,cam_margin=0.0)
+    b.parm('proto_prim1').set('/World/Props/Scaled');da,db=out(a),out(b)
+    assert 40<len(da['hidden'])<200 and db['hidden']==da['hidden'],(len(da['hidden']),len(db['hidden']))
+    for n in (a,b):n.parm('cam_frustum').set(0);n.parm('cam_lod').set(1);n.parm('lod_by').set(1);n.parm('lod_s1').set(12.0);n.parm('lod_s2').set(0.0);n.parm('lod_s3').set(0.0)
+    assert 'hero' in a.parm('cam_info').eval() and a.parm('cam_info').eval().split('LOD:')[1]==b.parm('cam_info').eval().split('LOD:')[1],(a.parm('cam_info').eval(),b.parm('cam_info').eval())
 def side_camera_and_motion():
     st,sc=new_scene('motion');P=spread(180,3);a=painted(st,sc,P,cam_on=1,cam_prim='/World/CamSide',cam_frustum=1,cam_margin=0.0)
     d=out(a);ref=[i for i,p in enumerate(P) if ref_outside(ref_view((10,0,0),(0,0,0),p),RAD)];assert d['hidden']==ref and 20<len(ref)<178                         # a rotated camera
@@ -252,6 +260,7 @@ def main():
                       ('Frustum, density, screen size, LOD levels and merging maths against plain Python',maths),
                       ('Camera culling on the node: frustum with margin, distance, density, behind camera, everything at once, reversible',frustum_node),
                       ('A rotated camera and an animated camera, frames out of order',side_camera_and_motion),
+                      ('A prototype with a scale on its root prim is measured with it (the frustum and the screen size)',scaled_prototype),
                       ('Camera hiding merges with the ids Grow hides',grow_merge),
                       ('LOD / proxy prototypes: order, distance and screen size levels, fallback, primvar, duplicate error, reversible',lod_node),
                       ('Extended primvars: ids, prototype row, random, mask, density, cluster, none when off',primvars),

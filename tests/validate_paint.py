@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.28.0':'v1.27.0','v1.27.0':'v1.26.0','v1.26.0':'v1.25.2','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.28.0':'v1.27.0','v1.27.0':'v1.26.0','v1.26.0':'v1.25.2','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_paint_'))
 checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
@@ -35,6 +35,7 @@ def new_scene(name='scene',old=False):
     n=st.createNode('reference','scene');n.parm('primpath').set('/World');n.parm('primpath1').set('/World');n.parm('filepath1').set(SCENE);n.parm('filerefprim1').set('defaultPrim');return st,n
 def arraytron(stage,source,typ=None,name='Arraytron',**values):
     a=stage.createNode(typ or TYPE,name);a.setInput(0,source);a.parm('protos').set(1);a.parm('proto_prim1').set('/World/Props/Ball')
+    if a.parm('paint_engine') is not None and 'paint_engine' not in values:a.parm('paint_engine').set(1)            # v1.36.0: this suite is the Classic Dabs brush of v0.6.0 (Paint Engine 2.0 is tests/validate_paintengine.py)
     for key,value in values.items():a.parmTuple(key).set(value if isinstance(value,(tuple,list)) else (value,))
     if typ is None and MUTATE:mutate(a)
     return a
@@ -109,7 +110,7 @@ def ui_contract():
     assert sections['Icon.svg'].contents()==(ROOT/'icon'/'Arraytron-Clean.svg').read_text(encoding='utf8') and a_icon(d)
     labels=[a.type().inputLabel(i) if hasattr(a.type(),'inputLabel') else '' for i in range(4)]
     text=sections['DialogScript'].contents()
-    for line in ('Scene Stream: terrain, curve, models','Input 2: extra prototype (optional)','Input 3: extra prototype (optional)','Input 4: extra prototype (optional)'):assert '"%s"'%line in text,line
+    for line in (('Scene Stream: terrain, curve, models','Input 2: Prototype Socket (models, merges, node trees)','Input 3: Prototype Socket (more models)','Input 4: Prototype Socket (more models)') if 'proto_import' in text or 'Prototype Socket' in text else ('Scene Stream: terrain, curve, models','Input 2: extra prototype (optional)','Input 3: extra prototype (optional)','Input 4: extra prototype (optional)')):assert '"%s"'%line in text,line
 def defaults_unchanged():
     st,sc=new_scene('defaults')
     cases=[dict(mode=0,line_count=7),dict(mode=1,area_count=40,area_seed=3),dict(mode=2),dict(mode=3),dict(mode=5,surface_prim='/World/Terrain',surface_count=50,surface_seed=2)]
@@ -121,7 +122,7 @@ def storage():
     d={'pts':pts,'dab':41,'next':1000};text=m.paint_encode(d);back=m.paint_decode(text)
     assert back['dab']==41 and back['next']==1000 and np.array_equal(back['pts'][:,6],pts[:,6]) and np.allclose(back['pts'][:,:6],pts[:,:6],atol=1e-5*np.abs(pts[:,:6]).max())
     assert m.paint_encode(back)==text                                                                    # round trip is stable (no drift on repeated saves)
-    empty=m.paint_decode('');assert len(empty['pts'])==0 and empty['next']==0 and m.paint_decode(m.paint_encode(empty))['pts'].shape==(0,7)
+    empty=m.paint_decode('');assert len(empty['pts'])==0 and empty['next']==0 and m.paint_decode(m.paint_encode(empty))['pts'].shape==(0,getattr(m,'PAINT_WIDE',7))
     for bad in ('garbage','p2:0:0:0:','p1:5:0:0:'+text.split(':',4)[4]):
         try:m.paint_decode(bad);raise AssertionError('accepted '+bad[:20])
         except ValueError:pass

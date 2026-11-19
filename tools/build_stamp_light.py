@@ -1,13 +1,16 @@
-"""Build Arraytron Stamp 0.9.3, the light one: hython tools/build_stamp_light.py   (hython 22 or 20.5)
-A LOP HDA of its own (arraytron::stamp::0.9.3), not the Arraytron network: ONE Python LOP inside, the stamps in ONE text parameter, a small viewer state and the Stamp Gallery panel.
-Writes dist/Arraytron_Stamp_v0.9.3.hda, or otls_h205/Arraytron_Stamp_v0.9.3_H205.hda with hython 20.5."""
+"""Build Arraytron Stamp 0.11.0 (Paint Engine 2.0), the light one: hython tools/build_stamp_light.py   (hython 22 or 20.5)
+A LOP HDA of its own (arraytron::stamp::0.11.0), not the Arraytron network: ONE Python LOP inside, the stamps in ONE text parameter, a small viewer state and the Stamp Gallery panel.
+Writes dist/Arraytron_Stamp_v0.11.0.hda, or otls_h205/Arraytron_Stamp_v0.11.0_H205.hda with hython 20.5 (0.10.0 stays next to it: the rollback).
+The PythonModule starts with src/brushcore.py (Arraytron BrushCore 2.0, shared with Arraytron)."""
 import sys, json, re
 from pathlib import Path
 import hou
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
-STAMP_VERSION='0.9.3';TYPE='arraytron::stamp::%s'%STAMP_VERSION;STATE='arraytron_stamp_'+STAMP_VERSION.replace('.','')
+sys.path.insert(0,str(ROOT/'src'))
+import brushcore as BC
+STAMP_VERSION='0.12.0';TYPE='arraytron::stamp::%s'%STAMP_VERSION;STATE='arraytron_stamp_'+STAMP_VERSION.replace('.','')
 H205=versions.is_h205()
 HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v%s%s.hda'%(STAMP_VERSION,'_H205' if H205 else ''))
 
@@ -30,7 +33,8 @@ def bank():
         hou.FloatParmTemplate('proto_weight#','Weight',1,default_value=(1,),min=0,max=10,min_is_strict=True,help='Relative weight: Random Prototype draws this row by it (1 and 2 mean the same as 10 and 20); 0 never draws it.'),
         hou.FloatParmTemplate('proto_scale#','Scale',1,default_value=(1,),min=0.0001,max=10,min_is_strict=True,help='Size multiplier for this prototype only, on top of the stamp\'s own scale.'),
         hou.FloatParmTemplate('proto_scalevar#','Scale Random',1,default_value=(0,),min=0,max=0.99,min_is_strict=True,max_is_strict=True,help='Extra random size variation for this prototype only, as a fraction: scale x (1 +/- amount).'),
-        hou.FloatParmTemplate('proto_rot#','Rotation Offset (deg)',3,default_value=(0,0,0),min=-180,max=180,help='Turns this prototype itself (XYZ Euler degrees) FIRST, before the stamp\'s rotation. Use it to correct a model authored facing the wrong way.'))
+        hou.FloatParmTemplate('proto_rot#','Rotation Offset (deg)',3,default_value=(0,0,0),min=-180,max=180,help='Turns this prototype itself (XYZ Euler degrees) FIRST, before the stamp\'s rotation. Use it to correct a model authored facing the wrong way.'),
+        hou.StringParmTemplate('proto_mats#','Materials',1,default_value=('',),help='Material variants of this prototype: Material prims of the incoming stage, space separated, or a name pattern (/Materials/rock_* is every Material under /Materials whose name starts with rock_). A stamp has a material number: 0 is the prototype\'s own material, 1 the first of this list, 2 the second ... (Brush > Randomization > Material picks it for new stamps; the Material column of the STAMPS table, M in the Edit mode and the Edit tab change it afterwards). The stamps stay point instances: a prototype is made per material in use. Empty: no variants.'))
     return hou.FolderParmTemplate('protos','Prototype Bank',folder_type=hou.folderType.MultiparmBlock,default_value=1,parm_templates=entry)
 
 def parms():
@@ -52,41 +56,66 @@ def parms():
                f('yawrand','Random Rotate (+/- deg)',1,default_value=(0.0,),min=0,max=180,help='Every stamp is turned about its up axis by a random angle between minus and plus this (180 = any direction).'),
                f('tilt','Random Tilt (+/- deg)',1,default_value=(0.0,),min=0,max=90,help='Every stamp leans off its up axis by a random angle up to this, in any direction.'),
                i('seed','Seed',1,default_value=(1,),min=0,max=100000,help='Changes the whole random sequence; more stamps never change the earlier ones.')]
+    import_items=[callback(b('proto_import','Import Prototype Inputs',help='Read every prototype wired into the Prototype Inputs 2 - 4 (a merge, a node tree, a Reference, an Asset Reference ...): each one becomes a row of the Prototype Bank (an Input Connection row with its Prim Path set, so it stays live; Weight, Scale, Scale Random and Rotation Offset are on the row) and an asset of the Asset Library. Click again after wiring more: what is already a row is kept as it is. Undoable.'),"kwargs['node'].hdaModule().proto_import_button(kwargs['node'])"),
+           t('proto_import_library','Also Add To The Asset Library',default_value=True,help='Import Prototype Inputs also adds every prototype to the Asset Library (category Imported): the original USD file when the prototype is a plain reference to one, else a standalone file written next to the library.'),
+           t('proto_import_replace','Replace The Bank',default_value=False,help='Import Prototype Inputs rebuilds the Prototype Bank from the inputs only: the rows that were there are removed. Off: the rows stay, blank rows are reused and the new prototypes follow.')]
     asset=[bank(),
            i('proto','Prototype Row',1,default_value=(0,),min=0,max=999,help='The prototype a new stamp uses: its row number in the Prototype Bank (0 = the first enabled row). The mousewheel cycles the working set, the keys 1 to 9 pick a row.'),
            t('protorand','Random Prototype',default_value=False,help='Every stamp takes a random prototype: one of the selected cards (the stamp cycle; every enabled row when none is selected), by its Weight in the Prototype Bank. Same as the Random button of the shelf.')]
     advanced=[f('snap','Snap Position',1,default_value=(0.0,),min=0,max=1000,help='Snap new stamps to a grid of this size (X and Z); the point is put back on the surface. 0 = off.'),
               f('snaprot','Snap Rotation (deg)',1,default_value=(0.0,),min=0,max=180,help='Round the turn of a new stamp to a multiple of this (the Ctrl drag of the Place brush uses 15 degrees when this is 0). 0 = off.'),
               t('dragset','Drag Sets Rotation And Scale',default_value=True,help='On: press sets the position, dragging turns (sideways) and scales, release places. Off: a click places at once.')]
-    paint=[f('paint_radius','Radius',1,default_value=(1.0,),min=0.01,max=50,help='The radius of the Paint brush, in scene units (Shift + mousewheel, [ and ] in the viewport).'),
-           f('paint_density','Density',1,default_value=(2.0,),min=0,max=100,help='Stamps per unit area that a dab tries to place (Ctrl + mousewheel). The Spacing keeps the paint from piling up, so painting over the same spot fills it up to the Spacing and then stops.'),
+    paint=[hou.MenuParmTemplate('paint_engine','Brush Engine',menu_items=('swept','classic'),menu_labels=('Continuous Stroke (Paint Engine 2.0)','Classic Dabs (0.9)'),default_value=0,help='Continuous Stroke: a stroke is one painted ribbon (the density and scale falloff are measured from the whole stroke, the same result at any mouse speed, no circles where the dabs were). Classic Dabs: the brush of 0.9 (a dab every 35 % of the radius, the Edge Falloff below).'),
+           f('paint_radius','Radius',1,default_value=(1.0,),min=0.01,max=50,help='The radius of every brush (Paint, Erase, Relax, Grow / Shrink, Push, Replace, Orient, Clone), in scene units (Shift + mousewheel, [ and ] in the viewport).'),
+           f('paint_strength','Strength',1,default_value=(1.0,),min=0,max=1,help='Paint: the share of the Density that is painted (1 all of it). The editing brushes: how strongly they act (Ctrl + mousewheel for them, - and = in the viewport).'),
+           f('paint_noise','Density Randomness (Spatter)',1,default_value=(0.0,),min=0,max=1,help='0 paints an even spray. More makes the density patchy, in clumps of about the brush size (the Spatter of Geo-Scatter); the same Seed gives the same clumps.'),
+           f('paint_density','Density',1,default_value=(2.0,),min=0,max=100,help='Stamps per unit area (square scene unit) in the middle of a stroke (Ctrl + mousewheel). It is not the Spacing: the Spacing only keeps two stamps apart, so painting over the same spot fills it up to the Spacing and then stops.'),
            f('paint_spacing','Spacing',1,default_value=(0.4,),min=0,max=10,help='The least distance between two stamps painted or already there (0 = off).'),
-           f('paint_falloff','Edge Falloff (classic)',1,default_value=(0.5,),min=0,max=1,help='The classic rim thinning of the dab brush: 0 is even, 1 leaves almost nothing at the edge. Used while Density Falloff and Scale Falloff are both off (so old scenes paint as they did); with either on, the Density Profile below does this and this is ignored.')]
+           f('paint_falloff','Edge Falloff (classic)',1,default_value=(0.5,),min=0,max=1,help='The rim thinning of the Classic Dabs engine: 0 is even, 1 leaves almost nothing at the edge. Ignored by the Continuous Stroke engine (its Density Profile does this).')]
     def dis(template,cond):
         template.setConditional(hou.parmCondType.DisableWhen,cond);return template
     def hid(template,cond):
         template.setConditional(hou.parmCondType.HideWhen,cond);return template
     def menu(name,label,items,labels,default,help):
         return hou.MenuParmTemplate(name,label,menu_items=items,menu_labels=labels,default_value=default,help=help)
-    CURVES=('linear','smoothstep','smootherstep','ease_in','ease_out','custom');CURVE_LABELS=('Linear','Smoothstep','Smootherstep','Ease In','Ease Out','Custom Ramp')
+    CURVES=BC.BC_CURVES;CURVE_LABELS=BC.BC_CURVE_LABELS                                       # BrushCore's curves: the 0.9.3 order, Constant and Gaussian appended
     def profile(p,name,center_max):
         on=f'{{ paint_{p}_on == 0 }}'
-        items=[dis(f('paint_%s_min'%p,'Edge Minimum (%)',1,default_value=(0.0 if p=='dens' else 30.0,),min=0,max=100,help=('The density at the rim of the brush, as a percentage of the Density: 0 leaves nothing at the edge.' if p=='dens' else 'The scale at the rim of the brush, as a percentage of the stamp\'s scale: 30 makes the stamps at the rim 30 % of their size.')),on)]
+        items=[dis(f('paint_%s_min'%p,'Edge Minimum (%)',1,default_value=(0.0 if p=='dens' else 25.0,),min=0,max=100,help=('The density at the rim of the brush, as a percentage of the Density: 0 leaves nothing at the edge.' if p=='dens' else 'The scale at the rim of the brush, as a percentage of the stamp\'s scale: 30 makes the stamps at the rim 30 % of their size.')),on)]
         if center_max:items.append(dis(f('paint_scale_max','Center Maximum (%)',1,default_value=(100.0,),min=0,max=300,help='The scale at the plateau of the brush, as a percentage of the stamp\'s scale. 100 keeps the stamps in the middle at their size; more makes them bigger there.'),on))
-        items+=[dis(f('paint_%s_width'%p,'Falloff Width (%)',1,default_value=(100.0,),min=0,max=100,help='How much of the radius the fall takes, counted from the rim inwards: 100 starts at the centre, 40 keeps the inner 60 % at full value, 0 is a hard edge.'),on),
+        items+=[dis(f('paint_%s_width'%p,'Falloff Width (%)',1,default_value=(80.0 if p=='dens' else 55.0,),min=0,max=100,help='How much of the radius the fall takes, counted from the rim inwards: 100 starts at the centre, 40 keeps the inner 60 % at full value, 0 is a hard edge.'),on),
                 dis(f('paint_%s_strength'%p,'Falloff Strength (%)',1,default_value=(100.0,),min=0,max=100,help='How much of the fall is used: 0 is no falloff, 100 the whole fall down to the Edge Minimum.'),on),
-                dis(menu('paint_%s_curve'%p,'Curve',CURVES,CURVE_LABELS,1,'The shape of the fall. Smoothstep and Smootherstep look natural; Ease In stays full longer and drops at the rim, Ease Out drops early; Custom Ramp is yours.'),on),
+                dis(menu('paint_%s_curve'%p,'Curve',CURVES,CURVE_LABELS,1 if p=='dens' else 2,'The shape of the fall. Smoothstep and Smootherstep look natural; Ease In stays full longer and drops at the rim, Ease Out drops early; Custom Ramp is yours.'),on),
                 dis(hid(hou.RampParmTemplate('paint_%s_ramp'%p,'Custom Ramp',hou.rampParmType.Float,default_value=2,help='The fall by hand: left is the rim, right the inner edge of the fall, up is full. A straight ramp from 0 to 1 is a linear fall.'),'{ paint_%s_curve != 5 }'%p),on)]
         return hou.FolderParmTemplate('paint_f_%s'%p,name,folder_type=hou.folderType.Simple,parm_templates=tuple(items))
     paint+=[hou.FolderParmTemplate('paint_f_falloff','Falloff',folder_type=hou.folderType.Simple,parm_templates=(
-                callback(menu('paint_preset','Preset',('uniform','soft','sparse','growth','dense','custom'),('Uniform (no falloff)','Soft Natural','Sparse Edges','Growth','Dense Center','Custom'),0,'Sets the falloff parameters below: Uniform has none, Soft Natural thins and shrinks gradually, Sparse Edges thins strongly and shrinks mildly, Growth shrinks strongly and thins moderately, Dense Center keeps the stamps in the middle. Edit any parameter to make your own.'),"m=kwargs['node'].hdaModule();m.stamp_paint_preset(kwargs['node'])"),
-                t('paint_dens_on','Enable Density Falloff',default_value=False,help='The number of stamps falls towards the rim of the brush, from the Density in the middle to the Edge Minimum at the rim. Painted as a continuous ribbon: no circles at the dabs, the same at any mouse speed.'),
-                t('paint_scale_on','Enable Scale Falloff',default_value=False,help='The stamps get smaller towards the rim of the brush. The scale is multiplied into the stamp\'s scale after the Random Scale (and the bank row\'s Scale at the cook): final = scale x falloff.'))),
+                callback(menu('paint_preset','Preset',BC.BC_PRESETS,BC.BC_PRESET_LABELS,BC.BC_PRESETS.index('organic'),'Sets the falloff parameters below: Uniform Scatter has none, Soft Natural thins and shrinks gradually, Sparse Edges thins strongly and shrinks mildly, Growth shrinks strongly and thins moderately, Dense Center keeps the stamps in the middle, Hard Stamp a hard edge, Edge Taper only shrinks towards the rim, Sparse Organic (the default) a broad sparse rim with a tighter size taper. Every preset only sets these parameters: edit any to make your own.'),"m=kwargs['node'].hdaModule();m.stamp_paint_preset(kwargs['node'])"),
+                t('paint_dens_on','Enable Density Falloff',default_value=True,help='The number of stamps falls towards the rim of the brush, from the Density in the middle to the Edge Minimum at the rim. Painted as a continuous ribbon: no circles at the dabs, the same at any mouse speed.'),
+                t('paint_scale_on','Enable Scale Falloff',default_value=True,help='The stamps get smaller towards the rim of the brush. The scale is multiplied into the stamp\'s scale after the Random Scale (and the bank row\'s Scale at the cook): final = scale x falloff.'))),
             profile('dens','Density Profile',False),profile('scale','Scale Profile',True)]
     def box(name,label,templates):
         return hou.FolderParmTemplate(name,label,folder_type=hou.folderType.Simple,parm_templates=tuple(templates))
+    def hidewhen(template,cond):
+        template.setConditional(hou.parmCondType.HideWhen,cond);return template
+    cinfo=s('clone_info','Clone Source',1,default_value=('',),help='Read only. What the Clone brush stamps (Ctrl + click with the Clone brush picks the stamps under the brush).');cinfo.setDefaultExpression(('hou.pwd().hdaModule().stamp_clone_info(hou.pwd())',));cinfo.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));cinfo.setConditional(hou.parmCondType.DisableWhen,'{ seed >= 0 }')
+    sculpt=[box('sc_common','Every Editing Brush',[f('brush_amount','Amount',1,default_value=(0.3,),min=0,max=2,help='How much a brush does per dab: Grow / Shrink scale change, Push / Attract distance (in brush radii), Orient turn, Soft Erase thinning. Ctrl + mousewheel.'),
+                hou.MenuParmTemplate('brush_curve','Brush Falloff',menu_items=BC.BC_CURVES,menu_labels=BC.BC_CURVE_LABELS,default_value=1,help='How the effect of the editing brushes falls from the hardness ring to the rim (the same curves as the Paint falloff).'),
+                f('brush_hardness','Hardness',1,default_value=(0.2,),min=0,max=0.99,help='The share of the radius at full effect; the effect falls from there to the rim.'),
+                t('brush_workset','Only The Working Set',default_value=False,help='Erase, Relax, Grow / Shrink, Push and Orient only touch stamps of the selected cards (the working set; the Prototype Row when none is selected).')]),
+            box('sc_erase','Erase',[t('erase_soft','Soft Thinning',default_value=False,help='Off: Erase switches off every stamp inside the brush. On: it thins them, less at the rim, a little more with every pass (Shift + LMB does the other one). Erased stamps are switched off, not removed: the Edit tab restores them.')]),
+            box('sc_scale','Grow / Shrink',[hou.MenuParmTemplate('scale_mode','Mode',menu_items=('grow','shrink','set','smooth'),menu_labels=('Grow','Shrink','Set To Target','Smooth Sizes'),default_value=0,help='What a plain drag does; Ctrl + drag shrinks, Shift + drag smooths. Grow and Shrink are relative and symmetric (a grow and a shrink of the same amount cancel); nothing ever gets a size of 0.'),
+                f('scale_target','Target Scale',1,default_value=(1.0,),min=0.01,max=10,help='Set To Target eases the stamps under the brush towards this scale.')]),
+            box('sc_push','Push / Attract',[hou.MenuParmTemplate('push_mode','Mode',menu_items=BC.BC_PUSH_MODES,menu_labels=('Push Away','Attract','Drag Along The Stroke','Smooth (gather)'),default_value=0,help='What a plain drag does; Ctrl + drag attracts, Shift + drag drags along the stroke. The stamps stay on the surface at their height above it.')]),
+            box('sc_orient','Orient / Comb',[hou.MenuParmTemplate('orient_mode','Mode',menu_items=('comb','toward','away','random','smooth'),menu_labels=('Comb Along The Stroke','Face The Brush','Face Away','Random Heading','Smooth Headings'),default_value=0,help='What a plain drag does; Ctrl + drag randomizes, Shift + drag smooths the headings. Turns are about each stamp\'s own up axis, so the surface alignment stays.')]),
+            box('sc_replace','Replace',[s('replace_info','Replace With',1,default_value=('the working set, by Weight (every enabled row when none is selected)',),help='Replace swaps the prototype of the stamps under the brush for one of the selected cards, drawn by Weight; position, rotation and scale stay.')]),
+            box('sc_clone','Clone',[cinfo,f('clone_yaw','Rotate (deg)',1,default_value=(0.0,),min=-180,max=180,help='Turns every copy about the surface normal (Shift + mousewheel with the Clone brush).'),
+                t('clone_random','Random Rotate Copies',default_value=True,help='Every copy also gets its own random turn (by the Seed).'),f('clone_scale','Scale',1,default_value=(1.0,),min=0.05,max=10,help='Scales every copy (offsets and stamps; Ctrl + mousewheel with the Clone brush).'),
+                f('clone_spacing','Spacing (x size)',1,default_value=(1.2,),min=0.2,max=10,help='Dragging the Clone brush stamps a copy every this many source sizes along the stroke.'),t('clone_conform','Conform To Surface',default_value=True,help='Every member of a copy is dropped onto the surface under it, at the height it had above its own ground.')])]
     protorand=asset.pop(2)                                                                                       # Randomization tab: what changes between one stamp and the next, in three boxes (the prototype, the scale, the rotation) and the Seed
-    random=[box('rnd_proto','Prototype',[protorand]),box('rnd_scale','Scale',transform[2:4]),box('rnd_rot','Rotation',transform[4:7]),box('rnd_seed','Seed',transform[7:8])]
+    asset[0:0]=import_items                                                                                         # the import button and its toggles above the Prototype Bank (after the pop: it counts by index)
+    matnum=i('matnum','Material Number',1,default_value=(1,),min=1,max=20,help='Fixed Number: every new stamp takes this material of its bank row\'s Materials (1 the first; beyond the end of a row\'s list it wraps round).');matnum.setConditional(hou.parmCondType.HideWhen,'{ matmode != 1 }')
+    material=[hou.MenuParmTemplate('matmode','Material',menu_items=('random','fixed','own'),menu_labels=('Random (by Seed)','Fixed Number','Prototype\'s Own'),default_value=0,help='Which material variant a new stamp takes (the Materials of its bank row): a random one (the same Seed gives the same materials), a fixed number, or none (the prototype as it is). A row without Materials always keeps its own. Change it afterwards in the Material column of the STAMPS table, with M in the Edit mode, or with the Edit tab buttons.'),matnum]
+    random=[box('rnd_proto','Prototype',[protorand]),box('rnd_mat','Material',material),box('rnd_scale','Scale',transform[2:4]),box('rnd_rot','Rotation',transform[4:7]),box('rnd_seed','Seed',transform[7:8])]
     placement=transform[0:2]+[t('sit','Sit On Surface',default_value=True,help='The bottom of the prototype touches the surface, instead of its pivot: a prototype with its origin in the middle (a character, a ball) stands on the ground or on top of another stamp and does not sink into it. Off: the pivot goes on the surface.'),
                              t('smooth','Smooth Normals',default_value=True,help='Up follows the smooth normal of the surface under the mouse (between the vertices, creases over 60 degrees stay sharp); off uses the flat normal of the face.')]+advanced                                                                            # where and how a stamp lands: Align To Surface, Offset, the snaps, the drag
     ginfo=s('groupinfo','Group',1,default_value=('',),help='Read only. What the Group brush places.');ginfo.setDefaultExpression(('hou.pwd().hdaModule().stamp_group_info(hou.pwd())',));ginfo.setDefaultExpressionLanguage((hou.scriptLanguage.Python,));ginfo.setConditional(hou.parmCondType.DisableWhen,'{ seed >= 0 }')
@@ -106,30 +135,42 @@ def parms():
           callback(b('sel_all','Select All'),call('stamp_select_all')),callback(b('sel_none','Select None'),call('stamp_select_none')),callback(b('sel_invert','Invert Selection'),call('stamp_select_invert')),
           callback(b('sel_dup','Duplicate Selected',help='Copy the selected stamps (the copies become the selection). In the viewport: hold Z while dragging the edit handle.'),call('stamp_duplicate_selected')),
           callback(b('sel_del','Delete Selected',help='Remove the selected stamps (undoable). In the viewport: Del.'),call('stamp_delete_selected')),
+          hou.SeparatorParmTemplate('sep_mat'),
+          callback(b('sel_mat_next','Next Material',help='The selected stamps take the next material of their bank row\'s Materials (own, 1, 2, ... own). In the viewport: M in the Edit mode.'),call('stamp_material_next_selected')),
+          callback(b('sel_mat_random','Random Material',help='The selected stamps each take a random material of their bank row\'s Materials.'),call('stamp_material_random_selected')),
+          callback(b('sel_mat_own','Prototype\'s Own Material',help='The selected stamps go back to the prototype\'s own material (material 0).'),call('stamp_material_own_selected')),
+          hou.SeparatorParmTemplate('sep_erased'),
+          callback(b('erased_restore','Restore Erased Stamps',help='The stamps the Erase brush switched off come back (one undo step).'),call('stamp_restore_erased')),
+          callback(b('erased_remove','Remove Erased Stamps',help='Removes the stamps the Erase brush switched off from the Stamps text for good (the later stamps get new numbers, as with Delete; one undo step).'),call('stamp_remove_erased')),
           hou.SeparatorParmTemplate('sep_edit'),
           callback(b('clear','Clear All Stamps',help='Remove every stamp (undoable).'),call('stamp_clear'))]
     options=[callback(b('start','Place Instances',help='Enter the viewport tool (Esc leaves). Entering the node\'s tool does the same.'),call('stamp_start')),
              s('target','Place On',1,default_value=('',),help='What the tool places on: prim paths of the incoming stage, space separated (the meshes and basic shapes under them). Empty: the ground plane Y = 0.'),
              t('onstamps','Place On Stamps',default_value=True,help='New stamps also land on the stamps already placed (stack them, put a rock on a rock). Off: they go through the stamps to Place On. The Delete brush and Edit mode always see the stamps.'),
+             t('slotcolors','Slot Colors',default_value=True,help='Every prototype slot of the bank gets its own random colour: over its card in the pane and over the preview of the next stamp in the viewport (the placed stamps keep their own look).'),
+             dis(f('slotcolor_amount','Color Overlay',1,default_value=(0.5,),min=0,max=1,help='How strongly the slot colour lies over the card and the preview: 0 none, 1 the colour (the shading stays).'),'{ slotcolors == 0 }'),
+             dis(i('slotcolor_seed','Color Seed',1,default_value=(0,),min=0,max=100,help='Another set of random slot colours.'),'{ slotcolors == 0 }'),
              s('outputpath','Output Prim',1,default_value=('/World/Stamps',),help='Where the PointInstancer is written.'),
              t('hidesrc','Make Prototype Source Primitives Invisible',default_value=True,help='Make the prims the prototypes come from invisible (the stamps show them; the originals would also show where they are). USD files are always staged hidden.'),
              hou.SeparatorParmTemplate('sep_pane'),
              panestatus,
              callback(b('reload_pane','Reload Stamp Pane',help='Register the Stamp\'s Parameters pane (the cards, the stamps table, the Asset Library) again, then select the node again. Use it when the pane below says it is not loaded.'),call('stamp_reload_pane'))]
     return hou.ParmTemplateGroup((
-        hidden(s('stamps','Stamps',1,default_value=('',),tags={'editor':'1','editorlines':'8-30'},help='One line per stamp: x y z  rx ry rz  sx sy sz  prototype row  on (1 / 0). Edit it in the Stamps table of the Parameters pane; the tool adds a line per click.')),
+        hidden(s('stamps','Stamps',1,default_value=('',),tags={'editor':'1','editorlines':'8-30'},help='One line per stamp: x y z  rx ry rz  sx sy sz  prototype row  on (1 / 0)  material (0 own, k the k-th of the row\'s Materials; lines from before 0.10.0 have no material and read as 0). Edit it in the Stamps table of the Parameters pane; the tool adds a line per click.')),
         hidden(s('selection','Selection',1,default_value=('',),help='The selected stamps (line numbers). Written by the Edit mode.')),
         hidden(s('group','Group Layout',1,default_value=('',),tags={'editor':'1','editorlines':'4-20'},help='The custom layout of the Group brush: one line per member, bank row, x y z offset, rx ry rz, scale. Empty = a ring of the selected cards. Set it with Brush > Group > Set Layout From Selected Stamps.')),
         hidden(s('workset','Working Set',1,default_value=('',),help='The bank rows of the selected cards: the mousewheel cycles them and Random Prototype draws from them.')),
         hidden(s('favorites','Favorites',1,default_value=('',),help='The starred cards (bank rows).')),
-        hidden(i('brush','Brush',1,default_value=(0,),min=0,max=3,help='0 Place, 1 Delete, 2 Paint, 3 Group.')),
-        hou.FolderParmTemplate('mode','Brush',folder_type=hou.folderType.Tabs,parm_templates=(tab('brush_random','Randomization',random),tab('brush_asset','Asset',asset),tab('brush_advanced','Placement',placement),tab('brush_paint','Paint',paint),tab('brush_group','Group',group))),
+        hidden(s('clone_src','Clone Source',1,default_value=('',),help='The stamps the Clone brush copies (JSON: offsets, rotations, scales, prototypes, materials). Ctrl + click with the Clone brush sets it.')),
+        hidden(i('brush','Brush',1,default_value=(0,),min=0,max=10,help='0 Place, 1 Delete, 2 Paint, 3 Group, 4 Erase, 5 Relax, 6 Grow / Shrink, 7 Push / Attract, 8 Replace, 9 Orient / Comb, 10 Clone.')),
+        hou.FolderParmTemplate('mode','Brush',folder_type=hou.folderType.Tabs,parm_templates=(tab('brush_random','Randomization',random),tab('brush_asset','Asset',asset),tab('brush_advanced','Placement',placement),tab('brush_paint','Paint',paint),tab('brush_group','Group',group),tab('brush_sculpt','Sculpt',sculpt))),
         hou.FolderParmTemplate('mode_edit','Edit',folder_type=hou.folderType.Tabs,parm_templates=tuple(edit)),
         hou.FolderParmTemplate('mode_options','Options',folder_type=hou.folderType.Tabs,parm_templates=tuple(options))))
 
 def module_text():
-    core=(ROOT/'src/stamp_core.py').read_text().replace("STAMP_STATE='arraytron_stamp'","STAMP_STATE=%r"%STATE,1).replace("STAMP_TYPE='arraytron::stamp::0.9.3'","STAMP_TYPE=%r"%TYPE,1)
-    return core
+    brush=(ROOT/'src/brushcore.py').read_text()
+    core=brush+'\n'+(ROOT/'src/stamp_core.py').read_text().replace("STAMP_STATE='arraytron_stamp'","STAMP_STATE=%r"%STATE,1).replace("STAMP_TYPE='arraytron::stamp::0.10.0'","STAMP_TYPE=%r"%TYPE,1)
+    return core+'\n\n# ---- Asset Library functions (src/arraytron_library.py, shared with Arraytron)\n'+(ROOT/'src/arraytron_library.py').read_text(encoding='utf8')+'\n\n# ---- Prototype sockets (src/proto_import.py, shared with Arraytron)\n'+(ROOT/'src/proto_import.py').read_text(encoding='utf8')
 
 PANEL_HEADER='''import hou
 import numpy as np
@@ -141,7 +182,7 @@ except ImportError:                                           # Houdini 20.5
 
 def panel_text():
     """The Parameters pane of the node: Qt imports, the Asset Library of Arraytron (library + panel, shared), then the Stamp's cards, panel and entry points."""
-    gallery=(ROOT/'src/stamp_gallery.py').read_text(encoding='utf8').replace("STAMP_TYPE = 'arraytron::stamp::0.9.3'","STAMP_TYPE = %r"%TYPE,1)
+    gallery=(ROOT/'src/stamp_gallery.py').read_text(encoding='utf8').replace("STAMP_TYPE = 'arraytron::stamp::0.10.0'","STAMP_TYPE = %r"%TYPE,1)
     return PANEL_HEADER+(ROOT/'src/arraytron_library.py').read_text(encoding='utf8')+'\n'+(ROOT/'src/arraytron_libpanel.py').read_text(encoding='utf8')+'\n'+gallery
 
 HELP='''<html><body><h1>Arraytron Stamp %s</h1>
@@ -154,9 +195,15 @@ HELP='''<html><body><h1>Arraytron Stamp %s</h1>
 <h2>Place brush</h2>
 <ul><li><b>LMB</b> places; <b>LMB drag</b> sets rotation and scale (a dial shows both). <b>Shift + LMB drag</b> scales only, <b>Ctrl + LMB drag</b> orients to increments, <b>Ctrl + Shift + LMB drag</b> orients freely.</li>
 <li><b>Mousewheel</b> cycles the working set (the selected cards); Shift / Ctrl + wheel scales / rotates the next stamp; the keys 1 to 9 pick a row.</li>
-<li>New stamps land on the stamps already placed (Options &gt; Place On Stamps), so they stack.</li></ul>
+<li>New stamps land on the stamps already placed (Options &gt; Place On Stamps), so they stack.</li>
+<li><b>Slot Colors</b> (Options): every prototype slot of the bank has its own random colour, over its card and over the preview of the next stamp, so you see which prototype comes next (Color Overlay, Color Seed; the placed stamps keep their own look).</li>
+<li>Heavy prototypes: the tool casts against and previews the asset's proxy (as the viewport draws it), read once and kept while Houdini runs.</li></ul>
 <h2>Group brush</h2><p>One click stamps several prototypes in a layout (Brush &gt; Group &gt; Layout: radial, square, hexagon, random cluster, line, spiral) of the selected cards, all the same size unless you set the group's own randomization (Spacing, Count, Shuffle Order, Match Member Sizes, Random Group / Member Scale, Conform To Surface), or the layout of stamps you placed (Edit mode: select them, press <b>G</b> or Brush &gt; Group &gt; Set Layout From Selected Stamps). Drag turns and scales the whole group. The <b>Random</b> button on the shelf takes a random selected card for every stamp.</p><h2>Sheet</h2><p>A cell you edit in the STAMPS table changes every selected stamp, or all stamps (Edit: All stamps), with Set, Add or Multiply.</p><h2>Paint brush</h2><p>Drag to paint stamps inside a disc (Brush &gt; Paint: Radius, Density, Spacing, Edge Falloff); <b>Ctrl + drag</b> erases the stamps inside it. Shift / Ctrl + mousewheel change the radius / density. The stamps take the Brush &gt; Transform randomness and the working set; one undo step per stroke. Place shows the prototype itself as a ghost under the mouse.</p>
+<h2>Materials</h2><p>Each bank row can list <b>Materials</b> (Material prims, or a pattern such as /Materials/rock_*). A stamp has a material number: 0 the prototype's own, 1 the first of its row's list, and so on. New stamps take one by <b>Brush &gt; Randomization &gt; Material</b> (Random, Fixed Number, Prototype's Own). Change them afterwards: the <b>Material</b> column of the STAMPS table (right click: Material of the selected stamps), <b>M</b> in the Edit mode, or the Edit tab buttons. The stamps stay point instances: a prototype is made per material in use.</p>
 <h2>Delete brush</h2><p>Click, or drag over several stamps and release: they are deleted in one undo step.</p>
+<h2>Paint Engine 2.0: the sculpt brushes (C opens the brush menu)</h2><ul><li><b>Paint</b> paints a continuous ribbon: the density and the scale fall towards its edge (Brush &gt; Paint &gt; Falloff), the same at any mouse speed.</li>
+<li><b>Erase</b> switches the stamps under the brush off (Shift: soft thinning); Edit &gt; Restore Erased Stamps brings them back. <b>Relax</b> evens out the spacing. <b>Grow / Shrink</b> (Ctrl shrinks, Shift smooths sizes). <b>Push / Attract</b> (Ctrl attracts, Shift drags along the stroke). <b>Replace</b> swaps prototypes for the working set and keeps the placement. <b>Orient / Comb</b> turns the stamps along the stroke (Ctrl random, Shift restore). <b>Clone</b>: Ctrl + click picks the stamps under the brush, click or drag stamps copies.</li>
+<li>Shift / Ctrl + mousewheel: radius / strength (density for Paint, amount for the sculpt brushes); <b>H</b> cycles the hints (minimal, standard, expanded, hidden). Every stroke is one undo step; Esc during a stroke cancels it.</li></ul>
 <h2>Edit mode (Shift + B)</h2>
 <ul><li>Click selects a stamp, Shift + click adds or removes, drag on nothing box selects. The edit handle moves, rotates and scales the selection about its centre; hold <b>Z</b> while dragging it to duplicate. <b>Del</b> deletes the selection.</li>
 <li>The <b>STAMPS</b> table of the Parameters pane lists every stamp; edit a cell to edit the stamp. Its selection is the viewport selection.</li></ul>
@@ -198,7 +245,7 @@ def build():
     definition.addSection('Help',HELP%STAMP_VERSION)
     definition.updateFromNode(asset);asset.matchCurrentDefinition();add_viewer_state(definition);add_icon(definition)
     section=definition.sections()['DialogScript'];text=section.contents()
-    for index,label in enumerate(('Scene (ground, props)','Prototype Input 2','Prototype Input 3','Prototype Input 4'),1):text=re.sub(r'^\s*inputlabel\s+%d\s+.*$'%index,'    inputlabel\t%d\t"%s"'%(index,label),text,flags=re.M)
+    for index,label in enumerate(('Scene (ground, props)','Prototype Socket 2 (models, merges, node trees)','Prototype Socket 3 (more models)','Prototype Socket 4 (more models)'),1):text=re.sub(r'^\s*inputlabel\s+%d\s+.*$'%index,'    inputlabel\t%d\t"%s"'%(index,label),text,flags=re.M)
     section.setContents(text)
     usd=asset.stage();errors=(asset.errors(),cook.errors());assert not any(errors),errors
     print(json.dumps({'hda':str(HDA),'type':TYPE,'errors':list(asset.errors())},indent=2))

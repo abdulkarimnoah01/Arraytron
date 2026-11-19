@@ -15,7 +15,7 @@ Wire a **Camera LOP** into the first input (before Arraytron) and pick it in *Ca
 | Density By Distance, Near / Far Distance, Minimum Density | Full density up to Near, falling linearly to the Minimum at Far. Each instance has its own fixed random number keyed on its id, so a nearer camera only ever adds instances back. |
 | Seed | Seed of those random numbers. |
 
-An instance is a sphere: its prototype's bounding radius (about the instance origin) times its scale. A read-out shows the visible count and why instances were hidden (frustum, too far, thinned, behind).
+An instance is a sphere: its prototype's bounding radius (about the instance origin, including the transform on the prototype's own root prim, v1.38.1) times its scale. A read-out shows the visible count and why instances were hidden (frustum, too far, thinned, behind).
 
 ## Level of detail and proxies
 

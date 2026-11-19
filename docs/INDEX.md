@@ -1,4 +1,4 @@
-# Arraytron documentation index (v1.34.0)
+# Arraytron documentation index (v1.38.3)
 
 Start with the **User guide**. Everything is plain Markdown in `docs/`; the project status is the top section of `STATUS.md`, the user-facing overview is `README.md`, and the working rules for developers are in `CLAUDE.md`.
 
@@ -55,4 +55,9 @@ Start with the **User guide**. Everything is plain Markdown in `docs/`; the proj
 - [Biome](BIOME.md): rule based scatter by elevation, slope, moisture and temperature.
 - [Mode Palette](MODE_PALETTE.md): the Distribution Mode as a row of icon cells in the Parameters pane.
 - [Asset Library](ASSET_LIBRARY.md): a local catalogue of USD assets with your own categories, into the Prototype Bank.
+* `SAVED_MASKS.md` - Save Mask (a grid in the stage and a named primvar), Mask Source Upstream Mask and the offer when Arraytron nodes are wired (v1.38.0).
+* `PROTOTYPE_SOCKETS.md` - Import Prototype Inputs: the Prototype Inputs 2 - 4 as sockets that fill the Prototype Bank and the Asset Library in one click (v1.37.0 / Stamp 0.12.0).
+* `PAINT_ENGINE_2.md` - Paint Engine 2.0: BrushCore shared by Arraytron and Arraytron Stamp, continuous strokes with independent density and scale falloff, the sculpt brushes, keys, compatibility (v1.36.0 / Stamp 0.11.0); `PAINT_ENGINE_2_PERFORMANCE.md` the measurements.
+* `EDIT.md` - the Edit tab: select instances in the viewport and move, rotate, scale or delete them live, a real-time edit store (v1.35.0).
+* `LOOKDEV.md` - the Lookdev tab: materials per prototype, values that vary per instance in the material network, ready-made USD assets (v1.35.0).
 * `MIRROR.md` - Mirror, the Mirror tab: planes, custom planes, radial and kaleidoscope, any number of operations, flipping (v1.34.0).

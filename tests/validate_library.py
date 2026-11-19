@@ -3,16 +3,16 @@ The library (a per-user JSON file with custom categories, assets from the Solari
 the GUI. What is proved here: categories (default, add, rename, delete moves the assets to Uncategorized, order), assets (dedupe, search by name and tag, rename, tags, move), the file (a round trip,
 an atomic save, a broken file kept aside, the ARRAYTRON_LIBRARY folder), importing (USD files, a folder, an Asset Catalog data source with thumbnails and non-USD items skipped), Add to Bank on a real node
 (the default row replaced, new rows, a chosen row, the prototype really comes from the file and the node cooks), the panel code in the HDA section, and the previous release unchanged.
-Env ARRAYTRON_MUTATE=lib_category|lib_dedupe|lib_persist|lib_bank breaks the product; the suite must FAIL."""
+Env ARRAYTRON_MUTATE=lib_category|lib_dedupe|lib_persist|lib_bank|lib_noprim breaks the product; the suite must FAIL."""
 from pathlib import Path
 import hou, json, os, shutil, sys, tempfile, time, types
 import numpy as np
-from pxr import Usd, UsdGeom
+from pxr import Sdf, Usd, UsdGeom
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_library_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 LIB=WORK/'lib';os.environ['ARRAYTRON_LIBRARY']=str(LIB)
@@ -52,6 +52,8 @@ def module(a=None):
     if MUTATE=='lib_persist' and not g.get('_mutated3'):
         g['_mutated3']=True;good=g['save_library']
         g['save_library']=lambda data,folder=None:good(dict(data,assets=[]),folder)                          # the assets are not written
+    if MUTATE=='lib_noprim' and not g.get('_mutated5'):
+        g['_mutated5']=True;g['default_prim_of']=lambda file_path:''                                                                    # the library forgets the prim of a file without a default prim
     if MUTATE=='lib_bank' and not g.get('_mutated4'):
         g['_mutated4']=True;good=g['add_to_bank']
         def bad(node,asset,row=None):
@@ -152,16 +154,33 @@ def unchanged():
                 o.append(t.name())
                 if t.type() in (hou.parmTemplateType.Folder,hou.parmTemplateType.FolderSet) and hasattr(t,'parmTemplates'):walk(t.parmTemplates())
         walk(g.entries());return o
-    assert set(n for n in names(old) if not n.startswith('ui_'))<=set(names(new)) and all(n.startswith(('mirror','tab_mirror','tab_source','biome_','noise_','view_mode','copy_','viz_','mask_viz','mask_noise','ui_','mask_brush','mask_paint','mask_hpaint','mask_gamma','mask_curve','mask_outrange','mask_sym','surface_dir','surface_light','surface_spread','surface_soft','surface_opp','bound_gizmo','surface_proxy','surface_ghost','scatter_info','surface_limit','field_m','blast_','fall_mask_','mask_fade_','mask_scale_curve','mask_export_','mask_bake_go','mask_save_go','mask_load_go')) for n in set(names(new))-set(names(old)))                    # nothing removed or moved; a later release may add Biome fields only
+    assert set(n for n in names(old) if not n.startswith('ui_'))<=set(names(new)) and all(n.startswith(('proto_import','paint_engine','paint_noise','paint_preset','paint_dens_','paint_scale_','paint_f_','brush_','erase_soft','scale_mode','scale_target','push_mode','orient_mode','paint_swap_row','clone_','paint_clone','edit_','lk_','tab_edit','tab_lookdev','mirror','tab_mirror','tab_source','biome_','noise_','view_mode','copy_','viz_','mask_viz','mask_noise','ui_','mask_brush','mask_paint','mask_hpaint','mask_gamma','mask_curve','mask_outrange','mask_sym','surface_dir','surface_light','surface_spread','surface_soft','surface_opp','bound_gizmo','surface_proxy','surface_ghost','scatter_info','surface_limit','field_m','blast_','fall_mask_','mask_fade_','mask_scale_curve','mask_export_','mask_bake_go','mask_save_go','mask_load_go','mstage_','mup_')) for n in set(names(new))-set(names(old)))                    # nothing removed or moved; a later release may add Biome fields only
     for mode,extra in ((0,dict(line_count=12)),(1,dict(area_count=30)),(3,dict(circle_count=9))):
         pa,a=out(fresh_node(st,sc,name='N%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra));pb,b=out(fresh_node(st,sc,typ=OLD_TYPE,name='O%d'%mode,mode=mode,proto_prim1='/World/Props/Ball',**extra))
         assert len(a['ids'])>0 and np.array_equal(a['ids'],b['ids']) and np.array_equal(a['pos'],b['pos']),mode
+
+def noprim():
+    """A USD file without a default prim: one top level prim is used (library and resolver), several are an error."""
+    clean();st,sc=new_scene('noprim');a=fresh_node(st,sc,mode=0,line_count=4,line_length=3.0);m=module(a)
+    one=WORK/'assets'/'variant.usda';s1=Usd.Stage.CreateNew(str(one));UsdGeom.Xform.Define(s1,'/Plant');UsdGeom.Cube.Define(s1,'/Plant/Body').CreateSizeAttr(0.7);s1.GetRootLayer().Save()
+    two=WORK/'assets'/'two.usda';s2=Usd.Stage.CreateNew(str(two));UsdGeom.Xform.Define(s2,'/A');UsdGeom.Xform.Define(s2,'/B');UsdGeom.Cube.Define(s2,'/A/Body');s2.GetRootLayer().Save()
+    assert not Sdf.Layer.FindOrOpen(str(one)).defaultPrim
+    assert m.default_prim_of(one.as_posix())=='/Plant' and m.default_prim_of(two.as_posix())=='' and m.default_prim_of(ROCK)=='/Rock'                    # one top level prim, several, a default prim
+    d=m.load_library();asset=m.import_files(d,[one.as_posix()])[0];assert asset['prim']=='/Plant'
+    a.parm('proto_type1').set(2);a.parm('proto_file1').set(one.as_posix());a.parm('proto_fileprim1').set('')                                              # a USD File row with no Prim Path
+    pi,o=out(a);assert len(o['ids'])==4
+    sizes=[UsdGeom.Cube(p).GetSizeAttr().Get() for p in a.stage().Traverse() if p.GetName()=='Body'];assert 0.7 in sizes                                   # the cube of the file really is the prototype
+    a.parm('proto_file1').set(two.as_posix())
+    try:a.stage()
+    except hou.OperationFailed:pass
+    errs=[str(x) for c in a.allSubChildren() for x in c.errors()]+[str(x) for x in a.errors()];assert any('has no default prim and 2 top level prims' in x for x in errs),errs    # several top level prims: the node says so
 
 def main():
     for name,func in (('Categories and assets: defaults, add / rename / delete / order, dedupe, search by name and tag, edit, nothing lost with a category',categories_and_assets),
                       ('The file: round trip, atomic save, a broken file kept aside, ARRAYTRON_LIBRARY',file_roundtrip),
                       ('Importing: USD files and folders, an Asset Catalog data source with thumbnails (snapshots and nodes skipped), thumbnails removed with the asset',importing),
                       ('Add to Bank on a real node: default row replaced, new rows, a chosen row, the prototypes really come from the files, an edited row kept',bank),
+                      ('A USD file without a default prim: its only top level prim is used by the library and the node; several top level prims give a clear error',noprim),
                       ('Panel code in the HDA section and the module functions; no name clash',panel_and_module),
                       ('The previous release unchanged: same parameters and output',unchanged)):check(name,func)
     result={'houdini':hou.applicationVersionString(),'hda':TYPE,'checks':checks,'mutation':MUTATE}

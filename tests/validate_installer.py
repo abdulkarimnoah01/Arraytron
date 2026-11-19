@@ -30,7 +30,7 @@ def cook(label):
     return "import hou\nhou.hipFile.load(%r,suppress_save_prompt=True,ignore_load_warnings=True)\nbad={}\nn_nodes=0\nfor n in hou.node('/stage').children():\n    if n.type().name().startswith('arraytron'):\n        n_nodes+=1\n        try:n.cook(force=True)\n        except hou.OperationFailed:pass\nfor n in hou.node('/stage').allSubChildren():\n    if n.errors():bad[n.path()]=n.errors()\nprint('COOKED',n_nodes,len(bad))\n"%hip
 def two_demos(label):
     folder=(ROOT/'versions'/VERSION/INSTALLED[label][2]).as_posix()
-    return "import hou\nfor name in ('%s_demo.hip','%s_mask_demo.hip','%s_demo.hip'):\n    hou.hipFile.load(%r+'/'+name,suppress_save_prompt=True,ignore_load_warnings=True)\n    print('PARMS',min(len(n.parms()) for n in hou.node('/stage').children() if n.type().name().startswith('arraytron')))\n"%(('Arraytron_v%s_H205'%VERSION,)*3+(folder,))
+    return "import hou\nfor name in ('%s_all_demos.hip','%s_all_demos.hip','%s_all_demos.hip'):\n    hou.hipFile.load(%r+'/'+name,suppress_save_prompt=True,ignore_load_warnings=True)\n    print('PARMS',min(len(n.parms()) for n in hou.node('/stage').children() if n.type().name().startswith('arraytron')))\n"%(('Arraytron_v%s_H205'%VERSION,)*3+(folder,))
 r=installer();check('no Houdini preferences: clear message and exit code 1',r.returncode==1 and 'No Houdini' in r.stdout,(r.returncode,r.stdout[-300:]))
 for label in ('22.0','21.0','20.5','19.5'):(DOCS/('houdini'+label)).mkdir()
 r=installer();check('install succeeds for Houdini 20.5, 21.0 and 22.0',r.returncode==0 and 'is installed for Houdini 20.5, 21.0, 22.0' in r.stdout,(r.returncode,r.stdout[-400:],r.stderr[-300:]))

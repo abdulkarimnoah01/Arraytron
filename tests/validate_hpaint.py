@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.28.0':'v1.27.0','v1.29.0':'v1.28.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.28.0':'v1.27.0','v1.29.0':'v1.28.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_hpaint_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 def write_scene():
@@ -134,7 +134,7 @@ def persistence_and_info():
 def contract():
     st,sc=new_scene('contract');a=scatter(st,sc,name='C');g=a.parmTemplateGroup()
     for n in ('mask_hpaint_start','mask_hpaint_finish','mask_hpaint_clear','mask_hpaint_detail','mask_hpaint_plane','mask_hpaint_data'):assert g.find(n) is not None,n
-    assert g.find('mask_source').menuLabels()==('None','Noise','Image','Mesh Primvar','Painted','Houdini Paint') and a.evalParm('mask_source')==0
+    assert g.find('mask_source').menuLabels() in (('None','Noise','Image','Mesh Primvar','Painted','Houdini Paint'),('None','Noise','Image','Mesh Primvar','Painted','Houdini Paint','Upstream Mask')) and a.evalParm('mask_source')==0
     assert g.find('mask_hpaint_detail').defaultValue()==(150,) and g.find('mask_hpaint_plane').defaultValue()==(20.0,) and a.evalParm('mask_hpaint_data')=='' and g.find('mask_hpaint_data').isHidden()
     for n,call in (('mask_hpaint_start','hpaint_start'),('mask_hpaint_finish','hpaint_finish'),('mask_hpaint_clear','hpaint_clear')):assert g.find(n).scriptCallback().endswith("%s(kwargs['node'])"%call),n
     assert g.find('mask_hpaint_start').conditionals()[hou.parmCondType.HideWhen]=='{ mask_source != 5 }' and g.find('mask_paint_base').conditionals()[hou.parmCondType.HideWhen]=='{ mask_source != 4 mask_source != 5 }' and g.find('mask_paint_start').conditionals()[hou.parmCondType.HideWhen]=='{ mask_source != 4 }'

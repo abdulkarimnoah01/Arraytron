@@ -108,7 +108,7 @@ def ui_contract():
     for name in ('line_spacing_out','line_count_out','line_span_out'):
         assert g.find(name).conditionals()[hou.parmCondType.DisableWhen]=='{ mode >= 0 }',name
     labels=[e.label() for e in g.entries()]
-    if NEWUI:assert labels==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if a.parm('cam_on') is not None else [])+([TN['finish']] if a.parm('dbg_on') is not None else [])+([TN['export']] if TN['export'] and a.parm('export_usd') is not None else []),labels
+    if NEWUI:assert labels==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate',*TN['edit_tabs']]+(['Optimize'] if a.parm('cam_on') is not None else [])+([TN['finish']] if a.parm('dbg_on') is not None else [])+([TN['export']] if TN['export'] and a.parm('export_usd') is not None else []),labels
     else:assert labels==['Source','Distribution','Line','Area']+(['Grid'] if GRID else [])+(['Circle'] if CIRCLE else [])+(['Curve'] if a.parm('curve_prim') is not None else [])+(['Surface'] if a.parm('surface_prim') is not None else [])+['Bounds Transform','Instance Transform','Randomize']+(['Mask'] if a.parm('mask_source') is not None else [])+(['No Overlap'] if a.parm('overlap_mode') is not None else [])+(['Physics Settle'] if a.parm('phys_on') is not None else []),labels
     names_in=lambda prefix:[n for n in flat(g.entries()) if n.startswith(prefix)]
     assert (names_in('line_') if NEWUI else [t.name() for t in g.find('line').parmTemplates()])==['line_axis','line_direction','line_spacemode','line_count','line_length','line_spacing','line_center','line_spacing_out','line_count_out','line_span_out']
@@ -555,7 +555,7 @@ BARREL={'type':0,'prim':'/World/Props/Barrel'}     # merged in from Prototype In
 ROCK={'type':2,'file':str(ROOT/'dist/test_assets/rock.usda')}
 def bank_ui():
     g=a.parmTemplateGroup();src=g.find('tab_source') if NEWUI else g.find('source')
-    assert ([n for n in flat(src.parmTemplates()) if not n.startswith('copy_')] if NEWUI else [t.name() for t in src.parmTemplates()])==(['protos','proto_mode']+(['proto_percent'] if a.parm('imp_sop') is not None else [])+['proto_summary','proto_seed','outputpath'] if NEWUI else ['outputpath','protos','proto_mode','proto_seed','proto_summary'])
+    assert ([n for n in flat(src.parmTemplates()) if not n.startswith(('copy_','proto_import'))] if NEWUI else [t.name() for t in src.parmTemplates()])==(['protos','proto_mode']+(['proto_percent'] if a.parm('imp_sop') is not None else [])+['proto_summary','proto_seed','outputpath'] if NEWUI else ['outputpath','protos','proto_mode','proto_seed','proto_summary'])
     bank=g.find('protos');assert bank.folderType()==hou.folderType.MultiparmBlock and bank.defaultValue()==1
     names=[t.name() for t in bank.parmTemplates()]
     assert names==['proto_on#','proto_type#','proto_prim#','proto_input#','proto_inprim#','proto_file#','proto_fileprim#','proto_sop#','proto_weight#','proto_scale#','proto_scalevar#','proto_rot#']+(['proto_lod1#','proto_lod2#','proto_proxy#'] if a.parm('cam_on') is not None else []),names
@@ -574,7 +574,7 @@ def bank_ui():
     reset();assert a.parm('protos').eval()==1 and a.parm('proto_prim1').eval()=='/World/Props/Crate' and a.parm('proto_weight1').eval()==1
     assert a.type().definition().sections()['DialogScript'].contents().count('inputlabel')>=4
     labels=re.findall(r'inputlabel\s+\d+\s+"([^"]*)"',a.type().definition().sections()['DialogScript'].contents())
-    assert labels[:4]==(['Scene Stream: terrain, curve, models','Input 2: extra prototype (optional)','Input 3: extra prototype (optional)','Input 4: extra prototype (optional)'] if a.parm('paint_prim') is not None else ['Main Stream','Prototype Input 2','Prototype Input 3','Prototype Input 4']),labels
+    assert labels[:4]==(['Scene Stream: terrain, curve, models','Input 2: Prototype Socket (models, merges, node trees)','Input 3: Prototype Socket (more models)','Input 4: Prototype Socket (more models)'] if a.parm('proto_import') is not None else ['Scene Stream: terrain, curve, models','Input 2: extra prototype (optional)','Input 3: extra prototype (optional)','Input 4: extra prototype (optional)'] if a.parm('paint_prim') is not None else ['Main Stream','Prototype Input 2','Prototype Input 3','Prototype Input 4']),labels
     assert a.type().maxNumInputs()==4 and a.type().minNumInputs()==(0 if tuple(int(x) for x in VID[1:].split('.'))>=(1,25,0) else 1)          # v1.25.0: a new node works with nothing wired in
 def stage_prims():
     return {p.GetPath().pathString for p in read()['Stage'].Traverse()}
@@ -607,7 +607,10 @@ def source_types():
     temp=tempfile.mkdtemp();nodefault=os.path.join(temp,'nodefault.usda')
     from pxr import Usd
     ts=Usd.Stage.CreateNew(nodefault);UsdGeom.Cube.Define(ts,'/Thing');ts.GetRootLayer().Save()
-    set_rows([CRATE,dict(ROCK,file=nodefault)]);expect_error('has no default prim')
+    two=os.path.join(temp,'twoprims.usda');t2=Usd.Stage.CreateNew(two);UsdGeom.Cube.Define(t2,'/ThingA');UsdGeom.Cube.Define(t2,'/ThingB');t2.GetRootLayer().Save()
+    set_rows([CRATE,dict(ROCK,file=two)]);expect_error('has no default prim')                                                                    # several top level prims: still an error
+    if tuple(int(x) for x in versions.resolve(VID)[1:].split('.'))>=(1,38,3):set_rows([CRATE,dict(ROCK,file=nodefault)]);read()          # v1.38.3: one top level prim is used
+    else:set_rows([CRATE,dict(ROCK,file=nodefault)]);expect_error('has no default prim')
     set_rows([CRATE,dict(ROCK,file=nodefault,fileprim='/Thing')]);read()
     set_rows([CRATE,dict(ROCK,file='')]);expect_error('USD File is empty')
     # 4. SOP Geometry
@@ -713,7 +716,7 @@ def modular_network():
         # Physics Settle (v0.4.0): PROTOTYPE_ASSIGNMENT > PHYSICS_WORLD > PHYSICS_SPAWN > PHYSICS_APPLY, selected by PHYSICS_SWITCH (input 0 = the unchanged path);
         # the solver branch (PROXIES > SOLVER, COLLIDERS) is not on the output path, so it only cooks while simulating
         overlap=a.node(COMPILER+'/NO_OVERLAP') is not None
-        grow=a.node(COMPILER+'/GROW') is not None;expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node(COMPILER+'/PROTO_PATH') else [])+(['PRIMVARS'] if a.node(COMPILER+'/PRIMVARS') else [])+(['GROW'] if grow else [])+(['MIRROR'] if a.node(COMPILER+'/MIRROR') else [])+(['OVERRIDES'] if a.node(COMPILER+'/OVERRIDES') else [])+(['BLAST'] if a.node(COMPILER+'/BLAST') else [])+['PHYSICS_SWITCH']+(['NO_OVERLAP'] if overlap else [])+['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR']+(['FALLOFF'] if a.node(COMPILER+'/FALLOFF') else [])+(['FIELD_STACK'] if a.node(COMPILER+'/FIELD_STACK') else [])+(['MASK_PROCESSOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])+(['NOISE'] if a.node(COMPILER+'/NOISE') else [])+(['ROWS'] if a.node(COMPILER+'/ROWS') else [])+(['DISTRIBUTION_GENERATOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])
+        grow=a.node(COMPILER+'/GROW') is not None;expected=['OUT_POINTS']+(['PROTO_PATH'] if a.node(COMPILER+'/PROTO_PATH') else [])+(['PRIMVARS'] if a.node(COMPILER+'/PRIMVARS') else [])+(['GROW'] if grow else [])+(['MIRROR'] if a.node(COMPILER+'/MIRROR') else [])+(['EDITS'] if a.node(COMPILER+'/EDITS') else [])+(['OVERRIDES'] if a.node(COMPILER+'/OVERRIDES') else [])+(['BLAST'] if a.node(COMPILER+'/BLAST') else [])+['PHYSICS_SWITCH']+(['NO_OVERLAP'] if overlap else [])+['PROTOTYPE_ASSIGNMENT','VARIATION_PROCESSOR']+(['FALLOFF'] if a.node(COMPILER+'/FALLOFF') else [])+(['FIELD_STACK'] if a.node(COMPILER+'/FIELD_STACK') else [])+(['MASK_PROCESSOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])+(['NOISE'] if a.node(COMPILER+'/NOISE') else [])+(['ROWS'] if a.node(COMPILER+'/ROWS') else [])+(['DISTRIBUTION_GENERATOR'] if a.node(COMPILER+'/MASK_PROCESSOR') else [])
         assert order[:len(expected)]==expected,order
         switch=compiler.node('PHYSICS_SWITCH');top='NO_OVERLAP' if overlap else 'PROTOTYPE_ASSIGNMENT';assert [n.name() for n in switch.inputs()]==[top,'PHYSICS_APPLY']
         chain=[];node=compiler.node('PHYSICS_APPLY')
@@ -729,7 +732,7 @@ def modular_network():
     lop=[];node=a.node('OUT_ARRAYTRON')
     while node is not None and not node.type().name()=='merge':
         lop.append(node.name());node=node.inputs()[0] if node.inputs() else None
-    assert lop==['OUT_ARRAYTRON']+(['debug_guide'] if a.node('debug_guide') else [])+(['camera_optimize'] if a.node('camera_optimize') else [])+['transform_distribution','bounds_guide','ensure_prototype_visible']+(['PROTO_NORMALIZE'] if a.node('PROTO_NORMALIZE') else [])+['USD_COMPILER']+(['LOD_GENERATOR'] if a.node('LOD_GENERATOR') else [])+['SOURCE_RESOLVER','sop_stage_4','sop_stage_3','sop_stage_2','sop_stage_1'],lop
+    assert lop==['OUT_ARRAYTRON']+(['debug_guide'] if a.node('debug_guide') else [])+(['lookdev'] if a.node('lookdev') else [])+(['camera_optimize'] if a.node('camera_optimize') else [])+['transform_distribution','bounds_guide','ensure_prototype_visible']+(['PROTO_NORMALIZE'] if a.node('PROTO_NORMALIZE') else [])+['USD_COMPILER']+(['LOD_GENERATOR'] if a.node('LOD_GENERATOR') else [])+['SOURCE_RESOLVER','sop_stage_4','sop_stage_3','sop_stage_2','sop_stage_1'],lop
     # the Source Resolver creates no points and no geometry; it only validates and stages hidden file references
     assert a.node('SOURCE_RESOLVER').type().name()=='pythonscript'
 

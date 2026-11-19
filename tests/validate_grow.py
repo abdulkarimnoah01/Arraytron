@@ -11,7 +11,7 @@ import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
 TN=versions.tab_names(VID)
 PHYSTAB='Physics' if VID[0]=='v' and tuple(int(x) for x in VID[1:].split('.'))>=(1,6,2) else 'Settle'
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v0.5.2':'v0.5.1','v0.6.0':'v0.5.2','v0.7.0':'v0.6.0','v0.8.0':'v0.7.0','v0.9.0':'v0.8.0','v1.0.0':'v0.9.0','v1.1.0':'v1.0.0','v1.5.0':'v1.1.0','v1.6.0':'v1.5.0','v1.6.1':'v1.6.0','v1.6.2':'v1.6.1','v1.7.0':'v1.6.2','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_grow_'))
 STONE=(ROOT/'dist/test_assets/stone.usda').as_posix()
@@ -86,10 +86,10 @@ def flat(entries):
 
 def ui_tabs():
     st,n,a=scene();g=a.parmTemplateGroup();tabs=g.entries()
-    assert [t.label() for t in tabs]==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate']+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['finish']] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['export']] if TN['export'] and any(x.name()=='export_usd' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
+    assert [t.label() for t in tabs]==[TN['source'],TN['layout'],TN['look'],*TN['mirror_tab'],'Spacing',PHYSTAB,'Animate',*TN['edit_tabs']]+(['Optimize'] if any(x.name()=='cam_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['finish']] if any(x.name()=='dbg_on' for t in tabs for x in t.parmTemplates()) else [])+([TN['export']] if TN['export'] and any(x.name()=='export_usd' for t in tabs for x in t.parmTemplates()) else []) and all(t.folderType()==hou.folderType.Tabs for t in tabs)
     assert sum(len(flat([t])) for t in tabs)>=140,'every parameter is still there'
     contents={t.label():flat([t]) for t in tabs}
-    exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents[TN['source']] else [])+['proto_summary'];assert contents[TN['source']][:len(exp)]==exp and [n for n in contents[TN['source']] if not n.startswith('copy_')][-1]=='outputpath'
+    exp=['protos','proto_mode']+(['proto_percent'] if 'proto_percent' in contents[TN['source']] else [])+['proto_summary'];assert [n for n in contents[TN['source']] if not n.startswith('proto_import')][:len(exp)]==exp and [n for n in contents[TN['source']] if not n.startswith(('copy_','proto_import'))][-1]=='outputpath'
     assert contents[TN['layout']][0]=='mode' and 'bound_t' in contents[TN['layout']] and 'line_axis' in contents[TN['layout']] and 'surface_prim' in contents[TN['layout']]
     assert contents[TN['look']][:2]==['base_rotation','base_scale'] and 'mask_source' in contents[versions.tab_names(VID)['layout' if versions.tab_names(VID)['mask_in_layout'] else 'look']] and 'scale_nonuniform' in contents[TN['look']]
     assert contents['Spacing'][0]=='overlap_mode' and contents[PHYSTAB][0]=='phys_on' and contents['Animate'][0]=='grow_on' and 'phys_bake' in contents[PHYSTAB]
@@ -130,7 +130,7 @@ def ui_animate():
     while n is not None:order.append(n.name());n=n.inputs()[0] if n.inputs() else None
     order=[x for x in order if x!='PROTO_PATH']                # the Houdini 20.5 / 21 build adds PROTO_PATH last
     pv=['PRIMVARS'] if a.node('USD_COMPILER/PRIMVARS') else []
-    ov=(['MIRROR'] if a.node('USD_COMPILER/MIRROR') else [])+(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])
+    ov=(['MIRROR'] if a.node('USD_COMPILER/MIRROR') else [])+(['EDITS'] if a.node('USD_COMPILER/EDITS') else [])+(['OVERRIDES'] if a.node('USD_COMPILER/OVERRIDES') else [])+(['BLAST'] if a.node('USD_COMPILER/BLAST') else [])
     assert order[:3+len(pv)+len(ov)]==['OUT_POINTS']+pv+['GROW']+ov+['PHYSICS_SWITCH'],order
     assert 'Grow' in a.type().definition().sections()['ArraytronVersion'].contents()
 

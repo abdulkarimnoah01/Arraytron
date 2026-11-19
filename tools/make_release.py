@@ -48,10 +48,10 @@ def build_release(stage):
     (payload/'h205'/'otls').mkdir(parents=True);shutil.copy2(H205/('Arraytron_%s_H205.hda'%VID),payload/'h205'/'otls')              # Houdini 20.5 and 21
     demos=payload/'demos';demos.mkdir()
     shutil.copy2(DIST/('Arraytron_%s.hda'%VID),demos)                                              # next to the hips: they reference $HIP/Arraytron_<ver>.hda
-    for p in sorted(DIST.glob('Arraytron_%s_*demo.hip'%VID))+[DIST/('Arraytron_%s_all_demos.hip'%VID)]:shutil.copy2(p,demos)
+    shutil.copy2(DIST/('Arraytron_%s_all_demos.hip'%VID),demos) if (DIST/('Arraytron_%s_all_demos.hip'%VID)).is_file() else print('note: no all-demos scene for %s in dist/: the package carries none'%VID)    # from 1.34.0 the release carries the all-demos scene only; 1.37.0 shipped without it
     copy_tree(DIST/'test_assets',demos/'test_assets');copy_tree(DIST/'arraytron_cache',demos/'arraytron_cache')
     demos205=payload/'demos_h205';demos205.mkdir()                                                   # no HDA beside these hips: they find it through the package (see versions.ensure_installed)
-    for p in sorted(H205.glob('Arraytron_%s_H205_*demo.hip'%VID))+[H205/('Arraytron_%s_H205_all_demos.hip'%VID)]:shutil.copy2(p,demos205)
+    shutil.copy2(H205/('Arraytron_%s_H205_all_demos.hip'%VID),demos205) if (H205/('Arraytron_%s_H205_all_demos.hip'%VID)).is_file() else None
     copy_tree(H205/'test_assets',demos205/'test_assets');copy_tree(H205/'arraytron_cache',demos205/'arraytron_cache')
     (payload/'docs').mkdir()
     for p in living_docs():shutil.copy2(p,payload/'docs')

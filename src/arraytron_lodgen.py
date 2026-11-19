@@ -225,6 +225,30 @@ def lodgen_author(asset,stage):
         if row:stats[e['row']]=row
     _LODGEN_STATS[asset.path()]=stats
 
+def lodgen_rebind(asset,stage,instancer):
+    """v1.38.2: the generated levels are written with the bindings of the SOURCE prim (they point at the asset's own materials), while the hero prototype is a copy of the source under
+    <output>/Prototypes with its own copy of those materials: Lookdev and every edit after the instancer change the copy, so the levels kept the original look (a white car among coloured ones).
+    Point the bindings of the generated levels at the same material inside the hero copy when it has one. Levels with a prim of their own, and materials outside the source prim (a
+    library), are left as they are."""
+    if not LODGEN_MATERIALS or not asset.evalParm('lodg_on'):return 0
+    from pxr import Usd,Sdf,UsdGeom
+    inst=UsdGeom.PointInstancer(instancer);targets=list(inst.GetPrototypesRel().GetTargets());heroes=resolve(asset);rows=[e['row'] for e in heroes];n=len(heroes);done=0
+    for j,(row,level,path) in enumerate(lod_entries(asset)):
+        if path!=lodgen_path(asset,row,level) or row not in rows or n+j>=len(targets):continue                              # a prim of its own is not touched
+        k=rows.index(row)
+        if k>=len(targets) or heroes[k].get('group'):continue
+        source=str(heroes[k]['path']).rstrip('/');copy=targets[k].pathString.rstrip('/');level_prim=stage.GetPrimAtPath(targets[n+j])
+        if not source or source==copy or not level_prim or not level_prim.IsValid():continue
+        for prim in Usd.PrimRange(level_prim):
+            rel=prim.GetRelationship('material:binding')
+            if not rel:continue
+            old=list(rel.GetTargets());new=[]
+            for target in old:
+                s=target.pathString;cand=Sdf.Path(copy+s[len(source):]) if s.startswith(source+'/') else None;cp=stage.GetPrimAtPath(cand) if cand else None
+                new.append(cand if cp and cp.IsValid() and not cp.IsInstanceProxy() else target)
+            if new!=old:rel.SetTargets(new);done+=1
+    return done
+
 def lodgen_info(asset):
     if not asset.evalParm('lodg_on'):return 'Off. Turn on Generate LODs to write reduced copies of every prototype that has no LOD prim of its own.'
     stats=_LODGEN_STATS.get(asset.path())

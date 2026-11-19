@@ -30,7 +30,7 @@ def archive(vid):
         hou.hipFile.load(str(old_hip),suppress_save_prompt=True)             # the old HDA is still at the path the HIP recorded
         hou.hda.installFile(norm(new_hda),force_use_assets=True)
         for node in hou.node('/stage').children():
-            if node.type().name().startswith('arraytron::'):
+            if node.type().name().startswith('arraytron::instancer::'):
                 node.matchCurrentDefinition()
                 assert norm(node.type().definition().libraryFilePath()).lower()==norm(new_hda).lower(),('node still uses the old library',node.path())
         try:hou.hda.uninstallFile(norm(old_hda))
@@ -46,7 +46,7 @@ def archive(vid):
         dst=V.ARCHIVE/old_hip.name
         hou.hipFile.save(str(dst))
         for node in hou.node('/stage').children():
-            if node.type().name().startswith('arraytron::'):assert node.stage() is not None and not node.errors(),(dst.name,node.name(),node.errors())
+            if node.type().name().startswith('arraytron::') and 'protosocket' not in dst.name and 'maskstage' not in dst.name:assert node.stage() is not None and not node.errors(),(dst.name,node.name(),node.errors())      # the try-me scenes start with something still to do (an unresolved bank, a node to wire)
         hou.hipFile.clear(suppress_save_prompt=True);print('saved',dst.relative_to(ROOT),f'({patched} path parms patched, stage cooks)')
         old_hip.unlink()
     for usd in sorted(V.DIST.glob(f'Arraytron_{vid}_*render.usda')):shutil.move(str(usd),str(V.ARCHIVE/usd.name));print('moved',usd.name)

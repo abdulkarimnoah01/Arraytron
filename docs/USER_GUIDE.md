@@ -1,6 +1,8 @@
-# Arraytron user guide (v1.34.0)
+# Arraytron user guide (v1.38.3)
 
-Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.34.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
+Saved masks (v1.38.0): in Scatter > Mask > Save, Cache And Export switch on Save Mask For Other Arraytron Nodes (and type a Mask Name if you like); the mask is saved in the stage and on every instance as `primvars:<name>`. In a node wired below, choose Mask Source > Upstream Mask and tick the mask, or accept the window that offers it when you wire the node. See `docs/SAVED_MASKS.md`.
+
+Arraytron is a Solaris (LOPs) node, `arraytron::instancer::1.35.0`, that scatters USD prototypes with a native **UsdGeomPointInstancer**. Every instance has a stable integer id, so you can change the look, the weights, the transform or the selection without reshuffling the layout.
 
 ## 1. Quick start (two minutes)
 
@@ -23,6 +25,8 @@ That is a working scatter. Everything else is optional and stays out of the way 
 | **Spacing** | **Separation** (Remove Overlapping or Push Apart, with a Priority) and **Avoid Geometry** (keep instances out of a mesh, shape or curve). |
 | **Physics** | **Physics Settle**: drop the points into a Bullet simulation, cache the settled result. |
 | **Animate** | **Grow**: instances grow or pop up in a sweep across the layout. |
+| **Edit** | Select instances in the viewport (click, Shift+click, box) and move, rotate, scale or delete them live with Houdini's handle, like the Edit mode of Arraytron Stamp (v1.35.0, `EDIT.md`). |
+| **Lookdev** | A material per prototype row or for all prototypes, and values that vary per instance inside the material network: colours, hue, roughness, also on ready-made assets (v1.35.0, `LOOKDEV.md`). |
 | **Optimize** | **Camera optimisation** (frustum, distance, density, behind-camera), **LOD / proxy** switching, **primvars** for shaders. **Generate LODs** writes reduced copies of the prototypes (`docs/CAMERA_LOD_PRIMVARS.md`). |
 | **Debugging** | **Instance overrides** by id (and **Pick Instance**), **debug views**. |
 | **Export** | **Export USD** (a self-contained instances file) and what this node stores (the cache read-out). |
@@ -98,3 +102,5 @@ The node outputs one PointInstancer at the *Output Prim Path* (default `/World/A
 `docs/INDEX.md` lists every document. Problems: `docs/TROUBLESHOOTING.md`.
 
 Painting the Mask by hand (Painted, the full brush, Houdini's own Attribute Paint): [MASK_PAINT.md](MASK_PAINT.md). Group Children prototypes and Keep By Direction on a surface: [GROUPS_AND_DIRECTION.md](GROUPS_AND_DIRECTION.md).
+
+Prototypes from the inputs in one click (Import Prototype Inputs): [PROTOTYPE_SOCKETS.md](PROTOTYPE_SOCKETS.md).

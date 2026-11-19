@@ -100,11 +100,14 @@ def move_category(data, name, offset):
 
 # ---- assets
 def default_prim_of(file_path):
-    """The default prim of a USD file ('' when it has none or the file cannot be read)."""
+    """The default prim of a USD file; a file without one but with a single top level prim gives that prim ('' when there is none, several, or the file cannot be read)."""
     try:
         from pxr import Usd
         stage = Usd.Stage.Open(file_path, Usd.Stage.LoadNone)
         prim = stage.GetDefaultPrim()
+        if not (prim and prim.IsValid()):
+            roots = stage.GetPseudoRoot().GetChildren()
+            prim = roots[0] if len(roots) == 1 else None
         return str(prim.GetPath()) if prim and prim.IsValid() else ''
     except Exception:
         return ''

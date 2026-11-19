@@ -25,7 +25,9 @@ for e in entries:
         if e['fileprim']:
             if not layer.GetPrimAtPath(e['fileprim']):raise hou.NodeError('Prototype %d: %s does not exist in %s.'%(e['row'],e['fileprim'],e['file']))
         elif not layer.defaultPrim:
-            raise hou.NodeError('Prototype %d: %s has no default prim; type its Prim Path.'%(e['row'],e['file']))
+            roots=[p.name for p in layer.rootPrims]                                                      # v1.38.3: a file without a default prim but with one top level prim (Quixel variants) uses that prim
+            if len(roots)!=1:raise hou.NodeError('Prototype %d: %s has no default prim and %d top level prims; type its Prim Path.'%(e['row'],e['file'],len(roots)))
+            e['fileprim']='/'+roots[0]
         stage.DefinePrim(Sdf.Path(module.sources_root(asset)),'Scope')
         prim=stage.DefinePrim(path,'Xform')
         refs=prim.GetReferences();refs.ClearReferences()

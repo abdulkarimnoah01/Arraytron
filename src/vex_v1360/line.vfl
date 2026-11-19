@@ -1,0 +1,29 @@
+// Line points. By Count: Count points over Length. By Spacing: floor(Length/Spacing)+1 points, Spacing apart.
+int spacemode = chi("../../line_spacemode");
+int axis = clamp(chi("../../line_axis"),0,3);
+float length = max(0.0, chf("../../line_length"));
+int centered = chi("../../line_center");
+int count;
+float step;
+if (spacemode == 1) {
+    step = max(0.001, chf("../../line_spacing"));
+    count = clamp(int(floor(length/step + 1e-6)) + 1, 1, 10000);
+} else {
+    count = clamp(chi("../../line_count"), 1, 10000);
+    step = count > 1 ? length/float(count-1) : 0.0;
+}
+vector direction = {1,0,0};
+if (axis < 3) {
+    direction = {0,0,0};
+    direction[axis] = 1;
+} else {
+    direction = chv("../../line_direction");
+    // A zero vector has no direction. Fall back to local +X predictably.
+    direction = length2(direction) > 1e-12 ? normalize(direction) : set(1,0,0);
+}
+// Centre the span the points actually cover (equals Length in By Count mode).
+float start = centered ? -0.5*float(count-1)*step : 0.0;
+for (int i=0; i<count; i++) {
+    int pt = addpoint(0, direction*(start + float(i)*step));
+    setpointattrib(0, "id", pt, i, "set");
+}

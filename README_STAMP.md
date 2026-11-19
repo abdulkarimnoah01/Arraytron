@@ -2,7 +2,7 @@
 
 **Place instances by hand in Solaris.** Pick prototypes, click in the viewport, and the node writes one `UsdGeomPointInstancer`. Brushes (Place, Delete, Paint, Group), a ghost preview of the real prototype, stacking on other stamps, a prototype bank with cards and thumbnails, and a sheet that edits many stamps at once.
 
-Houdini 20.5, 21 and 22 &middot; version 0.9.3 &middot; **[User guide (PDF)](docs/guide/Arraytron_Stamp_Guide_0.9.3.pdf)** &middot; [Changelog](CHANGELOG_STAMP.md) &middot; [Install](INSTALL_STAMP.md)
+Houdini 20.5, 21 and 22 &middot; version 0.10.0 &middot; **[User guide (PDF)](docs/guide/Arraytron_Stamp_Guide_0.9.3.pdf)** &middot; [Changelog](CHANGELOG_STAMP.md) &middot; [Install](INSTALL_STAMP.md)
 
 ![The tool in Houdini](docs/img/ui_overview.png)
 
@@ -80,7 +80,7 @@ A cell you edit in the **STAMPS** sheet changes the selected stamps or all of th
 
 ## Install
 
-Unpack `Arraytron_Stamp_v0.9.3_Release.rar`, run **Install Arraytron Stamp.cmd**, restart Houdini. Update with **Check for Updates** on the Arraytron Stamp shelf. Details in [INSTALL_STAMP.md](INSTALL_STAMP.md); everything else in the [PDF guide](docs/guide/Arraytron_Stamp_Guide_0.9.3.pdf) and [docs/ARRAYTRON_STAMP.md](docs/ARRAYTRON_STAMP.md).
+Unpack `Arraytron_Stamp_v0.10.0_Release.rar`, run **Install Arraytron Stamp.cmd**, restart Houdini. Update with **Check for Updates** on the Arraytron Stamp shelf. Details in [INSTALL_STAMP.md](INSTALL_STAMP.md); everything else in the [PDF guide](docs/guide/Arraytron_Stamp_Guide_0.9.3.pdf) and [docs/ARRAYTRON_STAMP.md](docs/ARRAYTRON_STAMP.md).
 
 ## Rebuilding the guide
 

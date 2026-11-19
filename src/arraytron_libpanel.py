@@ -30,6 +30,9 @@ def render_usd_thumbnail(file_path, prim_path='', size=128):
     from pxr import Usd, UsdGeom, Gf
     stage = Usd.Stage.Open(file_path, Usd.Stage.LoadAll)
     root = stage.GetPrimAtPath(prim_path) if prim_path else stage.GetDefaultPrim()
+    if (root is None or not root.IsValid()) and not prim_path:
+        tops = stage.GetPseudoRoot().GetChildren()
+        root = tops[0] if len(tops) == 1 else None
     if root is None or not root.IsValid():
         root = stage.GetPseudoRoot()
     cache = UsdGeom.XformCache()

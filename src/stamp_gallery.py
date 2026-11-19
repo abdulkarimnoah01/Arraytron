@@ -1,11 +1,11 @@
 # Arraytron Stamp: the Parameters pane of the node (the HDA section StampPanel.py, run as a Python Panel registered for this node type by gallery_install in stamp_core.py).
 # The builder puts this text after the Qt imports, the Asset Library (src/arraytron_library.py, src/arraytron_libpanel.py: the same library as Arraytron's, shared) and before the entry points:
-#   on top   the brush shelf (Place, Delete: a click enters the tool with that brush) and the cards of the Prototype Bank (a click selects the card: the working set, Ctrl adds or removes one):
+#   on top   the brush shelf (Place, Delete, Paint, Group, and the sculpt brushes of Paint Engine 2.0: a click enters the tool with that brush) and the cards of the Prototype Bank (a click selects the card: the working set, Ctrl adds or removes one):
 #            real thumbnails (a software render of each prototype, one per timer tick), List / Grid / Large views, a search box, favourite stars, filters for the favourites and the working set
 #   then     the STAMPS table (a collapsible section: every placed stamp, editable, selection shared with the Edit mode of the viewport) and the ASSET LIBRARY (categories, search, thumbnails, Add to Bank, ...)
 #   below    the node's own parameters (hou.qt.ParmDialog): the Brush / Edit / Options tabs
 # It only reads and writes parameters of the node, and looks at it every 0.8 s through a few parameter reads (no stage, no stamp table).
-STAMP_TYPE = 'arraytron::stamp::0.9.3'
+STAMP_TYPE = 'arraytron::stamp::0.10.0'
 
 def stamp_icon(kind, size=52):
     pm = QtGui.QPixmap(size, size)
@@ -92,6 +92,24 @@ def stamp_render_thumb(result, size=THUMB_SIZE):
         painter.drawPolygon(QtGui.QPolygonF([QtCore.QPointF(xy[a, 0], xy[a, 1]), QtCore.QPointF(xy[b, 0], xy[b, 1]), QtCore.QPointF(xy[d, 0], xy[d, 1])]))
     painter.end()
     return image
+
+def slot_overlay(pixmap, color, amount):
+    """A copy of a card picture with a slot colour over it: a wash of the colour (stronger with amount) over what is drawn, and a solid band of it along the bottom. The picture itself when there is no colour."""
+    if color is None or amount <= 0 or pixmap is None or pixmap.isNull():
+        return pixmap
+    out = QtGui.QPixmap(pixmap)
+    w, h = out.width(), out.height()
+    c = QtGui.QColor.fromRgbF(float(color[0]), float(color[1]), float(color[2]))
+    wash = QtGui.QColor(c)
+    wash.setAlphaF(min(0.1 + 0.45 * float(amount), 0.6))
+    p = QtGui.QPainter(out)
+    p.setCompositionMode(QtGui.QPainter.CompositionMode_SourceAtop)                 # only over what is drawn (an icon with a transparent background stays clear around it)
+    p.fillRect(out.rect(), wash)
+    p.setCompositionMode(QtGui.QPainter.CompositionMode_SourceOver)
+    band = max(3, int(round(h * 0.13)))
+    p.fillRect(QtCore.QRect(0, h - band, w, band), c)
+    p.end()
+    return out
 
 class StampCard(QtWidgets.QToolButton):
     """A card of the Prototype Bank: the thumbnail, the name, the row and the weight, and a star (a favourite)."""
@@ -214,6 +232,23 @@ class StampCards(QtWidgets.QFrame):
         self.info = QtWidgets.QLabel('')
         brush.addWidget(self.info)
         top.addLayout(brush)
+        sculpt = QtWidgets.QHBoxLayout()                                          # Paint Engine 2.0: the sculpt brushes (brush 4 to 10), a second row of the shelf
+        sculpt.setSpacing(4)
+        for index, (text, tip) in enumerate((('Erase', 'Erase: switch off the stamps under the brush (Shift: soft thinning); Edit > Restore Erased Stamps brings them back.'), ('Relax', 'Relax: even out the spacing under the brush.'),
+                                              ('Scale', 'Grow / Shrink: Ctrl shrinks, Shift smooths the sizes.'), ('Push', 'Push / Attract: Ctrl attracts, Shift drags along the stroke.'),
+                                              ('Replace', 'Replace: swap prototypes for the selected cards; placement stays.'), ('Orient', 'Orient / Comb: turn the stamps along the stroke (Ctrl random, Shift restore).'),
+                                              ('Clone', 'Clone: Ctrl + click picks the stamps under the brush, click or drag stamps copies.')), 4):
+            b = QtWidgets.QToolButton()
+            b.setText(text)
+            b.setToolTip(tip)
+            b.setCheckable(True)
+            b.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+            fit_text(b, 28)
+            b.clicked.connect(lambda _=False, i=index: self.brush(i))
+            sculpt.addWidget(b)
+            self.shelf.append(b)
+        sculpt.addStretch(1)
+        top.addLayout(sculpt)
         self.cycle = QtWidgets.QLabel('')
         self.cycle.setWordWrap(True)
         top.addWidget(self.cycle)
@@ -362,7 +397,7 @@ class StampCards(QtWidgets.QFrame):
         name, icon, size = VIEWS[view]
         b = StampCard(row)
         pixmap = self.thumbs.get(self.thumb_key(row))
-        b.setIcon(QtGui.QIcon(pixmap if pixmap else stamp_icon(kind or 'Sphere')))
+        b.setIcon(QtGui.QIcon(self.overlay(row, pixmap if pixmap else stamp_icon(kind or 'Sphere'))))
         b.setIconSize(QtCore.QSize(icon, icon))
         if view == 0:
             b.setText('%s     row %d   w %g   \u00d7%d' % (label, row, weight, count))
@@ -384,6 +419,11 @@ class StampCards(QtWidgets.QFrame):
         b.star.toggled.connect(lambda on, r=row: self.favorite(r, on))
         self.cardmap[row] = b
         return b
+
+    def overlay(self, row, pixmap):
+        """The card's picture with its slot colour over it (Options > Slot Colors), the same colour as the ghost of the next stamp in the viewport."""
+        colors, amount = getattr(self, 'slot', ({}, 0.0))
+        return slot_overlay(pixmap, colors.get(row), amount)
 
     def thumb_key(self, row):
         src = self.sources.get(row)
@@ -415,7 +455,7 @@ class StampCards(QtWidgets.QFrame):
         self.thumbs[key] = pixmap
         card = self.cardmap.get(row)
         if pixmap and card is not None and self.thumb_key(row) == key:
-            card.setIcon(QtGui.QIcon(pixmap))
+            card.setIcon(QtGui.QIcon(self.overlay(row, pixmap)))
         if self.pending:
             QtCore.QTimer.singleShot(20, self.thumb_step)
 
@@ -452,7 +492,10 @@ class StampCards(QtWidgets.QFrame):
             self.ctext = text
             self.counts = m.stamp_counts(node, text)
         counts = self.counts
-        key = (node.path(), bank, cur, rand, tuple(ws), tuple(sorted(favs)), view, tuple(query), self.fav_only.isChecked(), self.set_only.isChecked(), cols, tuple(sorted(counts.items())))
+        colors = m.stamp_slot_colors(node) if hasattr(m, 'stamp_slot_colors') else {}
+        self.slot = (colors, m.stamp_slot_amount(node) if colors else 0.0)
+        key = (node.path(), bank, cur, rand, tuple(ws), tuple(sorted(favs)), view, tuple(query), self.fav_only.isChecked(), self.set_only.isChecked(), cols, tuple(sorted(counts.items())),
+               tuple(sorted(colors.items())), self.slot[1])
         if key != self.key:
             self.key = key
             while self.grid.count():
@@ -478,13 +521,15 @@ class StampCards(QtWidgets.QFrame):
 
 class StampModel(QtCore.QAbstractTableModel):
     """The placed stamps as a table (a virtual model over the stamp rows: thousands of rows cost nothing). Editing a cell edits the stamp (one undo step)."""
-    COLUMNS = ('#', 'On', 'Row', 'X', 'Y', 'Z', 'Rx', 'Ry', 'Rz', 'Scale')
+    COLUMNS = ('#', 'On', 'Row', 'X', 'Y', 'Z', 'Rx', 'Ry', 'Rz', 'Scale', 'Material')
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.node = None
         self.rows = []
         self.text = None
+        self.names = {}                                                   # {bank row: material names}: the Material column shows '2 Moss'
+        self.mkey = None
         self.scope = 0                                                    # 0 the selected stamps (the edited one when it is not selected), 1 all of them
         self.op = 'set'                                                   # set, add, mul
 
@@ -500,6 +545,12 @@ class StampModel(QtCore.QAbstractTableModel):
         """Read the stamps again when the text changed (a string compare otherwise)."""
         node = self.node
         text = node.evalParm('stamps') if node is not None else ''
+        mkey = node.hdaModule().stamp_material_key(node) if node is not None else None
+        if mkey != self.mkey:                                             # the material lists of the bank changed: the names again
+            self.mkey = mkey
+            self.names = node.hdaModule().stamp_material_names(node) if node is not None else {}
+            if len(self.rows) and text == self.text:
+                self.dataChanged.emit(self.index(0, 10), self.index(len(self.rows) - 1, 10))
         if text == self.text and not force:
             return False
         rows = node.hdaModule().stamp_rows(text) if node is not None and text.strip() else []
@@ -535,14 +586,18 @@ class StampModel(QtCore.QAbstractTableModel):
             return None
         if c == 2:
             return str(int(row[9]))
+        if c == 10:
+            if role == QtCore.Qt.EditRole:
+                return str(int(row[11]))
+            return self.node.hdaModule().stamp_material_label(int(row[11]), self.names.get(int(row[9]), []))
         value = row[{3: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5, 9: 6}[c]]
         return '%.4g' % value if role == QtCore.Qt.EditRole else ('%.2f' % value if c == 9 else '%.3f' % value if c < 6 else '%.1f' % value)
 
+    _BASE = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+    FLAGS = (_BASE, _BASE | QtCore.Qt.ItemIsUserCheckable) + (_BASE | QtCore.Qt.ItemIsEditable,) * 9    # one per column, made once: Qt asks for every cell when it selects (Select All of 10 000 rows: 110 000 calls)
+
     def flags(self, index):
-        base = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-        if index.column() == 1:
-            return base | QtCore.Qt.ItemIsUserCheckable
-        return base if index.column() == 0 else base | QtCore.Qt.ItemIsEditable
+        return self.FLAGS[index.column()]
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
         r, c = index.row(), index.column()
@@ -554,6 +609,8 @@ class StampModel(QtCore.QAbstractTableModel):
                 x = float(value)
                 if c == 2:
                     m.stamp_edit_rows(self.node, self.targets(r), proto=int(x))
+                elif c == 10:
+                    m.stamp_edit_rows(self.node, self.targets(r), mat=max(int(x), 0))
                 elif c == 9:
                     m.stamp_edit_rows(self.node, self.targets(r), self.op, sx=x, sy=x, sz=x)
                 else:
@@ -647,7 +704,9 @@ class StampTable(QtWidgets.QWidget):
         header = self.view.horizontalHeader()
         header.setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         for column in (0, 1, 2):
-            header.setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(column, QtWidgets.QHeaderView.Fixed)   # sized from the font (fit_columns): fitting them to the contents read thousands of rows at every update
+        self.digits = None
+        self.fit_columns()
         self.view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.view.setMinimumHeight(120)
         self.view.setMaximumHeight(260)
@@ -655,12 +714,51 @@ class StampTable(QtWidgets.QWidget):
         self.view.selectionModel().selectionChanged.connect(self.on_selection)
         outer.addWidget(self.view)
 
+    def fit_columns(self):
+        """The #, On and Row columns as wide as their text: the number of digits of the last stamp, the check box, the word Row."""
+        digits = max(len(str(max(len(self.model.rows) - 1, 0))), 2)
+        if digits == self.digits:
+            return
+        self.digits = digits
+        fm = self.view.fontMetrics()
+        adv = fm.horizontalAdvance if hasattr(fm, 'horizontalAdvance') else fm.width
+        header = self.view.horizontalHeader()
+        header.resizeSection(0, adv('8' * digits) + 16)
+        header.resizeSection(1, max(adv('On') + 16, 30))
+        header.resizeSection(2, adv('Row') + 18)
+
     def set_node(self, node):
         self.node = node
         self.model.node = node
         self.model.text = None
+        self.model.mkey = None
         self.selkey = None
+        self.watch(node)
         self.refresh(force=True)
+
+    def watch(self, node):
+        """A selection made in the viewport shows in the table at once, not at the next tick of the pane."""
+        if getattr(self, 'watched', None) is not None:
+            try:
+                self.watched[0].removeEventCallback((hou.nodeEventType.ParmTupleChanged,), self.watched[1])
+            except Exception:
+                pass
+        self.watched = None
+        if node is None:
+            return
+
+        def changed(**kw):
+            pt = kw.get('parm_tuple')
+            try:
+                if pt is not None and pt.name() == 'selection' and not self.busy and self.view.isVisible():
+                    QtCore.QTimer.singleShot(0, self.refresh)
+            except Exception:
+                pass
+        try:
+            node.addEventCallback((hou.nodeEventType.ParmTupleChanged,), changed)
+            self.watched = (node, changed)
+        except Exception:
+            self.watched = None
 
     def do(self, name):
         """The buttons under the table (and Del): manage the stamps."""
@@ -707,7 +805,31 @@ class StampTable(QtWidgets.QWidget):
             menu.addSeparator()
             menu.addAction('Select the stamps of the same prototype', lambda: self.select_same(row))
             menu.addAction('Delete the stamps of the same prototype', lambda: self.delete_same(row))
+        menu.addSeparator()
+        sub = menu.addMenu('Material of the selected stamps')
+        for label, how, value in self.material_items():
+            sub.addAction(label, lambda h=how, v=value: self.set_material(h, v))
         (menu.exec if hasattr(menu, 'exec') else menu.exec_)(pos)
+
+    def material_items(self):
+        """[(label, how, value)] of the Material menu: Next, Random, the prototype's own, then every number with the names it stands for in the selected stamps' rows ('2  Moss / Bark')."""
+        items = [('Next material (M in the viewport)', 'next', None), ('Random material', 'random', None), ("Prototype's own material", 'set', 0)]
+        if self.node is None:
+            return items
+        m = self.node.hdaModule()
+        sel = m.stamp_get_selection(self.node, len(self.model.rows))
+        protos = sorted({int(self.model.rows[i][9]) for i in sel}) if len(sel) else []
+        names = self.model.names
+        for k in range(1, max([len(names.get(p, [])) for p in protos] or [0]) + 1):
+            items.append(('%d   %s' % (k, ' / '.join(sorted({names[p][k - 1] for p in protos if len(names.get(p, [])) >= k}))), 'set', k))
+        return items
+
+    def set_material(self, how, value=None):
+        if self.node is None:
+            return
+        m = self.node.hdaModule()
+        m.stamp_material_edit(self.node, m.stamp_get_selection(self.node, len(self.model.rows)), how, value)
+        self.refresh(force=True)
 
     def on_scope(self, *args):
         self.model.scope = self.scope.currentIndex()
@@ -730,7 +852,7 @@ class StampTable(QtWidgets.QWidget):
         """The user selected rows of the table: that is the selection of the Edit mode."""
         if self.busy or self.node is None:
             return
-        rows = sorted({i.row() for i in self.view.selectionModel().selectedRows()})
+        rows = sorted({r for rng in self.view.selectionModel().selection() for r in range(rng.top(), rng.bottom() + 1)})     # the ranges, not one index per cell (Select All of 10 000 rows)
         self.node.hdaModule().stamp_set_selection(self.node, rows)
         self.selkey = self.node.evalParm('selection')
         self.update_count()
@@ -745,14 +867,22 @@ class StampTable(QtWidgets.QWidget):
             try:
                 self.model.reload()
                 n = len(self.model.rows)
+                self.fit_columns()
                 sel = node.evalParm('selection')
                 if sel != self.selkey or force:
                     self.selkey = sel
                     picked = node.hdaModule().stamp_get_selection(node, n)
-                    model = self.view.selectionModel()
-                    model.clearSelection()
-                    for r in picked:
-                        model.select(self.model.index(int(r), 0), QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows)
+                    block = QtCore.QItemSelection()                       # one selection of runs of rows, set in one call (a select per row was slow with hundreds selected)
+                    if len(picked):
+                        cuts = np.nonzero(np.diff(picked) != 1)[0]
+                        for a, b in zip(np.concatenate([[0], cuts + 1]), np.concatenate([cuts, [len(picked) - 1]])):
+                            block.select(self.model.index(int(picked[a]), 0), self.model.index(int(picked[b]), len(self.model.COLUMNS) - 1))
+                    old = self.view.selectionModel()                      # a new selection model: clearing a big old selection makes Qt work out every range it deselects
+                    fresh = QtCore.QItemSelectionModel(self.model, self.view)
+                    self.view.setSelectionModel(fresh)
+                    fresh.selectionChanged.connect(self.on_selection)
+                    fresh.select(block, QtCore.QItemSelectionModel.Select)     # the runs already span every column
+                    old.deleteLater()
             finally:
                 self.busy = False
         self.toggle.setText('STAMPS   %d' % n)
@@ -811,6 +941,7 @@ class StampPanel(QtWidgets.QWidget):
 
     def close_down(self):
         self.timer.stop()
+        self.table.watch(None)
         if self.dialog is not None:
             try:
                 self.dialog.setNode(None)

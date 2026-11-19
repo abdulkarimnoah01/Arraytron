@@ -16,8 +16,11 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import tempfile
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -26,6 +29,10 @@ from pathlib import Path
 MANIFEST_NAME = "version.json"
 MAX_MANIFEST_BYTES = 256 * 1024
 MAX_ZIP_BYTES = 300 * 1024 * 1024
+READ_TIMEOUT = 60                       # seconds to wait for one answer
+RETRY_WAITS = (2, 5, 12)                # seconds between the (up to four) tries when the server does not answer
+TRANSIENT_HTTP = (408, 425, 429, 500, 502, 503, 504)
+_sleep = time.sleep                     # the tests replace it
 
 
 class UpdateError(Exception):
@@ -47,16 +54,37 @@ def _is_url(source):
     return str(source).lower().startswith(("http://", "https://"))
 
 
+def _transient(exc):
+    """True for a failure that is worth another try: no answer in time, a dropped connection, or a server (GitHub, a proxy) that is briefly unwell (HTTP 429 and 5xx)."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in TRANSIENT_HTTP
+    return isinstance(exc, (socket.timeout, TimeoutError, ConnectionError, urllib.error.URLError)) or "timed out" in str(exc).lower()
+
+
+def _read_url(location, limit):
+    """Read an https address, trying again a few times when the server does not answer or is briefly unwell (a busy GitHub gives timeouts and 502 / 504 now and then)."""
+    tries = len(RETRY_WAITS) + 1
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(location, timeout=READ_TIMEOUT) as response:
+                return response.read(limit + 1)
+        except OSError as exc:
+            if isinstance(exc, urllib.error.HTTPError) and exc.code == 404:
+                raise UpdateError("Nothing was found at the update location (HTTP Error 404: Not Found). The release may not be published yet.")
+            if _transient(exc) and attempt < tries - 1:
+                _sleep(RETRY_WAITS[attempt])
+                continue
+            if _transient(exc):
+                raise UpdateError("The update location did not answer after %d tries (%s). This is usually temporary (GitHub or the network is busy): try again in a minute or two." % (tries, exc))
+            raise UpdateError("Could not reach the update location (%s)." % exc)
+
+
 def _read(location, limit):
     if _is_url(location):
         if not location.lower().startswith("https://"):
             raise UpdateError("Updates must come from an https:// address or a folder, "
                               "not plain http.")
-        try:
-            with urllib.request.urlopen(location, timeout=30) as response:
-                data = response.read(limit + 1)
-        except OSError as exc:
-            raise UpdateError("Could not reach the update location (%s)." % exc)
+        data = _read_url(location, limit)
     else:
         try:
             data = Path(location).read_bytes()

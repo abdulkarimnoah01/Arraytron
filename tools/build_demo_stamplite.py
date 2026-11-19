@@ -1,9 +1,9 @@
-"""Build the Arraytron Stamp 0.9.3 demo: hython tools/build_demo_stamplite.py   (hython 22 or 20.5; build the Stamp first with tools/build_stamp_light.py)
+"""Build the Arraytron Stamp 0.12.0 demo: hython tools/build_demo_stamplite.py   (hython 22 or 20.5; build the Stamp first with tools/build_stamp_light.py)
 A hilly ground (about 29 000 triangles) and three props (Rock, Fir, Stone). Two Stamp nodes:
   A  300 stamps placed like the tool does it (the same stamp_add call per click) along a wavy path on the ground (Place On = the ground): Random Scale 0.6 to 1.5, Random Tilt 8, Random Rotation, Random Prototype by weight.
   B  a few stamps, then edited by hand in the Stamps text (one bigger, one moved, one switched off).
   C  the Group brush: a row of the six layouts (Radial, Square, Hexagon, Random Cluster, Line, Spiral) of seven members each, and a row of radial groups with the group's own randomization (Random Group Scale, Random Member Scale and Rotation).
-Writes dist/Arraytron_Stamp_v0.9.3_demo.hip, or otls_h205/Arraytron_Stamp_v0.9.3_H205_demo.hip with hython 20.5.
+Writes dist/Arraytron_Stamp_v0.12.0_demo.hip, or otls_h205/Arraytron_Stamp_v0.12.0_H205_demo.hip with hython 20.5.
 With --release <folder> the hip goes to that folder and does not record the HDA library (the installed package provides the node type: no path of this PC is stored in the shipped demo)."""
 from pathlib import Path
 import sys, json, time, hou
@@ -11,8 +11,8 @@ import numpy as np
 from pxr import UsdGeom
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import versions
-ROOT=Path(__file__).resolve().parents[1];H205=versions.is_h205();TYPE='arraytron::stamp::0.9.3'
-HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.9.3%s.hda'%('_H205' if H205 else ''));HIP=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.9.3%s_demo.hip'%('_H205' if H205 else ''))
+ROOT=Path(__file__).resolve().parents[1];H205=versions.is_h205();TYPE='arraytron::stamp::0.12.0'
+HDA=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.12.0%s.hda'%('_H205' if H205 else ''));HIP=ROOT/('otls_h205' if H205 else 'dist')/('Arraytron_Stamp_v0.12.0%s_demo.hip'%('_H205' if H205 else ''))
 SCENE='''from pxr import Gf, UsdGeom, Vt
 import hou, math
 stage=hou.pwd().editableStage()

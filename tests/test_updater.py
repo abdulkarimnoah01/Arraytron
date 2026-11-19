@@ -9,6 +9,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import arraytron_update as updater
+import stamp_update as stamp_updater
 from arraytron_update import UpdateError
 
 
@@ -152,6 +153,68 @@ class SourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as prefs:
             (Path(prefs) / "arraytron_update.json").write_text("{broken")
             self.assertEqual(updater.update_source(prefs, None), "")
+
+
+class RetryTests(unittest.TestCase):
+    mod = updater
+    """A busy GitHub gives timeouts and 502 / 504 now and then: the update tries again before it gives up."""
+    def setUp(self):
+        self.waits = []
+        self._sleep, self.mod._sleep = self.mod._sleep, self.waits.append
+        self._open = self.mod.urllib.request.urlopen
+
+    def tearDown(self):
+        self.mod._sleep = self._sleep
+        self.mod.urllib.request.urlopen = self._open
+
+    def fake(self, outcomes):
+        calls = []
+        class Answer(object):
+            def __init__(self, data): self.data = data
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self, n): return self.data
+        def urlopen(location, timeout=None):
+            calls.append(timeout)
+            outcome = outcomes[min(len(calls) - 1, len(outcomes) - 1)]
+            if isinstance(outcome, Exception): raise outcome
+            return Answer(outcome)
+        self.mod.urllib.request.urlopen = urlopen
+        return calls
+
+    def http(self, code):
+        return self.mod.urllib.error.HTTPError("https://x/version.json", code, "x", {}, None)
+
+    def test_timeout_then_answer(self):
+        calls = self.fake([TimeoutError("The read operation timed out"), b"{}"])
+        self.assertEqual(self.mod._read("https://x/version.json", 100), b"{}")
+        self.assertEqual(len(calls), 2); self.assertEqual(self.waits, [2]); self.assertGreaterEqual(calls[0], 60)
+
+    def test_bad_gateway_then_answer(self):
+        calls = self.fake([self.http(502), self.http(504), b"ok"])
+        self.assertEqual(self.mod._read("https://x/version.json", 100), b"ok")
+        self.assertEqual(len(calls), 3); self.assertEqual(self.waits, [2, 5])
+
+    def test_gives_up_with_a_friendly_message(self):
+        calls = self.fake([self.http(502)])
+        with self.assertRaises(self.mod.UpdateError) as ctx: self.mod._read("https://x/version.json", 100)
+        self.assertEqual(len(calls), 4); self.assertEqual(self.waits, [2, 5, 12])
+        self.assertIn("4 tries", str(ctx.exception)); self.assertIn("try again in a minute", str(ctx.exception)); self.assertIn("502", str(ctx.exception))
+
+    def test_not_found_is_not_retried(self):
+        calls = self.fake([self.http(404)])
+        with self.assertRaises(self.mod.UpdateError) as ctx: self.mod._read("https://x/version.json", 100)
+        self.assertEqual(len(calls), 1); self.assertEqual(self.waits, []); self.assertIn("404", str(ctx.exception))
+
+    def test_other_errors_are_not_retried(self):
+        calls = self.fake([self.http(403)])
+        with self.assertRaises(self.mod.UpdateError): self.mod._read("https://x/version.json", 100)
+        self.assertEqual(len(calls), 1)
+
+
+class StampRetryTests(RetryTests):
+    """The Arraytron Stamp updater has the same retries."""
+    mod = stamp_updater
 
 
 if __name__ == "__main__":

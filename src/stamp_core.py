@@ -1,17 +1,18 @@
-# Arraytron Stamp 0.9.3 (the light one): the PythonModule of arraytron::stamp::0.9.3.
-# The stamps are ONE text parameter (a line per stamp: x y z  rx ry rz  sx sy sz  proto  on), the node is ONE Python LOP that turns them into a UsdGeomPointInstancer.
+# Arraytron Stamp 0.10.0 (the light one): the PythonModule of arraytron::stamp::0.10.0.
+# The stamps are ONE text parameter (a line per stamp: x y z  rx ry rz  sx sy sz  proto  on  mat), the node is ONE Python LOP that turns them into a UsdGeomPointInstancer.
 # Placing a stamp appends a line (one parameter write, no rows to build); the cook parses the text with numpy and writes the arrays.
+# mat (0.10.0) is the material variant of the stamp: 0 the prototype's own material, k the k-th material of its bank row (a prototype per row and material, so the stamps stay point instances).
 import hou
 import re
 import time
 import numpy as np
-from pxr import Usd, UsdGeom, Sdf, Gf, Vt
+from pxr import Usd, UsdGeom, UsdShade, Sdf, Gf, Vt
 
 STAMP_STATE='arraytron_stamp'
-STAMP_TYPE='arraytron::stamp::0.9.3'
-STAMP_COLS=11
+STAMP_TYPE='arraytron::stamp::0.10.0'
+STAMP_COLS=12
 TC=Usd.TimeCode.EarliestTime()                                          # the pose of the first sample: an animated asset (a rig, a walk) is measured and drawn at its first frame
-STAMP_NAMES=('x','y','z','rx','ry','rz','sx','sy','sz','proto','on')
+STAMP_NAMES=('x','y','z','rx','ry','rz','sx','sy','sz','proto','on','mat')
 
 # ---------------------------------------------------------------- pure functions (tested without a viewport)
 def stamp_qmul(a,b):
@@ -48,18 +49,29 @@ def stamp_align(normal,amount):
 def stamp_snap(value,step):
     return float(value) if step<=0 else float(np.round(float(value)/step)*step)
 
+_ROWS=['',np.zeros((0,STAMP_COLS))]
 def stamp_rows(text):
-    """The stamps of the text as an (n, 11) float array; lines that are empty or start with # are skipped. A line without exactly 11 numbers is an error."""
-    if '#' in text:text='\n'.join(l for l in text.splitlines() if not l.lstrip().startswith('#'))
-    tokens=text.split()
-    if not tokens:return np.zeros((0,STAMP_COLS))
-    try:a=np.array(tokens,dtype=np.float64)
-    except ValueError:raise hou.NodeError('Placed Stamps: every value must be a number.')
-    if len(a)%STAMP_COLS:raise hou.NodeError('Placed Stamps: every line needs %d numbers (%s), %d values do not fit.'%(STAMP_COLS,' '.join(STAMP_NAMES),len(a)))
-    return a.reshape(-1,STAMP_COLS)
+    """The stamps of the text as an (n, 12) float array; lines that are empty or start with # are skipped. A line has 12 numbers, or 11 (a stamp written before 0.10.0: no material, mat 0); anything else is an error.
+    The array of the last text is kept: the tool, the table and the HUD read the same text many times between two edits (a copy is returned, the caller may change it)."""
+    if text==_ROWS[0]:return _ROWS[1].copy()
+    body='\n'.join(l for l in text.splitlines() if not l.lstrip().startswith('#')) if '#' in text else text
+    tokens=body.split()
+    if not tokens:rows=np.zeros((0,STAMP_COLS))
+    else:
+        try:a=np.array(tokens,dtype=np.float64)
+        except ValueError:raise hou.NodeError('Placed Stamps: every value must be a number.')
+        lines=stamp_lines(body);n=len(lines)
+        if len(a)==n*STAMP_COLS:rows=a.reshape(-1,STAMP_COLS)
+        elif len(a)==n*(STAMP_COLS-1):rows=np.concatenate([a.reshape(-1,STAMP_COLS-1),np.zeros((n,1))],axis=1)              # every line is from before 0.10.0
+        else:
+            sizes=np.array([len(l.split()) for l in lines]);bad=np.nonzero((sizes!=STAMP_COLS)&(sizes!=STAMP_COLS-1))[0]
+            if len(bad):raise hou.NodeError('Placed Stamps: line %d has %d numbers; a line needs 12 (%s), or 11 without the material.'%(int(bad[0])+1,int(sizes[bad[0]]),' '.join(STAMP_NAMES)))
+            rows=np.zeros((n,STAMP_COLS));k=0                                                                                   # old and new lines mixed (stamps added to a scene from before 0.10.0)
+            for i,s in enumerate(sizes):rows[i,:s]=a[k:k+s];k+=s
+    _ROWS[0]=text;_ROWS[1]=rows;return rows.copy()
 
-def stamp_line(pos,rot,scale,proto,on=1):
-    return '%.4f %.4f %.4f  %.3f %.3f %.3f  %.4f %.4f %.4f  %d %d'%(tuple(pos)+tuple(rot)+tuple(scale)+(int(proto),int(on)))
+def stamp_line(pos,rot,scale,proto,on=1,mat=0):
+    return '%.4f %.4f %.4f  %.3f %.3f %.3f  %.4f %.4f %.4f  %d %d %d'%(tuple(pos)+tuple(rot)+tuple(scale)+(int(proto),int(on),int(mat)))
 
 _COUNT=['',0]
 def stamp_count(text):
@@ -87,7 +99,66 @@ def _leaf(text):
 def bank_key(asset):
     """Everything the bank holds, as a tuple (cheap to read: the tool compares it on each mouse move)."""
     return tuple((r,asset.evalParm('proto_type%d'%r),asset.evalParm('proto_prim%d'%r),asset.evalParm('proto_file%d'%r),asset.evalParm('proto_fileprim%d'%r),asset.evalParm('proto_inprim%d'%r),asset.evalParm('proto_input%d'%r),
-                  asset.evalParm('proto_weight%d'%r),asset.evalParm('proto_scale%d'%r),asset.evalParm('proto_scalevar%d'%r),tuple(asset.evalParmTuple('proto_rot%d'%r))) for r in bank_rows(asset))
+                  asset.evalParm('proto_weight%d'%r),asset.evalParm('proto_scale%d'%r),asset.evalParm('proto_scalevar%d'%r),tuple(asset.evalParmTuple('proto_rot%d'%r)),_mat_text(asset,r)) for r in bank_rows(asset))
+
+# ---- material variants (0.10.0): each bank row has a list of materials; a stamp's mat is 0 (the prototype's own material) or k (the k-th of its row's list)
+def _mat_text(asset,row):
+    p=asset.parm('proto_mats%d'%row);return p.eval().strip() if p is not None else ''
+
+_MATS={}
+def stamp_materials(asset,stage=None):
+    """{bank row: [material prim paths]} of the enabled rows. A row's Materials are prim paths, space or comma separated; a name pattern (/Materials/rock_*, with * ? [) is every Material child of its parent
+    that matches, in the stage's order. Patterns need the stage (the first input): they are resolved once per text and cook of the input."""
+    import fnmatch
+    def expand(st,toks):
+        found=[]
+        for t in toks:
+            parent,_,last=t.rstrip('/').rpartition('/')
+            if not any(c in last for c in '*?['):found.append(t);continue
+            group=st.GetPrimAtPath(parent or '/') if st is not None else None
+            found+=[str(c.GetPath()) for c in (group.GetChildren() if group else []) if fnmatch.fnmatchcase(c.GetName(),last) and c.IsA(UsdShade.Material)]
+        return found
+    out={}
+    for r in bank_rows(asset):
+        toks=_mat_text(asset,r).replace(',',' ').split()
+        if not any(c in t for t in toks for c in '*?['):out[r]=toks
+        elif stage is not None:out[r]=expand(stage,toks)                                                                 # the cook: always the stage it writes into
+        else:                                                                                                            # the tool asks on every mouse move: the stage is read only when the input cooked again
+            merge=asset.node('STAMPS').inputs()[0] if asset.node('STAMPS') is not None and asset.node('STAMPS').inputs() else None
+            key=lambda:(asset.sessionId(),r,tuple(toks),merge.cookCount() if merge is not None else 0)
+            if key() not in _MATS:
+                found=expand(merged_stage(asset),toks)
+                if len(_MATS)>64:_MATS.clear()
+                _MATS[key()]=found                                                                                       # after the read: reading the stage may have cooked the input
+            out[r]=list(_MATS[key()])
+    return out
+
+def stamp_material_key(asset):
+    """What the material lists depend on (cheap: the Materials text of every row)."""
+    return tuple((r,_mat_text(asset,r)) for r in bank_rows(asset))
+
+def stamp_material_names(asset):
+    """{bank row: [names]}: the last part of every material path (the table and the HUD show them)."""
+    try:return {r:[p.rstrip('/').rsplit('/',1)[-1] for p in v] for r,v in stamp_materials(asset).items()}
+    except Exception:return {}
+
+def stamp_material_index(mats,counts):
+    """The variant a stamp is drawn with: its mat wrapped into its row's list (1 .. count), 0 when it has none or the row has no materials. mats, counts: arrays of the stamps."""
+    mats=np.asarray(mats,dtype=np.int64);counts=np.asarray(counts,dtype=np.int64)
+    return np.where((mats>0)&(counts>0),(mats-1)%np.maximum(counts,1)+1,0)
+
+def stamp_material_label(mat,names):
+    """'2 Moss', 'own' or '3 ?' (a number beyond the row's list wraps round in the cook)."""
+    mat=int(mat)
+    if mat<=0:return 'own'
+    return '%d %s'%(mat,names[(mat-1)%len(names)]) if names else '%d ?'%mat
+
+def stamp_pick_material(cfg,row,u):
+    """The material of a new stamp of bank row `row`: Random (by u in [0, 1)), Fixed (the Material Number, wrapped into the row's list) or the prototype's own (0). 0 too when the row has no materials."""
+    n=int(cfg.get('mats',{}).get(int(row),0));mode=cfg.get('matmode',0)
+    if n<=0 or mode==2:return 0
+    if mode==1:return (max(int(cfg.get('matnum',1)),1)-1)%n+1
+    return min(int(u*n),n-1)+1
 
 def stamp_labels(asset):
     """[(row, label, type, weight, source text)] of the enabled bank rows, from the parameters only (no stage): what the gallery and the HUD show."""
@@ -203,14 +274,17 @@ def stamp_settings(asset,group=False):
     """Everything a new stamp draws from, read once (the paint brush makes hundreds of stamps per dab): dict(seed, yaw, yawrand, scale, scalerange, align, tilt, offset, protorand, proto, rows, pool)."""
     labels=stamp_labels(asset);ws=stamp_workset(asset);pool=[l for l in labels if l[0] in ws] or labels                    # Random Prototype draws among the working set (the selected cards), else every enabled row
     cfg=dict(seed=asset.evalParm('seed'),yaw=asset.evalParm('yaw'),yawrand=asset.evalParm('yawrand'),scale=asset.evalParm('scale'),scalerange=tuple(asset.evalParmTuple('scalerange')),align=asset.evalParm('align'),tilt=asset.evalParm('tilt'),
-                offset=asset.evalParm('offset'),protorand=asset.evalParm('protorand'),proto=asset.evalParm('proto'),rows=[l[0] for l in labels] or [1],pool=[(l[0],l[3]) for l in pool])
+                offset=asset.evalParm('offset'),protorand=asset.evalParm('protorand'),proto=asset.evalParm('proto'),rows=[l[0] for l in labels] or [1],pool=[(l[0],l[3]) for l in pool],
+                matmode=asset.evalParm('matmode') if asset.parm('matmode') is not None else 2,matnum=asset.evalParm('matnum') if asset.parm('matnum') is not None else 1)
+    try:cfg['mats']={r:len(v) for r,v in stamp_materials(asset).items()}
+    except Exception:cfg['mats']={}                                                                                  # a pattern that cannot be resolved yet: new stamps keep their own material
     if group and asset.parm('group_scalerangex') is not None:cfg['scalerange']=tuple(asset.evalParmTuple('group_scalerange'))                              # the Group brush has a Random Scale of its own (off: 1 / 1), not the one of the single stamps
     return cfg
 
 def stamp_make(cfg,n,normal=(0.0,1.0,0.0),yaw=None,scale=None,yaw_add=0.0,scale_mult=1.0,snap_rot=None,proto=None):
-    """Stamp number n (1-based) from the settings: dict(n, proto, scale, yaw, quat). Random Rotation / Scale / Tilt / Prototype draw from the Seed and n: the same seed gives the same stamps, more stamps never change
+    """Stamp number n (1-based) from the settings: dict(n, proto, scale, yaw, quat, mat). Random Rotation / Scale / Tilt / Prototype / Material draw from the Seed and n: the same seed gives the same stamps, more stamps never change
     the earlier ones. yaw / scale given (the drag of the tool sets them): exact, Random Rotation and Random Scale are not applied. yaw_add / scale_mult come on top."""
-    r=np.random.RandomState(int(n*104729+cfg['seed']*31+5)%(2**32)).rand(5)
+    r=np.random.RandomState(int(n*104729+cfg['seed']*31+5)%(2**32)).rand(6)                       # the sixth draw (the material) leaves the first five as they were before 0.10.0
     yaw=(cfg['yaw']+cfg['yawrand']*(2*r[0]-1) if yaw is None else float(yaw))+yaw_add
     if snap_rot:yaw=stamp_snap(yaw,snap_rot)
     if scale is None:lo,hi=cfg['scalerange'];k=cfg['scale']*(lo+(hi-lo)*r[1])
@@ -224,7 +298,7 @@ def stamp_make(cfg,n,normal=(0.0,1.0,0.0),yaw=None,scale=None,yaw_add=0.0,scale_
         if cfg['protorand'] and len(w) and w.sum()>0:proto=cfg['pool'][int(min(np.searchsorted(np.cumsum(w)/w.sum(),r[4],side='right'),len(w)-1))][0]
         else:proto=cfg['proto'] or rows[0]
     if int(proto) not in rows:proto=rows[0]
-    return dict(n=n,proto=int(proto),scale=k,yaw=yaw,quat=q)
+    return dict(n=n,proto=int(proto),scale=k,yaw=yaw,quat=q,mat=stamp_pick_material(cfg,proto,r[5]))
 
 def stamp_next(asset,normal=(0.0,1.0,0.0),yaw=None,scale=None,yaw_add=0.0,scale_mult=1.0,snap_rot=None,proto=None,text=None,group=False):
     """What the next stamp will be, with the same random draws stamp_add makes (so the tool can show it before the click): dict(n, proto, scale, yaw, quat) (see stamp_make)."""
@@ -246,7 +320,7 @@ def stamp_add(asset,position,normal=(0.0,1.0,0.0),yaw_add=0.0,scale_mult=1.0,sna
     text=asset.evalParm('stamps');nx=stamp_next(asset,normal,yaw=yaw,scale=scale,yaw_add=yaw_add,scale_mult=scale_mult,snap_rot=snap_rot,proto=proto,text=text)
     degrees=stamp_euler(nx['quat']) if rot is None else rot;k=nx['scale']
     pos=np.asarray(position,dtype=np.float64)+np.asarray(normal,dtype=np.float64)*asset.evalParm('offset')+stamp_sit(asset,nx,bounds)
-    line=stamp_line(pos,degrees,(k,k,k),nx['proto'])
+    line=stamp_line(pos,degrees,(k,k,k),nx['proto'],mat=nx['mat'])
     with hou.undos.group('Arraytron Stamp: place'):asset.parm('stamps').set((text.rstrip('\n')+'\n' if text.strip() else '')+line)
     return nx['n']
 
@@ -282,8 +356,14 @@ def stamp_eulers(q):
 def stamp_get_selection(asset,count=None):
     """The selected stamps (indices of the lines, sorted). Kept in the hidden parameter `selection`."""
     if asset.parm('selection') is None:return np.zeros(0,dtype=np.int64)
-    sel=np.array(sorted({int(v) for v in asset.evalParm('selection').split() if v.isdigit()}),dtype=np.int64)
-    return sel if count is None else sel[sel<count]
+    text=asset.evalParm('selection')
+    if text!=_SEL[0]:
+        try:sel=np.unique(np.array(text.split(),dtype=np.int64))                                      # the text is ours (sorted numbers): parsed at C speed
+        except ValueError:sel=np.array(sorted({int(v) for v in text.split() if v.isdigit()}),dtype=np.int64)
+        _SEL[0]=text;_SEL[1]=sel[sel>=0]
+    sel=_SEL[1]
+    return sel.copy() if count is None else sel[sel<count]
+_SEL=['',np.zeros(0,dtype=np.int64)]
 
 def stamp_set_selection(asset,indices):
     """Select stamps. Not an undo step (a selection is not an edit)."""
@@ -307,15 +387,28 @@ def stamp_selection_pivot(rows,sel):
 
 def stamp_write_row(lines,rows,i):
     """Replace line i of a list of lines by the row i of an array."""
-    r=rows[i];lines[i]=stamp_line(r[0:3],r[3:6],r[6:9],int(r[9]),int(r[10]))
+    r=rows[i];lines[i]=stamp_line(r[0:3],r[3:6],r[6:9],int(r[9]),int(r[10]),int(r[11]))
 
 def stamp_select_in_box(asset,project,x0,y0,x1,y1):
-    """The stamps whose position projects into the screen box; project(position) -> (x, y) in viewport pixels."""
+    """The stamps whose position projects into the screen box; project(position) -> (x, y) in viewport pixels. One call per stamp: stamp_select_in_rays is the fast one."""
     rows=stamp_rows(asset.evalParm('stamps'));lo=(min(x0,x1),min(y0,y1));hi=(max(x0,x1),max(y0,y1));out=[]
     for i,r in enumerate(rows):
         p=project(r[0:3])
         if p is not None and lo[0]<=p[0]<=hi[0] and lo[1]<=p[1]<=hi[1]:out.append(i)
     return out
+
+def stamp_select_in_rays(points,rays):
+    """Box select without projecting every stamp: the indices of the points inside the volume the four corner rays of the screen box bound ([(origin, direction)] in order round the box), in front of the
+    camera. Perspective and orthographic alike; numpy over all points."""
+    P=np.asarray(points,dtype=np.float64).reshape(-1,3)
+    if not len(P):return []
+    O=np.array([np.asarray(tuple(o),dtype=np.float64) for o,d in rays]);D=np.array([np.asarray(tuple(d),dtype=np.float64) for o,d in rays]);D/=np.linalg.norm(D,axis=1)[:,None]
+    L=float(np.abs(P-O.mean(0)).max())+1.0;far=O+D*L;mid=far.mean(0);inside=np.ones(len(P),dtype=bool)
+    for i in range(4):
+        j=(i+1)%4;n=np.cross(far[i]-O[i],far[j]-O[i])
+        if n@(mid-O[i])<0:n=-n
+        inside&=(P-O[i])@n>=0
+    c=D.mean(0);return np.nonzero(inside&((P-O.mean(0))@c>0))[0].tolist()
 
 def stamp_duplicate(asset,indices):
     """Copy stamps (the copies are appended and become the selection, which is returned). One undo step."""
@@ -332,8 +425,8 @@ def stamp_delete_many(asset,indices):
     stamp_set_lines(asset,[l for i,l in enumerate(lines) if i not in gone],'Arraytron Stamp: delete');stamp_set_selection(asset,[]);return len(gone)
 
 def stamp_edit_rows(asset,indices,op='set',**values):
-    """Change fields (x, y, z, rx, ry, rz, sx, sy, sz, proto, on) of MANY stamps in one parameter write and one undo step: the table of the Parameters pane edits the selected stamps or all of them.
-    op 'set' puts the value in, 'add' adds it to each stamp's own value, 'mul' multiplies it (the prototype row and the on flag are always set). Only the lines that change are rewritten. Returns how many stamps."""
+    """Change fields (x, y, z, rx, ry, rz, sx, sy, sz, proto, on, mat) of MANY stamps in one parameter write and one undo step: the table of the Parameters pane edits the selected stamps or all of them.
+    op 'set' puts the value in, 'add' adds it to each stamp's own value, 'mul' multiplies it (the prototype row, the on flag and the material are always set). Only the lines that change are rewritten. Returns how many stamps."""
     text=asset.evalParm('stamps');lines=stamp_lines(text);rows=stamp_rows(text);idx=sorted({int(i) for i in indices if 0<=int(i)<len(lines)})
     if not idx or not values:return 0
     a=np.array(idx,dtype=np.int64)
@@ -346,6 +439,36 @@ def stamp_edit_rows(asset,indices,op='set',**values):
 def stamp_edit_row(asset,index,**values):
     """Change fields of one stamp (see stamp_edit_rows). One undo step."""
     return stamp_edit_rows(asset,[index],**values)>0
+
+def stamp_material_edit(asset,indices,how='next',value=None):
+    """Change the material of stamps afterwards, each within its own bank row's list (one parameter write, one undo step): 'next' / 'prev' step through own -> 1 -> 2 ... -> own, 'random' draws one of
+    its row's materials, 'set' puts value in (0 = the prototype's own). Stamps whose row has no materials keep 0. Returns how many stamps."""
+    text=asset.evalParm('stamps');lines=stamp_lines(text);rows=stamp_rows(text);idx=sorted({int(i) for i in indices if 0<=int(i)<len(lines)})
+    if not idx:return 0
+    counts=stamp_materials(asset);a=np.array(idx,dtype=np.int64);n=np.array([len(counts.get(int(p),())) for p in rows[a,9]],dtype=np.int64);cur=stamp_material_index(rows[a,11],n)
+    if how in ('next','prev'):new=np.where(n>0,(cur+(1 if how=='next' else -1))%(n+1),0)
+    elif how=='random':new=np.where(n>0,np.random.default_rng().integers(0,1<<30,len(a))%np.maximum(n,1)+1,0)
+    else:new=np.where(n>0,max(int(value or 0),0),0)
+    rows[a,11]=new
+    for i in idx:stamp_write_row(lines,rows,i)
+    stamp_set_lines(asset,lines,'Arraytron Stamp: material of %d'%len(idx));return len(idx)
+
+def stamp_material_next_selected(asset):
+    return stamp_material_edit(asset,stamp_get_selection(asset),'next')
+
+def stamp_material_random_selected(asset):
+    return stamp_material_edit(asset,stamp_get_selection(asset),'random')
+
+def stamp_material_own_selected(asset):
+    return stamp_material_edit(asset,stamp_get_selection(asset),'set',0)
+
+def stamp_material_info(asset,nx=None):
+    """What material the next stamp gets, for the HUD: '2 Moss (random)', 'own', ..."""
+    mode=asset.evalParm('matmode') if asset.parm('matmode') is not None else 2
+    if nx is None:return ('random' if mode==0 else 'number %d'%asset.evalParm('matnum') if mode==1 else 'own')
+    row=stamp_material_names(asset).get(int(nx['proto']),[])
+    if not row:return 'own (row %d has no materials)'%int(nx['proto'])
+    return stamp_material_label(nx.get('mat',0),row)+(' (random of %d)'%len(row) if mode==0 else '')
 
 # ---- favourites and thumbnails of the cards
 def stamp_favorites(asset):
@@ -395,12 +518,11 @@ def stamp_decimate(P,T,C,limit):
 
 def stamp_thumb_triangles(asset,src,limit=3000):
     """(points (n, 3), triangles (t, 3), colour (3,)) of one source in the prototype's own space for a thumbnail; None when there is nothing to draw. Decimated to about `limit` triangles."""
-    stage=merged_stage(asset)
     if src[0]=='sphere':P,T=_sphere(0.5);return P,T,(0.35,0.6,1.0)
+    stage=merged_stage(asset) if src[0]!='file' else None;mesh=stamp_source_mesh(asset,src,stage)                  # the tool's copy (the proxy, read once): a dense asset costs no second read
     prim=_src_prim(stage,src)
-    if prim is None:return None
-    parent=prim.GetParent();P,T=prim_triangles(prim,_matrix(parent) if parent and parent.GetPath()!=Sdf.Path('/') else None)
-    if not len(T):return None
+    if prim is None or mesh is None:return None
+    P,T=mesh[0],mesh[1]
     if len(T)>limit:P,T,_=stamp_decimate(P,T,np.zeros_like(P),limit)
     color=(0.62,0.70,0.56)
     for p in Usd.PrimRange(prim,Usd.TraverseInstanceProxies()):
@@ -418,21 +540,54 @@ def stamp_ghost_arrays(asset,src,limit=GHOST_TRIANGLES):
     triangles (a dense asset is shown as a lighter copy of itself). None when there is nothing."""
     if src[0]=='sphere':
         P,T=_sphere(0.5);return P,T,np.tile((0.35,0.6,1.0),(len(P),1))
-    prim=_src_prim(merged_stage(asset),src)
-    if prim is None:return None
-    parent=prim.GetParent();P,T,C=prim_triangles(prim,_matrix(parent) if parent and parent.GetPath()!=Sdf.Path('/') else None,colors=True)
-    if not len(T):return None
-    P,T,C=stamp_decimate(P,T,C,limit)
+    stage=merged_stage(asset) if src[0]!='file' else None;key=_src_key(asset,src)+(int(limit),)
+    if key in _GHOST:return _GHOST[key]
+    mesh=stamp_source_mesh(asset,src,stage)                                                                       # the tool's copy (the proxy, read once per version of the source)
+    if mesh is None:return _remember(_GHOST,key,None)
+    P,T,C=stamp_decimate(mesh[0],mesh[1],mesh[2],limit)
     tri=P[T];fn=np.cross(tri[:,1]-tri[:,0],tri[:,2]-tri[:,0]);vn=np.zeros_like(P)                         # a fixed light baked into the colours (the face drawable is unshaded): two-sided, smooth normals
     for k in range(3):np.add.at(vn,T[:,k],fn)
     ln=np.linalg.norm(vn,axis=1);ln[ln==0]=1.0;light=np.array([0.35,0.8,0.5]);light/=np.linalg.norm(light)
     C=C*(0.38+0.62*np.abs(vn/ln[:,None]@light))[:,None]
-    return P,T,C
+    return _remember(_GHOST,key,(P,T,C))
 
-def stamp_ghost_geo(arrays):
-    """A hou.Geometry (polygons, a colour Cd per point) from stamp_ghost_arrays."""
+def stamp_ghost_geo(arrays,tint=None,amount=0.0):
+    """A hou.Geometry (polygons, a colour Cd per point) from stamp_ghost_arrays; tint: the slot colour laid over it (stamp_tint) by amount."""
     P,T,C=arrays;geo=hou.Geometry();geo.addAttrib(hou.attribType.Point,'Cd',(1.0,1.0,1.0))
+    if tint is not None and amount>0:C=stamp_tint(C,tint,amount)
     geo.createPoints([tuple(v) for v in P.tolist()]);geo.createPolygons(T.tolist());geo.setPointFloatAttribValues('Cd',C.ravel().tolist());return geo
+
+# ---------------------------------------------------------------- slot colours (0.11.0): every prototype slot of the bank has its own colour, on its card and over the ghost of the next stamp
+def stamp_slot_colors_on(asset):
+    """Options > Slot Colors (on in a new node; a node from before 0.11.0 has no such parameter: off)."""
+    return asset.parm('slotcolors') is not None and bool(asset.evalParm('slotcolors'))
+
+def stamp_slot_amount(asset):
+    """How strongly the slot colour lies over the ghost and the card (0 when Slot Colors is off)."""
+    if not stamp_slot_colors_on(asset):return 0.0
+    return min(max(float(asset.evalParm('slotcolor_amount')) if asset.parm('slotcolor_amount') is not None else 0.5,0.0),1.0)
+
+def stamp_slot_color(row,seed=0):
+    """The colour (r, g, b, 0..1) of bank row `row`: a random hue per row (by Color Seed), spread by the golden ratio so neighbouring rows never look alike; bright and saturated, readable over
+    a dark viewport and a grey thumbnail."""
+    import colorsys
+    h=int((int(row)*2654435761+int(seed)*40503+12345)&0xffffffff)
+    start=((int(seed)*2654435761+977)&0xffff)/65536.0                                                                   # the Color Seed turns the whole wheel
+    hue=(start+int(row)*0.6180339887+((h>>8)&0xff)/255.0*0.08)%1.0                                                      # the golden ratio apart, plus a little randomness per row
+    sat=0.72+((h>>16)&0xff)/255.0*0.2;val=0.92+((h>>24)&0xff)/255.0*0.08
+    return tuple(float(c) for c in colorsys.hsv_to_rgb(hue,sat,val))
+
+def stamp_slot_colors(asset):
+    """{bank row: colour} of the enabled rows ({} when Slot Colors is off)."""
+    if not stamp_slot_colors_on(asset):return {}
+    seed=int(asset.evalParm('slotcolor_seed')) if asset.parm('slotcolor_seed') is not None else 0
+    return {r:stamp_slot_color(r,seed) for r in bank_rows(asset)}
+
+def stamp_tint(C,color,amount):
+    """Colours (n, 3) with a slot colour laid over them: the shading (brightness) of C is kept, the hue moves toward the colour by amount (0 nothing, 1 the colour, shaded)."""
+    C=np.asarray(C,dtype=np.float64);col=np.asarray(color,dtype=np.float64);a=min(max(float(amount),0.0),1.0)
+    lum=(C@np.array([0.299,0.587,0.114]))[:,None];shaded=np.clip(col[None,:]*(0.35+0.9*lum),0.0,1.0)
+    return np.clip(C*(1.0-a)+shaded*a,0.0,1.0)
 
 def stamp_xform(pos,quat,scale):
     """A hou.Matrix4 (row vectors: scale, then rotate, then translate) of a stamp: position, quaternion (x, y, z, w), scale (3)."""
@@ -509,23 +664,27 @@ def stamp_add_batch(asset,positions,normals,snap_rot=None,cfg=None,bounds=None):
     text=asset.evalParm('stamps');cfg=cfg or stamp_settings(asset);n0=stamp_count(text);new=[]
     for k in range(len(positions)):
         nx=stamp_make(cfg,n0+k+1,normals[k],snap_rot=snap_rot);s=nx['scale']
-        new.append(stamp_line(positions[k]+normals[k]*cfg['offset']+stamp_sit(asset,nx,bounds),stamp_euler(nx['quat']),(s,s,s),nx['proto']))
+        new.append(stamp_line(positions[k]+normals[k]*cfg['offset']+stamp_sit(asset,nx,bounds),stamp_euler(nx['quat']),(s,s,s),nx['proto'],mat=nx['mat']))
     with hou.undos.group('Arraytron Stamp: paint'):asset.parm('stamps').set((text.rstrip('\n')+'\n' if text.strip() else '')+'\n'.join(new))
     return len(new)
 
 # ---- the Group brush: several prototypes stamped at once, in a radial layout or in the layout of stamps the artist placed
-GROUP_COLS=8                                                                                  # a custom member: bank row, x y z offset from the group, rx ry rz, scale
+GROUP_COLS=9                                                                                  # a custom member: bank row, x y z offset from the group, rx ry rz, scale, material (a layout captured before 0.10.0 has 8: no material)
 
 GROUP_LAYOUTS=('radial','square','hexagon','cluster','line','spiral','custom')
 GROUP_LAYOUT_LABELS=('Radial','Square','Hexagon','Random Cluster','Line','Spiral','Custom (from selected stamps)')
 
 def stamp_group_data(asset):
-    """The custom layout kept in the hidden parameter `group` as an (n, 8) array: bank row, x y z (from the centre of the group, y from its lowest member), rx ry rz, scale. Empty: nothing captured."""
+    """The custom layout kept in the hidden parameter `group` as an (n, 9) array: bank row, x y z (from the centre of the group, y from its lowest member), rx ry rz, scale, material. Empty: nothing captured."""
     none=np.zeros((0,GROUP_COLS))
     if asset.parm('group') is None:return none
-    try:a=np.array(asset.evalParm('group').split(),dtype=np.float64)
-    except ValueError:return none
-    return a.reshape(-1,GROUP_COLS) if len(a) and len(a)%GROUP_COLS==0 else none
+    out=[]
+    for line in stamp_lines(asset.evalParm('group')):
+        try:v=[float(t) for t in line.split()]
+        except ValueError:return none
+        if len(v) not in (GROUP_COLS,GROUP_COLS-1):return none
+        out.append(v+[0.0]*(GROUP_COLS-len(v)))
+    return np.array(out,dtype=np.float64) if out else none
 
 def stamp_group_layout(asset):
     """The layout in use: one of GROUP_LAYOUTS ('custom' only when stamps were captured, else the radial one)."""
@@ -542,7 +701,7 @@ def stamp_group_capture(asset,indices=None):
     if not len(sel):return 0
     r=rows[sel];centre=np.array([r[:,0].mean(),r[:,1].min(),r[:,2].mean()]);out=[]
     for k in range(len(r)):
-        o=r[k,0:3]-centre;out.append('%d %.4f %.4f %.4f  %.3f %.3f %.3f  %.4f'%((int(r[k,9]),)+tuple(o)+tuple(r[k,3:6])+(float(r[k,6:9].mean()),)))
+        o=r[k,0:3]-centre;out.append('%d %.4f %.4f %.4f  %.3f %.3f %.3f  %.4f  %d'%((int(r[k,9]),)+tuple(o)+tuple(r[k,3:6])+(float(r[k,6:9].mean()),int(r[k,11]))))
     with hou.undos.group('Arraytron Stamp: group layout'):
         asset.parm('group').set('\n'.join(out))
         if asset.parm('group_layout') is not None:asset.parm('group_layout').set(GROUP_LAYOUTS.index('custom'))
@@ -608,7 +767,7 @@ def stamp_group_items(asset,n,bounds,cfg=None):
         return it
     if len(custom):
         for c in custom:
-            row=int(c[0]) if int(c[0]) in rows else rows[0];items.append(vary(dict(row=row,off=c[1:4].copy(),quat=stamp_quat(c[4:7]),scale=float(c[7]))))
+            row=int(c[0]) if int(c[0]) in rows else rows[0];items.append(vary(dict(row=row,off=c[1:4].copy(),quat=stamp_quat(c[4:7]),scale=float(c[7]),mat=int(c[8]))))       # a captured member keeps its material
         return items,max(float(np.hypot(it['off'][0],it['off'][2]))+unit(it['row'])*it['scale'] for it in items)
     rng=np.random.RandomState(int(n*104729+cfg['seed']*31+11)%(2**31));ws=stamp_workset(asset);count=int(asset.evalParm('group_count'))
     if count>0:
@@ -634,14 +793,16 @@ def stamp_group_place(asset,items,radius,nx,position,normal,surf=None,bounds=Non
         if conform:
             h=surf.hit(p+nrm*lift,-nrm,stamps=stamps)
             if h is not None and h[2]<=lift*2:p=np.asarray(h[0],dtype=np.float64)
-        q=stamp_qmul(nx['quat'],it['quat']);sc=k*it['scale'];out.append(dict(proto=int(it['row']),pos=p+up*local[1]+nrm*off+stamp_sit(asset,dict(proto=int(it['row']),quat=q,scale=sc),bounds),quat=q,scale=sc))
+        q=stamp_qmul(nx['quat'],it['quat']);sc=k*it['scale'];out.append(dict(proto=int(it['row']),pos=p+up*local[1]+nrm*off+stamp_sit(asset,dict(proto=int(it['row']),quat=q,scale=sc),bounds),quat=q,scale=sc,mat=it.get('mat')))
     return out
 
 def stamp_group_add(asset,surf,position,normal,yaw=None,scale=None,snap_rot=None,bounds=None,cfg=None):
     """Place a group: one stamp per member, one parameter write, one undo step. yaw / scale (the drag) set the rotation and scale of the whole group. Returns how many stamps."""
     text=asset.evalParm('stamps');cfg=cfg or stamp_settings(asset,True);bounds=stamp_proto_bounds(asset) if bounds is None else bounds
     nx=stamp_make(cfg,stamp_count(text)+1,normal,yaw=yaw,scale=scale,snap_rot=snap_rot);items,radius=stamp_group_items(asset,nx['n'],bounds,cfg)
-    new=[stamp_line(p['pos'],stamp_euler(p['quat']),(p['scale'],)*3,p['proto']) for p in stamp_group_place(asset,items,radius,nx,position,normal,surf,bounds)]
+    rng=np.random.RandomState(int(nx['n']*104729+cfg['seed']*31+17)%(2**31))                                          # the materials of the members (Material: Random), from the Seed and n like the rest of the group
+    new=[stamp_line(p['pos'],stamp_euler(p['quat']),(p['scale'],)*3,p['proto'],mat=p['mat'] if p.get('mat') is not None else stamp_pick_material(cfg,p['proto'],rng.rand()))
+         for p in stamp_group_place(asset,items,radius,nx,position,normal,surf,bounds)]
     with hou.undos.group('Arraytron Stamp: place group'):asset.parm('stamps').set((text.rstrip('\n')+'\n' if text.strip() else '')+'\n'.join(new))
     return len(new)
 
@@ -678,60 +839,50 @@ def stamp_paint_dab(surf,center,normal,radius,density,spacing,falloff,rng,existi
 # whole path of the stroke (not to the dab that happened to make it), so a stroke is a ribbon with a soft edge, with no circles at the dabs, and the same coverage at any mouse speed.
 # The candidates are the points of a world-fixed jittered grid (one per 1 / Density of area, from the Seed), each with its own threshold: a candidate is made when its threshold is below the Density
 # multiplier at its place, so thinning is statistical and nested, and painting the same place again finds the same candidates (the Spacing then keeps them from doubling up).
-FALLOFF_CURVES=('linear','smoothstep','smootherstep','ease_in','ease_out','custom')
-FALLOFF_CURVE_LABELS=('Linear','Smoothstep','Smootherstep','Ease In','Ease Out','Custom Ramp')
-PAINT_PRESETS=('uniform','soft','sparse','growth','dense','custom')
-PAINT_PRESET_LABELS=('Uniform (no falloff)','Soft Natural','Sparse Edges','Growth','Dense Center','Custom')
-PAINT_PRESET_VALUES={'uniform':dict(dens_on=0,scale_on=0),
- 'soft':dict(dens_on=1,dens_min=5,dens_width=75,dens_strength=100,dens_curve=2,scale_on=1,scale_min=35,scale_max=100,scale_width=85,scale_strength=100,scale_curve=1),
- 'sparse':dict(dens_on=1,dens_min=0,dens_width=80,dens_strength=100,dens_curve=2,scale_on=1,scale_min=70,scale_max=100,scale_width=60,scale_strength=100,scale_curve=1),
- 'growth':dict(dens_on=1,dens_min=30,dens_width=60,dens_strength=70,dens_curve=1,scale_on=1,scale_min=12,scale_max=100,scale_width=100,scale_strength=100,scale_curve=1),
- 'dense':dict(dens_on=1,dens_min=0,dens_width=100,dens_strength=100,dens_curve=4,scale_on=1,scale_min=85,scale_max=100,scale_width=100,scale_strength=60,scale_curve=1)}
-_LUT_U=np.linspace(0.0,1.0,257)
+FALLOFF_CURVES=BC_CURVES                                                        # Paint Engine 2.0: the curves, presets and multipliers are BrushCore's (src/brushcore.py, shared with Arraytron); the names stay for scripts
+FALLOFF_CURVE_LABELS=BC_CURVE_LABELS
+PAINT_PRESETS=BC_PRESETS
+PAINT_PRESET_LABELS=BC_PRESET_LABELS
+PAINT_PRESET_VALUES=BC_PRESET_VALUES
+_LUT_U=BC_LUT_U
 
 def falloff_curve(kind,u):
-    """How much of the fall is done at u (0 = the inner edge of the transition, 1 = the rim), for the curve kinds (custom is not here: it is a ramp)."""
-    u=np.clip(np.asarray(u,dtype=np.float64),0.0,1.0)
-    if kind=='smoothstep':return u*u*(3.0-2.0*u)
-    if kind=='smootherstep':return u*u*u*(u*(u*6.0-15.0)+10.0)
-    if kind=='ease_in':return u*u
-    if kind=='ease_out':return 1.0-(1.0-u)**2
-    return u
+    """How much of the fall is done at u (0 = the inner edge of the transition, 1 = the rim) (BrushCore's bc_curve)."""
+    return bc_curve(kind,u)
 
 def falloff_lut(asset,prefix):
-    """The influence (1 at the inner edge of the transition, 0 at the rim) at 257 steps of u: the preset curve, or the Custom Ramp (its left is the rim, its right the inner edge; default a straight ramp)."""
-    i=int(asset.evalParm('paint_%s_curve'%prefix));kind=FALLOFF_CURVES[min(max(i,0),len(FALLOFF_CURVES)-1)]
+    """The influence (1 at the inner edge of the transition, 0 at the rim) at 257 steps of u: the curve, or the Custom Ramp (its left is the rim, its right the inner edge; default a straight ramp)."""
+    i=int(asset.evalParm('paint_%s_curve'%prefix));kind=BC_CURVES[min(max(i,0),len(BC_CURVES)-1)]
     if kind=='custom':
-        try:ramp=asset.parm('paint_%s_ramp'%prefix).evalAsRamp();return np.clip(np.array([ramp.lookup(1.0-float(u)) for u in _LUT_U],dtype=np.float64),0.0,1.0)
+        try:ramp=asset.parm('paint_%s_ramp'%prefix).evalAsRamp();return bc_lut('custom',ramp.lookup)
         except Exception:kind='smoothstep'
-    return 1.0-falloff_curve(kind,_LUT_U)
+    return bc_lut(kind)
 
 def stamp_falloff_profile(asset,prefix):
-    """The settings of one channel ('dens' or 'scale') as a dict, or None when it is off: min, max (the multiplier at the rim and at the centre), inner (the radius where the fall starts, 0..1), strength, lut."""
+    """The settings of one channel ('dens' or 'scale') as a BrushCore profile, or None when it is off: min, max (the multiplier at the rim and at the centre), inner (the radius where the fall starts, 0..1), strength, lut, kind."""
     p='paint_%s_'%prefix
     if asset.parm(p+'on') is None or not asset.evalParm(p+'on'):return None
-    mx=1.0 if prefix=='dens' else asset.evalParm(p+'max')/100.0
-    return dict(min=asset.evalParm(p+'min')/100.0,max=mx,inner=1.0-min(max(asset.evalParm(p+'width')/100.0,0.0),1.0),strength=min(max(asset.evalParm(p+'strength')/100.0,0.0),1.0),lut=falloff_lut(asset,prefix))
+    mx=1.0 if prefix=='dens' else asset.evalParm(p+'max')/100.0;i=int(asset.evalParm(p+'curve'));kind=BC_CURVES[min(max(i,0),len(BC_CURVES)-1)]
+    return bc_profile(True,asset.evalParm(p+'min')/100.0,mx,asset.evalParm(p+'width')/100.0,asset.evalParm(p+'strength')/100.0,kind,lut=falloff_lut(asset,prefix) if kind=='custom' else None)
 
 def falloff_multiplier(profile,r):
-    """The multiplier of a channel at the normalised distance r from the stroke (0 on it, 1 at the rim): lerp(min, max, influence), blended with 1 by Strength. None (off): 1.
-    u = clamp((r - inner) / (1 - inner)) is the place inside the transition; influence = the curve at u."""
-    r=np.asarray(r,dtype=np.float64)
-    if profile is None:return np.ones_like(r)
-    u=np.clip((r-profile['inner'])/max(1.0-profile['inner'],1e-6),0.0,1.0);m=profile['min']+(profile['max']-profile['min'])*np.interp(u,_LUT_U,profile['lut']);return 1.0+profile['strength']*(m-1.0)
+    """The multiplier of a channel at the normalised distance r from the stroke (BrushCore's bc_multiplier)."""
+    return bc_multiplier(profile,r)
 
 def stamp_paint_active(asset):
-    """True when the swept-field engine paints (Density or Scale Falloff on); False: the Paint brush works as before (dabs, the Edge Falloff)."""
-    return asset.parm('paint_dens_on') is not None and bool(asset.evalParm('paint_dens_on') or asset.evalParm('paint_scale_on'))
+    """True when the swept-field engine paints: always with Brush Engine Continuous Stroke (0.11.0, the default); with Classic Dabs (and before 0.11.0) only with Density or Scale Falloff on."""
+    on=asset.parm('paint_dens_on') is not None and bool(asset.evalParm('paint_dens_on') or asset.evalParm('paint_scale_on'))
+    if asset.parm('paint_engine') is not None and int(asset.evalParm('paint_engine'))==0:return True                     # 0.11.0 Continuous Stroke (the default)
+    return on                                                                                                          # Classic Dabs: the 0.9.3 rule (the swept field only with a falloff on)
 
 def stamp_falloff_text(asset):
     """'Density 100 > 5 %   Scale 100 > 35 %' or 'off': the HUD line of the Paint brush."""
-    if not stamp_paint_active(asset):return 'off (Edge Falloff %.2g)'%asset.evalParm('paint_falloff') if asset.parm('paint_falloff') is not None else 'off'
+    if not stamp_paint_active(asset):return 'classic dabs (Edge Falloff %.2g)'%asset.evalParm('paint_falloff') if asset.parm('paint_falloff') is not None else 'off'
     out=[]
     for name,prefix in (('Density','dens'),('Scale','scale')):
         p=stamp_falloff_profile(asset,prefix)
         if p is not None:out.append('%s %g > %g %%'%(name,round(100*(1.0+p['strength']*(p['max']-1.0)),1),round(100*(1.0+p['strength']*(p['min']-1.0)),1)))
-    return '   '.join(out)
+    return '   '.join(out) or 'uniform (no falloff)'
 
 def stamp_paint_preset(asset,name=None):
     """Set the falloff parameters of a preset (Uniform, Soft Natural, Sparse Edges, Growth, Dense Center): the same parameters the artist edits, not a second system; Custom changes nothing. name: a key of PAINT_PRESETS, or None to take the Preset menu."""
@@ -741,25 +892,12 @@ def stamp_paint_preset(asset,name=None):
         for k,v in PAINT_PRESET_VALUES.get(kind,{}).items():asset.parm('paint_'+k).set(v)
     return kind
 
-def _mix64(x):
-    x=np.asarray(x,dtype=np.uint64)
-    with np.errstate(over='ignore'):
-        x=(x^(x>>np.uint64(30)))*np.uint64(0xbf58476d1ce4e5b9);x=(x^(x>>np.uint64(27)))*np.uint64(0x94d049bb133111eb);return x^(x>>np.uint64(31))
-
-def _cell_hash(i,j,seed,k):
-    """A 64 bit hash per grid cell (arrays i, j), for the Seed and the stream k: the same cell always gives the same numbers, whatever order the stroke reaches it in."""
-    with np.errstate(over='ignore'):
-        return _mix64(_mix64(i.astype(np.int64).astype(np.uint64)*np.uint64(0x9E3779B97F4A7C15)+j.astype(np.int64).astype(np.uint64)*np.uint64(0xC2B2AE3D27D4EB4F))+np.uint64(int(seed)*2654435761+k*40503+1))
-
-def _unit(h):
-    return (h>>np.uint64(11)).astype(np.float64)*(1.0/9007199254740992.0)
-
 def stamp_paint_lines(asset,positions,normals,mults,nkeys,cfg,bounds=None):
     """The lines of the stamps made by the swept-field stroke: each is the stamp stamp_make draws for its own key (so it does not depend on the order of the stroke), scaled by its Scale Falloff multiplier,
     on the surface with Offset and Sit On Surface after the scale."""
     new=[];snap=asset.evalParm('snaprot') or None
     for p,n,m_,key in zip(positions,normals,mults,nkeys):
-        nx=stamp_make(cfg,int(key),n,snap_rot=snap,scale_mult=float(m_));s=nx['scale'];new.append(stamp_line(np.asarray(p)+np.asarray(n)*cfg['offset']+stamp_sit(asset,nx,bounds),stamp_euler(nx['quat']),(s,s,s),nx['proto']))
+        nx=stamp_make(cfg,int(key),n,snap_rot=snap,scale_mult=float(m_));s=nx['scale'];new.append(stamp_line(np.asarray(p)+np.asarray(n)*cfg['offset']+stamp_sit(asset,nx,bounds),stamp_euler(nx['quat']),(s,s,s),nx['proto'],mat=nx['mat']))
     return new
 
 def stamp_append_lines(asset,new):
@@ -769,70 +907,227 @@ def stamp_append_lines(asset,new):
     with hou.undos.group('Arraytron Stamp: paint'):asset.parm('stamps').set((text.rstrip('\n')+'\n' if text.strip() else '')+'\n'.join(new))
     return len(new)
 
+def stamp_cast(surf,limit):
+    """BrushCore's cast for the Stamp: every origin cast along the direction onto Place On (not onto the stamps); a hit farther than limit is a miss."""
+    def cast(O,d):
+        O=np.asarray(O,dtype=np.float64);P=np.zeros_like(O);N=np.zeros_like(O);ok=np.zeros(len(O),dtype=bool)
+        for k in range(len(O)):
+            h=surf.hit(O[k],d,stamps=False)
+            if h is None or h[2]>limit:continue
+            P[k]=h[0];N[k]=h[1];ok[k]=True
+        return P,N,ok
+    return cast
+
+def _p(asset,name,default):
+    """A parameter of 0.11.0, or the default on an older node."""
+    return asset.evalParm(name) if asset.parm(name) is not None else default
+
 class StampPaintStroke(object):
-    """One Paint stroke with Density / Scale Falloff, processed incrementally: move(position, normal) for each mouse position (a segment of the path), finish() at the end. Only the new part of the path costs anything.
-      * candidates: a world-fixed jittered grid in the plane of the two axes that are not the dominant axis of the surface normal where the stroke began (the ground: X and Z); one candidate per cell of area 1 / Density
-      * the field: the distance r (in brush radii) of a candidate to the polyline of the stroke; a candidate inside the plateau of every channel is made at once (nothing can change it later), one in a transition
-        waits until the brush has gone a radius past it (its distance to the path is then final) or the stroke ends, so the soft edge does not depend on how fast the mouse moved
-      * made when its threshold < Density multiplier(r); scaled by Scale multiplier(r); cast onto the surface along the axis (not onto stamps); kept when no stamp, old or new, is closer than Spacing."""
+    """One Paint stroke of the Stamp on BrushCore's swept field (src/brushcore.py BrushStroke): move(position, normal) for each mouse position, finish() at the end; the made stamps are the stamps stamp_make
+    draws for each candidate's own key (not the order of the stroke), scaled by the Scale Falloff, buffered and written with few parameter writes (FLUSH_S apart, never more than a third of the time).
+    Erased stamps (on 0) do not hold their place: painting over them fills the gap."""
     MAX_CELLS=40000
     FLUSH_S=0.0                                                                    # the tool sets 0.05: new stamps are written at most that often (and never more than a third of the time), the end of the stroke writes the rest
     def __init__(self,asset,surf,bounds=None,cfg=None,normal=(0.0,1.0,0.0)):
-        self.asset=asset;self.surf=surf;self.bounds=bounds;self.cfg=cfg or stamp_settings(asset);self.R=max(float(asset.evalParm('paint_radius')),1e-4);density=max(float(asset.evalParm('paint_density')),1e-4);self.spacing=float(asset.evalParm('paint_spacing'))
-        self.dens=stamp_falloff_profile(asset,'dens');self.scale=stamp_falloff_profile(asset,'scale');self.seed=int(asset.evalParm('seed'));n=np.asarray(normal,dtype=np.float64)
-        self.axis=int(np.argmax(np.abs(n)));self.sign=1.0 if n[self.axis]>=0 else -1.0;self.ia,self.ib=[a for a in (0,1,2) if a!=self.axis];self.h=max(1.0/np.sqrt(density),self.R*0.02)
-        self.inner=min([1.0]+[p['inner'] for p in (self.dens,self.scale) if p is not None]);self.lift=self.R*1.5+0.05
-        text=asset.evalParm('stamps');rows=stamp_rows(text);self.ex=rows[:,0:3].copy() if len(rows) else np.zeros((0,3));self.V=[];self.H=[];self.known=set()
-        self.pk=np.zeros(0,dtype=np.int64);self.pc=np.zeros((0,2));self.pt=np.zeros(0);self.pn=np.zeros(0,dtype=np.int64);self.added=0;self.moves=0;self.buf=[];self.last_write=0.0;self.write_s=0.0
-    def _cells(self,a,b):
-        """Add the candidates of the grid cells within a radius of the segment a-b that nobody has seen yet."""
-        R=self.R;h=self.h;lo=np.minimum(a,b)-R;hi=np.maximum(a,b)+R;i0,i1=int(np.floor(lo[0]/h)),int(np.floor(hi[0]/h));j0,j1=int(np.floor(lo[1]/h)),int(np.floor(hi[1]/h))
-        if (i1-i0+1)*(j1-j0+1)>self.MAX_CELLS:return
-        I,J=np.meshgrid(np.arange(i0,i1+1),np.arange(j0,j1+1),indexing='ij');I=I.ravel();J=J.ravel();keys=I*1000003+J;fresh=np.array([k not in self.known for k in keys.tolist()],dtype=bool)
-        if not fresh.any():return
-        I,J,keys=I[fresh],J[fresh],keys[fresh];c=np.stack([(I+_unit(_cell_hash(I,J,self.seed,1)))*h,(J+_unit(_cell_hash(I,J,self.seed,2)))*h],axis=1)
-        ab=b-a;L2=float(ab@ab);t=np.clip(((c-a)@ab)/L2,0.0,1.0) if L2>1e-18 else np.zeros(len(c));near=np.linalg.norm(c-(a+np.outer(t,ab)),axis=1)<=R
-        if not near.any():return
-        c=c[near];keys=keys[near];I=I[near];J=J[near];self.known.update(keys.tolist());hh=_cell_hash(I,J,self.seed,3)
-        self.pk=np.concatenate([self.pk,keys]);self.pc=np.concatenate([self.pc,c]);self.pt=np.concatenate([self.pt,_unit(hh)]);self.pn=np.concatenate([self.pn,(hh%np.uint64(2**30)).astype(np.int64)+1])
+        self.asset=asset;self.surf=surf;self.bounds=bounds;self.cfg=cfg or stamp_settings(asset);self.R=max(float(asset.evalParm('paint_radius')),1e-4)
+        rows=stamp_rows(asset.evalParm('stamps'));ex=rows[rows[:,10]>0.5,0:3] if len(rows) else np.zeros((0,3));lift=self.R*1.5+0.05
+        self.engine=BrushStroke(self.R,max(float(asset.evalParm('paint_density')),1e-4),float(asset.evalParm('paint_spacing')),int(asset.evalParm('seed')),normal,stamp_falloff_profile(asset,'dens'),
+                                stamp_falloff_profile(asset,'scale'),ex,stamp_cast(surf,lift+self.R*1.5),strength=_p(asset,'paint_strength',1.0),noise=_p(asset,'paint_noise',0.0),lift=lift)
+        self.engine.MAX_CELLS=self.MAX_CELLS;self.added=0;self.moves=0;self.buf=[];self.last_write=0.0;self.write_s=0.0
+    def _take(self,out):
+        P,N,M,K=out
+        if len(P):self.buf+=stamp_paint_lines(self.asset,P,N,M,K,self.cfg,self.bounds);self.added+=len(P)
+        return len(P)
     def move(self,position,normal=None):
         """The brush is at position: extend the path and make what that settles. Returns how many stamps were made."""
-        pos=np.asarray(position,dtype=np.float64);p=np.array([pos[self.ia],pos[self.ib]])
-        if self.V and np.linalg.norm(p-self.V[-1])<0.06*self.R:return 0
-        a=self.V[-1] if self.V else p;self.V.append(p);self.H.append(float(pos[self.axis]));self.moves+=1;self._cells(a,p);return self._resolve(False)
+        n=self._take(self.engine.move(position));self.moves=self.engine.moves
+        if n and time.time()-self.last_write>=max(self.FLUSH_S,2.0*self.write_s if self.FLUSH_S>0 else 0.0):self.flush()
+        return n
     def finish(self):
         """The end of the stroke: every candidate still waiting is decided with the distance it has now, and everything not written yet is written."""
-        n=self._resolve(True) if self.V else 0;self.flush();return n
+        n=self._take(self.engine.finish());self.flush();return n
+    def cancel(self):
+        """Esc in the middle of a stroke: nothing more is made."""
+        self.engine.cancel();self.buf=[]
     def flush(self):
         """Write the stamps made so far (one parameter write)."""
         if self.buf:
             t0=time.time();stamp_append_lines(self.asset,self.buf);self.buf=[];self.write_s=time.time()-t0;self.last_write=time.time()
-    def _resolve(self,final):
-        if not len(self.pk):return 0
-        R=self.R;V=np.array(self.V);Hh=np.array(self.H);A=V[:-1] if len(V)>1 else V;B=V[1:] if len(V)>1 else V;HA=Hh[:-1] if len(V)>1 else Hh;HB=Hh[1:] if len(V)>1 else Hh;C=self.pc
-        lo=C.min(axis=0)-R;hi=C.max(axis=0)+R;use=np.all(np.maximum(A,B)>=lo,axis=1)&np.all(np.minimum(A,B)<=hi,axis=1)
-        if not use.any():use=np.ones(len(A),dtype=bool)
-        A,B,HA,HB=A[use],B[use],HA[use],HB[use];AB=B-A;L2=np.maximum((AB**2).sum(axis=1),1e-18);t=np.clip(((C[:,None,:]-A[None])*AB[None]).sum(axis=2)/L2[None],0.0,1.0)
-        D=np.linalg.norm(C[:,None,:]-(A[None]+t[:,:,None]*AB[None]),axis=2);k=D.argmin(axis=1);ix=np.arange(len(C));dmin=D[ix,k];href=HA[k]+t[ix,k]*(HB[k]-HA[k]);dh=np.linalg.norm(C-V[-1],axis=1);r=dmin/R
-        far=dmin>R;decide=(~far)&((r<=self.inner+1e-12)|(dh>=R)|final);keep=(~far)&(~decide)
-        if far.any():self.known.difference_update(self.pk[far].tolist())                        # not under the brush (any more): it may come back when the path does
-        acc=decide&(self.pt<falloff_multiplier(self.dens,r))
-        made=0
-        if acc.any():
-            order=np.argsort(self.pk[acc]);idx=np.nonzero(acc)[0][order];ms=falloff_multiplier(self.scale,r[idx]);P=[];N=[];M=[];K=[]
-            ex=self.ex
-            if self.spacing>0 and len(ex):
-                lo2=C[idx].min(axis=0)-self.spacing;hi2=C[idx].max(axis=0)+self.spacing;ex=ex[(ex[:,self.ia]>=lo2[0])&(ex[:,self.ia]<=hi2[0])&(ex[:,self.ib]>=lo2[1])&(ex[:,self.ib]<=hi2[1])]
-            for q,i in enumerate(idx):
-                o=np.zeros(3);o[self.ia]=C[i,0];o[self.ib]=C[i,1];o[self.axis]=href[i]+self.sign*self.lift;d=np.zeros(3);d[self.axis]=-self.sign;hit=self.surf.hit(o,d,stamps=False)
-                if hit is None or hit[2]>self.lift+R*1.5:continue
-                p=np.asarray(hit[0],dtype=np.float64)
-                if self.spacing>0 and len(ex) and np.min(np.linalg.norm(ex[:,[self.ia,self.ib]]-p[[self.ia,self.ib]],axis=1))<self.spacing:continue         # the Spacing is measured along the surface (the plane of the stroke), so Sit On Surface and Offset do not matter
-                ex=np.vstack([ex,p[None]]) if self.spacing>0 else ex;P.append(p);N.append(np.asarray(hit[1],dtype=np.float64));M.append(ms[q]);K.append(self.pn[i])
-            if P:
-                self.buf+=stamp_paint_lines(self.asset,P,N,M,K,self.cfg,self.bounds);made=len(P);self.ex=np.vstack([self.ex,np.array(P)]);self.added+=made
-                if time.time()-self.last_write>=max(self.FLUSH_S,2.0*self.write_s if self.FLUSH_S>0 else 0.0):self.flush()
-        self.pk,self.pc,self.pt,self.pn=self.pk[keep],self.pc[keep],self.pt[keep],self.pn[keep];return made
+
+# ---------------------------------------------------------------- the editing brushes (Paint Engine 2.0): Erase, Relax, Grow / Shrink, Push / Attract, Replace, Orient / Comb, Clone
+STAMP_BRUSH_KEYS=('place','delete','paint','group','erase','relax','scale','push','replace','orient','clone')            # the value of the hidden parameter brush (0.9 had the first four)
+STAMP_SCALE_MODES=('grow','shrink','set','smooth')                                                                  # no Restore: a stamp keeps only its current scale and rotation (Undo goes back)
+STAMP_ORIENT_MODES=('comb','toward','away','random','smooth')
+
+def _arc(a,b):
+    """Quaternions (n, 4) of the shortest turns taking unit vectors a onto b."""
+    a=np.asarray(a,dtype=np.float64);b=np.asarray(b,dtype=np.float64);c=np.cross(a,b);w=1.0+np.sum(a*b,axis=1);q=np.concatenate([c,w[:,None]],axis=1)
+    flip=w<1e-9
+    if flip.any():q[flip]=np.array([1.0,0.0,0.0,0.0])
+    return bc_qnorm(q)
+
+class StampEditStroke(object):
+    """One stroke of an editing brush over the placed stamps. BrushCore dabs every fifth of the radius along the path (the same effect at any mouse speed); the stamps under a dab come from a hash grid
+    (only they cost anything); the maths is BrushCore's (bc_erase, bc_relax, bc_scale, bc_push, bc_replace, bc_orient); the changed lines are rewritten in memory and written at most every 50 ms
+    (never more than a third of the time); the tool wraps the stroke in one undo step. Erase switches stamps off (on = 0): the ids of the others never change and Restore Erased Stamps brings them back.
+    Moved stamps keep their height above the surface (Sit On Surface, Offset, stacks) and turn with the surface when Align To Surface is on.
+    kind: 'erase', 'relax', 'scale', 'push', 'replace', 'orient'; op: the variant ('hard' / 'soft'; 'grow' / 'shrink' / 'set' / 'smooth' / 'restore'; 'push' / 'attract' / 'drag' / 'smooth';
+    'comb' / 'toward' / 'away' / 'random' / 'restore' / 'smooth'), None = the brush's own setting."""
+    FLUSH_S=0.05
+    def __init__(self,asset,surf,kind,normal=(0.0,1.0,0.0),op=None,bounds=None):
+        self.asset=asset;self.surf=surf;self.kind=kind;self.bounds=bounds;text=asset.evalParm('stamps');self.text0=text;self.lines=stamp_lines(text);self.rows=stamp_rows(text);self.base=self.rows.copy()
+        self.R=max(float(asset.evalParm('paint_radius')),1e-4);self.strength=min(max(float(_p(asset,'paint_strength',1.0)),0.0),1.0);self.amount=float(_p(asset,'brush_amount',0.3))
+        self.curve=BC_CURVES[min(max(int(_p(asset,'brush_curve',1)),0),len(BC_CURVES)-1)];self.hard=float(_p(asset,'brush_hardness',0.2));self.seed=int(asset.evalParm('seed'))
+        modes={'erase':('hard','soft'),'scale':STAMP_SCALE_MODES,'push':BC_PUSH_MODES,'orient':STAMP_ORIENT_MODES}
+        if op is None and kind in modes:
+            if kind=='erase':op='soft' if _p(asset,'erase_soft',0) else 'hard'
+            else:op=modes[kind][min(max(int(_p(asset,kind+'_mode',0)),0),len(modes[kind])-1)]
+        self.op=op;n=np.asarray(normal,dtype=np.float64);self.axis=int(np.argmax(np.abs(n)));self.sign=1.0 if n[self.axis]>=0 else -1.0;self.plane=[a for a in (0,1,2) if a!=self.axis]
+        self.dabs=BrushDabs(self.R*0.2);self.changed=set();self.timer=BrushTimer(self.FLUSH_S*max(1.0,len(self.rows)/5000.0));self.count=0;self.moved_since=0.0;self._grid()      # every live write recooks the instancer: with many stamps they come less often (100 000 stamps: once a second)
+        self.only=set(stamp_workset(asset) or [asset.evalParm('proto')]) if (kind in ('erase','scale','push','orient','relax') and _p(asset,'brush_workset',0)) else None
+        self.spacing=float(_p(asset,'paint_spacing',0.0));self.target=None;self.lift=self.R*2.0+0.05;self.align=float(asset.evalParm('align'))
+        self.pool=[(r,w) for r,w in stamp_settings(asset)['pool']] if kind=='replace' else None
+    def _grid(self):
+        self.grid=BrushGrid(self.rows[:,self.plane] if len(self.rows) else np.zeros((0,2)),max(self.R*0.5,1e-3));self.moved_since=0.0
+    def _under(self,c,reach=1.0):
+        """(indices of the stamps that are on within reach x radius of c in the stroke plane, r = distance / radius), the working-set filter applied."""
+        idx=self.grid.query(c[self.plane],self.R*reach+self.moved_since)
+        if len(idx):idx=idx[self.rows[idx,10]>0.5]
+        if len(idx) and self.only is not None:idx=idx[np.isin(self.rows[idx,9].astype(np.int64),list(self.only))]
+        if not len(idx):return idx,np.zeros(0)
+        r=np.linalg.norm(self.rows[idx][:,self.plane]-c[self.plane],axis=1)/self.R;keep=r<=reach;return idx[keep],r[keep]
+    def move(self,position,normal=None):
+        """The brush is at position: a dab every fifth of the radius along the path since the last call. Returns how many stamps the stroke has changed so far."""
+        for c in self.dabs.move(np.asarray(position,dtype=np.float64)):self._dab(c)
+        if self.changed and self.timer.due():self.flush()
+        return self.count
+    def _settle(self,idx,new):
+        """Put moved stamps back on the surface: the plane coordinates of new, the height above the surface they had; turned with the surface (Align To Surface)."""
+        old=self.rows[idx,0:3];out=old.copy();out[:,self.plane]=new[:,self.plane];d=np.zeros(3);d[self.axis]=-self.sign;cast=stamp_cast(self.surf,self.lift*4.0)
+        O1=old.copy();O1[:,self.axis]+=self.sign*self.lift;O2=out.copy();O2[:,self.axis]+=self.sign*self.lift;P1,N1,ok1=cast(O1,d);P2,N2,ok2=cast(O2,d);good=ok1&ok2
+        out[good,self.axis]=P2[good,self.axis]+(old[good,self.axis]-P1[good,self.axis])
+        if self.align>0 and good.any():
+            g=np.nonzero(good)[0];turn=_arc(N1[g],N2[g]);q=stamp_quat(self.rows[idx[g],3:6]);self.rows[idx[g],3:6]=stamp_eulers(bc_qmul(turn,q))
+        bad=~(ok1&ok2)
+        out[bad]=old[bad]                                                                                         # off the surface: it stays where it was
+        return out
+    def _set_pos(self,idx,P):
+        move=float(np.max(np.linalg.norm(P-self.rows[idx,0:3],axis=1))) if len(idx) else 0.0
+        self.rows[idx,0:3]=P;self.moved_since+=move
+        if self.moved_since>self.R*0.25:self._grid()
+    def _dab(self,c):
+        k=self.kind;dab=self.dabs.count
+        if k=='relax':
+            idx,r=self._under(c,1.6)
+            if len(idx)<2:return
+            if self.target is None:self.target=self.spacing if self.spacing>0 else bc_relax_target(self.rows[idx][:,self.plane])
+            w=bc_brush_weight(r,self.curve,self.hard)*self.strength;P=self.rows[idx,0:3].copy();new=P.copy();new[:,self.plane]=bc_relax(P[:,self.plane],w,self.target,1.0,2)
+            moved=np.linalg.norm(new-P,axis=1)>1e-9
+            if moved.any():
+                m=idx[moved];self._set_pos(m,self._settle(m,new[moved]));self.changed.update(m.tolist());self.count=len(self.changed)
+            return
+        idx,r=self._under(c)
+        if not len(idx):return
+        w=bc_brush_weight(r,self.curve,self.hard)*self.strength
+        if k=='erase':
+            gone=bc_erase(idx,w*min(self.amount,1.0),1.0,self.seed,dab,soft=True) if self.op=='soft' else (w>0)             # soft: thinning (the rim less, again with every dab); hard: everything inside the rim
+            g=idx[gone]
+            if len(g):self.rows[g,10]=0;self.changed.update(g.tolist());self.count=len(self.changed)
+        elif k=='scale':
+            S=self.rows[idx,6:9];new=bc_scale(S,w,self.op,self.amount*0.25,target=float(_p(self.asset,'scale_target',1.0)),base=self.base[idx,6:9],neighbors=S)
+            if self.bounds is not None and self.asset.parm('sit') is not None and self.asset.evalParm('sit'):                                      # the bottom of the prototype stays on the surface
+                up=bc_qrot(stamp_quat(self.rows[idx,3:6]),np.array([0.0,1.0,0.0]));lo=np.array([float(self.bounds.get(int(p),(np.full(3,-0.5),None))[0][1]) for p in self.rows[idx,9]])
+                self.rows[idx,0:3]+=up*(-lo*(new[:,1]-S[:,1]))[:,None]
+            self.rows[idx,6:9]=new;self.changed.update(idx.tolist());self.count=len(self.changed)
+        elif k=='push':
+            P=self.rows[idx,0:3];new=bc_push(P,c,w,self.R,self.op,self.amount*0.5,direction=self.dabs.direction(),plane=self.plane)
+            moved=np.linalg.norm(new-P,axis=1)>1e-9
+            if moved.any():
+                m=idx[moved];self._set_pos(m,self._settle(m,new[moved]));self.changed.update(m.tolist());self.count=len(self.changed)
+        elif k=='replace':
+            if not self.pool:return
+            go,new=bc_replace(idx,w,np.array([p[0] for p in self.pool]),[p[1] for p in self.pool],self.strength,self.seed,dab)
+            g=idx[go]
+            if len(g):
+                changed=self.rows[g,9]!=new[go];self.rows[g,9]=new[go];self.changed.update(g[changed].tolist());self.count=len(self.changed)
+        elif k=='orient':
+            Q=stamp_quat(self.rows[idx,3:6]);up=bc_qrot(Q,np.array([0.0,1.0,0.0]))
+            new=bc_orient(Q,up,w,self.op,self.amount,direction=self.dabs.direction(),center=c,P=self.rows[idx,0:3],ids=idx*np.int64(7919)+dab,seed=self.seed,base=stamp_quat(self.base[idx,3:6]))
+            self.rows[idx,3:6]=stamp_eulers(new);self.changed.update(idx.tolist());self.count=len(self.changed)
+    def flush(self):
+        """Write the changed lines (one parameter write: only those lines are rewritten, the text joined once)."""
+        if not self.changed:return
+        t0=time.time()
+        for i in self.changed:stamp_write_row(self.lines,self.rows,int(i))
+        self.asset.parm('stamps').set('\n'.join(self.lines));self.timer.wrote(t0);self._pending=False
+    def finish(self):
+        self.flush();return self.count
+    def cancel(self):
+        """Esc in the middle of the stroke: the stamps go back to what they were before it."""
+        with hou.undos.disabler():self.asset.parm('stamps').set(self.text0)
+        self.changed=set();self.count=0
+
+def brush_select(asset,name):
+    """Choose a brush by its BrushCore name (place, delete, paint, group, erase, relax, scale, push, replace, orient, clone) and leave the Edit mode; for scripts and tools/bench_paint_engine.py. Returns True."""
+    if name not in STAMP_BRUSH_KEYS:return None
+    with hou.undos.disabler():asset.parm('brush').set(STAMP_BRUSH_KEYS.index(name));asset.parm('mode1').set(0)
+    return True
+
+def stamp_erased(asset):
+    rows=stamp_rows(asset.evalParm('stamps'));return np.nonzero(rows[:,10]<0.5)[0] if len(rows) else np.zeros(0,dtype=np.int64)
+
+def stamp_restore_erased(asset):
+    """Switch the erased stamps (on 0) back on. One undo step. Returns how many."""
+    idx=stamp_erased(asset)
+    if not len(idx):return 0
+    return stamp_edit_rows(asset,idx,on=1)
+
+def stamp_remove_erased(asset):
+    """Remove the erased stamps from the text for good (the lines after them get new numbers, as with Delete). One undo step. Returns how many."""
+    idx=stamp_erased(asset)
+    if not len(idx):return 0
+    return stamp_delete_many(asset,idx)
+
+# ---- Clone: copy an arrangement of stamps and stamp it elsewhere
+def stamp_clone_capture(asset,center,normal,radius=None):
+    """The stamps that are on within radius (the brush radius) of center become the clone source (their transforms relative to center in the frame of the normal, their prototypes and materials).
+    Kept in the hidden parameter clone_src (JSON, one undo step). Returns how many stamps it holds."""
+    import json
+    rows=stamp_rows(asset.evalParm('stamps'));R=float(radius if radius is not None else asset.evalParm('paint_radius'))
+    if not len(rows):return 0
+    idx=np.nonzero((rows[:,10]>0.5)&(np.linalg.norm(rows[:,0:3]-np.asarray(center,dtype=np.float64),axis=1)<=R))[0]
+    if not len(idx):return 0
+    cl=bc_clone_capture(rows[idx,0:3],stamp_quat(rows[idx,3:6]),rows[idx,6:9],rows[idx,9],center,normal)
+    data=dict(off=cl['off'].round(5).tolist(),quat=cl['quat'].round(6).tolist(),scale=cl['scale'].round(5).tolist(),proto=rows[idx,9].astype(int).tolist(),mat=rows[idx,11].astype(int).tolist(),radius=cl['radius'])
+    with hou.undos.group('Arraytron Stamp: clone source'):asset.parm('clone_src').set(json.dumps(data))
+    return len(idx)
+
+def stamp_clone_source(asset):
+    import json
+    try:d=json.loads(asset.evalParm('clone_src') or '{}')
+    except Exception:return None
+    if not d.get('off'):return None
+    return dict(off=np.array(d['off'],dtype=np.float64),quat=np.array(d['quat'],dtype=np.float64),scale=np.array(d['scale'],dtype=np.float64),proto=np.array(d['proto'],dtype=np.int64),mat=np.array(d.get('mat',[0]*len(d['off'])),dtype=np.int64),radius=float(d.get('radius',0.0)))
+
+def stamp_clone_info(asset):
+    cl=stamp_clone_source(asset) if asset.parm('clone_src') is not None else None
+    if cl is None:return 'Nothing yet: with the Clone brush, Ctrl + click a group of stamps.'
+    return '%d stamp%s, %.3g across (prototypes %s)'%(len(cl['off']),'' if len(cl['off'])==1 else 's',2*cl['radius'],' '.join(str(p) for p in sorted(set(cl['proto'].tolist()))))
+
+def stamp_clone_lines(asset,surf,center,normal,copy=0,clone=None):
+    """The lines of one copy of the clone source at center on the frame of normal: turned by Clone Rotate (plus a random turn per copy with Random Rotate Copies), scaled by Clone Scale, every member
+    dropped onto the surface under it (Conform To Surface) at the height it had above its own ground. Returns a list of lines."""
+    cl=clone if clone is not None else stamp_clone_source(asset)
+    if cl is None:return []
+    yaw=float(_p(asset,'clone_yaw',0.0));sc=float(_p(asset,'clone_scale',1.0))
+    if _p(asset,'clone_random',1):yaw+=float(bc_unit(bc_hash1(np.array([int(copy)]),int(asset.evalParm('seed')),41))[0])*360.0
+    W,Q,S,proto=bc_clone_place(cl,center,normal,yaw,sc);n=np.asarray(normal,dtype=np.float64);n=n/np.linalg.norm(n)
+    if _p(asset,'clone_conform',1) and surf is not None:
+        h=cl['off'][:,1]*sc;R=max(cl['radius'],1e-3)*sc
+        for k in range(len(W)):
+            base=W[k]-n*h[k];hit=surf.hit(base+n*(R*2.0+1.0),-n,stamps=False)
+            if hit is not None:W[k]=hit[0]+n*h[k]
+    return [stamp_line(W[k],stamp_euler(Q[k]),tuple(S[k]),int(proto[k]),mat=int(cl['mat'][k])) for k in range(len(W))]
 
 def stamp_paint_path(asset,surf,points,bounds=None):
     """Paint a whole stroke through points (positions on the surface, or above it: the surface below each is used), as the Paint brush does: with Density / Scale Falloff on the swept-field engine, else the dabs and the Edge Falloff.
@@ -973,15 +1268,29 @@ def _prim_color(prim):
     except Exception:pass
     return (0.62,0.70,0.56)
 
-def prim_triangles(prim,space=None,colors=False):
+def _tool_shapes(shapes):
+    """The shapes the tool uses of an asset, as the viewport draws it: the proxy instead of the render geometry when the asset has a proxy (a dense rock: its 100 000 triangle proxy, not the million
+    of the render mesh), never the guides. Everything when that would leave nothing."""
+    kinds=[]
+    for p in shapes:
+        try:kinds.append(str(UsdGeom.Imageable(p).ComputePurpose()))
+        except Exception:kinds.append('default')
+    drop=('guide','render') if 'proxy' in kinds else ('guide',)
+    out=[p for p,k in zip(shapes,kinds) if k not in drop]
+    return out or shapes
+
+def prim_triangles(prim,space=None,colors=False,purpose=False):
     """(points, triangles) of every Mesh / basic shape under prim (itself included), in world space, or in the space of the matrix space (a prim's parent, for prototypes).
-    Prims that are not visible are skipped."""
-    P=[];T=[];C=[];base=0;inv=np.linalg.inv(space) if space is not None else None
+    Prims that are not visible are skipped. purpose: the shapes the viewport draws (_tool_shapes: the proxy, not the render geometry), for prototypes."""
+    P=[];T=[];C=[];base=0;inv=np.linalg.inv(space) if space is not None else None;shapes=[]
     for p in Usd.PrimRange(prim,Usd.TraverseInstanceProxies()):                      # also into instanceable prims (the Houdini sample assets are made of them)
         if p.GetTypeName() not in SHAPES:continue
         try:
             if UsdGeom.Imageable(p).ComputeVisibility()=='invisible':continue
         except Exception:pass
+        shapes.append(p)
+    if purpose and shapes:shapes=_tool_shapes(shapes)
+    for p in shapes:
         pts,tris=shape_triangles(p)
         if not len(tris):continue
         M=_matrix(p)
@@ -993,6 +1302,54 @@ def prim_triangles(prim,space=None,colors=False):
 
 def _geo(P,T):
     g=hou.Geometry();g.createPoints([tuple(v) for v in P.tolist()]);g.createPolygons(T.tolist());return g
+
+# ---------------------------------------------------------------- the tool's copy of the prototypes (0.11.0: heavy prototypes)
+# A prototype is read ONCE per version of its source and shared by everything the tool draws or casts against: the rays of Place On Stamps, the ghost under the mouse and the card thumbnails.
+# Before, a dense asset (a rock of 1 million render triangles and a 100 000 triangle proxy) was read whole, both purposes, and turned into a hou.Geometry again every time the tool resumed
+# (the mouse back in the viewport, after a menu): about 3.5 s each time. Now: the proxy (what the viewport shows), at most RAY_TRIANGLES (a lighter copy of a denser one), kept in this module.
+RAY_TRIANGLES=200000
+_MESH={};_RAYGEO={};_GHOST={}
+
+def _src_key(asset,src):
+    """What the tool's copy of a source depends on: a file by its path, prim and modification time; a prim of the incoming stage by the cook of the merged inputs (an upstream change reads it again)."""
+    import os
+    if src[0]=='sphere':return ('sphere',)
+    if src[0]=='file':
+        try:mt=os.path.getmtime(src[1])
+        except OSError:mt=0
+        return tuple(src)+(mt,)
+    node=asset.node('STAMPS');inputs=node.inputs() if node is not None else ()
+    merge=inputs[0] if inputs and inputs[0] is not None else None
+    return tuple(src)+((merge.sessionId(),merge.cookCount()) if merge is not None else (0,0))
+
+def _remember(cache,key,value,limit=48):
+    if len(cache)>=limit:cache.clear()
+    cache[key]=value;return value
+
+def stamp_source_mesh(asset,src,stage=None):
+    """(points, triangles, colours) of one prototype source in the prototype's own space, as the tool uses it: the shapes the viewport draws (the proxy rather than the render geometry), a lighter
+    copy when it has more than RAY_TRIANGLES; read once per version of the source (_src_key). None when there is nothing to draw."""
+    if src[0]=='sphere':
+        P,T=_sphere(0.5);return P,T,np.tile((0.35,0.6,1.0),(len(P),1))
+    if src[0]!='file' and stage is None:stage=merged_stage(asset)                                     # first: reading the stage may cook the inputs (the key then sees that cook)
+    key=_src_key(asset,src)
+    if key in _MESH:return _MESH[key]
+    prim=_src_prim(stage,src);out=None
+    if prim is not None:
+        parent=prim.GetParent();P,T,C=prim_triangles(prim,_matrix(parent) if parent and parent.GetPath()!=Sdf.Path('/') else None,colors=True,purpose=True)
+        if len(T):
+            if len(T)>RAY_TRIANGLES:P,T,C=stamp_decimate(P,T,C,RAY_TRIANGLES)
+            out=(P,T,C)
+    return _remember(_MESH,key,out)
+
+def stamp_ray_proto(asset,src,stage=None):
+    """The ray-cast data of one prototype source (hou.Geometry, min, max, points, triangles, {} for its smooth normals), shared by every StampSurface: None when there is nothing to hit."""
+    if src[0]!='file' and src[0]!='sphere' and stage is None:stage=merged_stage(asset)
+    key=_src_key(asset,src)
+    if key not in _RAYGEO:
+        mesh=stamp_source_mesh(asset,src,stage)
+        _remember(_RAYGEO,key,(_geo(mesh[0],mesh[1]),mesh[0].min(0),mesh[0].max(0),mesh[0],mesh[1],{}) if mesh is not None else None)
+    return _RAYGEO[key]
 
 def _quat_matrices(q):
     """Rotation matrices (n, 3, 3) of quaternions (n, 4) (x, y, z, w), column convention: v' = M v."""
@@ -1035,13 +1392,9 @@ class StampSurface(object):
         self.gP=np.concatenate(P);self.gT=np.concatenate(T);self.geo=_geo(self.gP,self.gT)
     # -- the stamps
     def _proto(self,src):
-        """The ray-cast geometry and box of one prototype source prim, in the prototype's space (its parent's space, like the instancer)."""
-        if src not in self.protos:
-            prim=_src_prim(self.stage,src) if src[0]!='sphere' else None
-            if src[0]=='sphere':P,T=_sphere(0.5)
-            elif prim is not None:parent=prim.GetParent();P,T=prim_triangles(prim,_matrix(parent) if parent and parent.GetPath()!=Sdf.Path('/') else None)
-            else:P,T=np.zeros((0,3)),np.zeros((0,3),dtype=np.int64)
-            self.protos[src]=(_geo(P,T),P.min(0),P.max(0),P,T) if len(T) else None
+        """The ray-cast geometry and box of one prototype source prim, in the prototype's space (its parent's space, like the instancer): stamp_ray_proto (the proxy, read once per version of the
+        source and shared with the next StampSurface, so resuming the tool costs nothing)."""
+        if src not in self.protos:self.protos[src]=stamp_ray_proto(self.asset,src,self.stage)
         return self.protos[src]
     def _build(self,rows,line0,entries,seed):
         """The ray-cast data of the stamps of rows (the first is line number line0): dict(items, lines, P, S, M, lo, hi), or None when none of them can be hit."""
@@ -1087,10 +1440,11 @@ class StampSurface(object):
         import copy
         ok=np.nonzero((self.lo[:,0]<=hi[0])&(self.hi[:,0]>=lo[0])&(self.lo[:,2]<=hi[1])&(self.hi[:,2]>=lo[1]))[0];v=copy.copy(self)
         v.items=[self.items[i] for i in ok];v.lines=self.lines[ok];v.P=self.P[ok];v.S=self.S[ok];v.M=self.M[ok];v.lo=self.lo[ok];v.hi=self.hi[ok];v.n=len(ok);return v
-    def _smooth_of(self,key,P,T):
-        """The smooth normals of a mesh (built when first needed: a big ground costs a moment once)."""
-        if key not in self._sm:self._sm[key]=_Smooth(P,T)
-        return self._sm[key]
+    def _smooth_of(self,key,P,T,keep=None):
+        """The smooth normals of a mesh (built when first needed: a big ground costs a moment once). keep: a dict to keep them in (a prototype's, shared by every StampSurface)."""
+        keep=self._sm if keep is None else keep
+        if key not in keep:keep[key]=_Smooth(P,T)
+        return keep[key]
     def _stamps_hit(self,o,d,limit):
         """The nearest stamp hit closer than limit: (position, normal, distance, line) or None."""
         if not self.n:return None
@@ -1107,7 +1461,7 @@ class StampSurface(object):
             if t<=1e-9 or t>=limit or (best is not None and t>=best[2]):continue
             ln=np.array(tuple(self.nrm))
             if self.smooth:
-                try:ln=self._smooth_of(id(self.items[k]),self.items[k][3],self.items[k][4]).normal(pr,np.array(tuple(self.pos)));ln=ln if ln@ld<=0 else -ln
+                try:it=self.items[k];ln=self._smooth_of('sm' if len(it)>5 else id(it),it[3],it[4],it[5] if len(it)>5 else None).normal(pr,np.array(tuple(self.pos)));ln=ln if ln@ld<=0 else -ln
                 except Exception:ln=np.array(tuple(self.nrm))
             n=R@(ln/s);n=n/(np.linalg.norm(n) or 1.0)
             if n@d>0:n=-n
@@ -1132,6 +1486,16 @@ class StampSurface(object):
             s=self._stamps_hit(o,d,best[2] if best is not None else np.inf)
             if s is not None:best=s[:3];self.last_stamp=s[3]
         return best
+    def project(self,points,normal,lift):
+        """Points cast along -normal from lift above onto Place On (or the ground plane), positions only (no smooth normal, no stamps): the cursor rings. A miss keeps the point."""
+        P=np.asarray(points,dtype=np.float64);n=np.asarray(normal,dtype=np.float64);out=P.copy();O=P+n*lift
+        if self.geo is None:
+            if abs(n[1])>1e-9:t=O[:,1]/n[1];ok=t>0;out[ok]=O[ok]-np.outer(t[ok],n)
+            return out
+        d=hou.Vector3(tuple(-n))
+        for k in range(len(P)):
+            if self.geo.intersect(hou.Vector3(tuple(O[k])),d,self.pos,self.nrm,self.uvw)>=0:out[k]=self.pos[0],self.pos[1],self.pos[2]
+        return out
     def snapped(self,point,normal,step):
         """The hit with the Snap Position grid applied to X and Z (the point is put back on what is below it)."""
         if step<=0:return point,normal
@@ -1144,34 +1508,49 @@ def stamp_surface(asset):
 # ---------------------------------------------------------------- the cook
 def stamp_cook(node):
     """The Python LOP: the instancer of the stamps. The bank's sources are staged as prototypes under <output>/Prototypes (an internal reference to the prim, or to a USD file staged hidden
-    under <output>_Sources); each stamp takes the prototype of its bank row (a group row: one of its children, by the id of the stamp) with the row's Scale, Scale Random and Rotation Offset."""
+    under <output>_Sources); each stamp takes the prototype of its bank row (a group row: one of its children, by the id of the stamp) with the row's Scale, Scale Random and Rotation Offset.
+    Material variants (0.10.0): a stamp with mat k > 0 takes a copy of its prototype with the k-th material of its row bound to it (p<entry>_<child>_m<k>, made only for the variants in use; strongerThanDescendants,
+    so it wins over the materials inside the source). mat 0 is the prototype as it is (p<entry>_<child>, the paths of 0.9)."""
     asset=node.parent();stage=node.editableStage();out=asset.evalParm('outputpath').strip() or '/World/Stamps'
     rows=stamp_rows(asset.evalParm('stamps'));entries=stamp_entries(asset,stage);seed=asset.evalParm('seed')
     inst=UsdGeom.PointInstancer.Define(stage,out);root=out+'/Prototypes';stage.DefinePrim(root,'Scope');srcroot=out.rstrip('/')+'_Sources'
     for old in stage.GetPrimAtPath(root).GetChildren():stage.RemovePrim(old.GetPath())
-    targets=[];first=[];count=[];hide=asset.evalParm('hidesrc')
-    for k,e in enumerate(entries):
-        first.append(len(targets));count.append(len(e['srcs']))
-        for j,src in enumerate(e['srcs']):
-            p=Sdf.Path('%s/p%d_%d'%(root,k+1,j))
-            if src[0]=='sphere':
-                s=UsdGeom.Sphere.Define(stage,p);s.CreateRadiusAttr(0.5);s.CreateDisplayColorAttr([Gf.Vec3f(0.35,0.6,1.0)])
-            else:
-                if src[0]=='file':
-                    stage.DefinePrim(srcroot,'Scope');target=Sdf.Path('%s/Proto_%02d_%s'%(srcroot,e['row'],re.sub(r'\W+','_',_leaf(re.split(r'[\\/?]',src[1])[-1].rsplit('.',1)[0])).strip('_') or 'proto'))
-                    sp=stage.DefinePrim(target);sp.GetReferences().AddReference(src[1].replace('\\','/'),Sdf.Path(src[2])) if src[2] else sp.GetReferences().AddReference(src[1].replace('\\','/'))
-                    UsdGeom.Imageable(sp).MakeInvisible();shown=True
-                else:
-                    target=Sdf.Path(src[1]);shown=bool(hide)
-                    if hide:UsdGeom.Imageable(stage.GetPrimAtPath(src[1])).MakeInvisible()
-                prim=stage.DefinePrim(p);prim.GetReferences().AddInternalReference(target)
-                if shown:UsdGeom.Imageable(prim).GetVisibilityAttr().Set('inherited')
-            targets.append(p)
-    inst.CreatePrototypesRel().SetTargets(targets)
     on=rows[:,10]>0.5 if len(rows) else np.zeros(0,dtype=bool);r=rows[on];n=len(r);ids=np.nonzero(on)[0].astype(np.int64)
     rowmap={e['row']:i for i,e in enumerate(entries)};eidx=np.array([rowmap.get(int(v),0) for v in r[:,9]],dtype=np.int64) if n else np.zeros(0,dtype=np.int64)
-    first=np.array(first,dtype=np.int64);count=np.array(count,dtype=np.int64)
-    index=first[eidx]+((ids*2654435761+seed)%count[eidx] if n else 0)                    # a group row picks one of its children, by the id of the stamp
+    mats=stamp_materials(asset,stage)
+    for e in entries:
+        e['mats']=mats.get(e['row'],[])
+        for path in e['mats']:
+            mp=stage.GetPrimAtPath(path)
+            if not mp or not mp.IsA(UsdShade.Material):raise hou.NodeError('Prototype %d: the material %s is not a Material prim of the incoming stage.'%(e['row'],path))
+    nm=np.array([len(e['mats']) for e in entries],dtype=np.int64);var=stamp_material_index(r[:,11],nm[eidx]) if n else np.zeros(0,dtype=np.int64)
+    used={k:{0} for k in range(len(entries))}
+    for k,v in set(zip(eidx.tolist(),var.tolist())):used[k].add(int(v))
+    base=np.full((len(entries),int(nm.max(initial=0))+1),-1,dtype=np.int64);count=np.array([len(e['srcs']) for e in entries],dtype=np.int64);targets=[];hide=asset.evalParm('hidesrc')
+    def source(e,src):
+        """(the prim a prototype references, whether the prototype must be made visible again); None for the built-in sphere. A USD file is staged once, hidden."""
+        if src[0]=='sphere':return None
+        if src[0]=='file':
+            stage.DefinePrim(srcroot,'Scope');target=Sdf.Path('%s/Proto_%02d_%s'%(srcroot,e['row'],re.sub(r'\W+','_',_leaf(re.split(r'[\\/?]',src[1])[-1].rsplit('.',1)[0])).strip('_') or 'proto'))
+            sp=stage.DefinePrim(target);sp.GetReferences().AddReference(src[1].replace('\\','/'),Sdf.Path(src[2])) if src[2] else sp.GetReferences().AddReference(src[1].replace('\\','/'))
+            UsdGeom.Imageable(sp).MakeInvisible();return target,True
+        if hide:UsdGeom.Imageable(stage.GetPrimAtPath(src[1])).MakeInvisible()
+        return Sdf.Path(src[1]),bool(hide)
+    for k,e in enumerate(entries):
+        made=[source(e,src) for src in e['srcs']]
+        for v in sorted(used[k]):
+            base[k,v]=len(targets)
+            for j,src in enumerate(e['srcs']):
+                p=Sdf.Path('%s/p%d_%d%s'%(root,k+1,j,'_m%d'%v if v else ''))
+                if made[j] is None:
+                    s=UsdGeom.Sphere.Define(stage,p);s.CreateRadiusAttr(0.5);s.CreateDisplayColorAttr([Gf.Vec3f(0.35,0.6,1.0)]);prim=s.GetPrim()
+                else:
+                    prim=stage.DefinePrim(p);prim.GetReferences().AddInternalReference(made[j][0])
+                    if made[j][1]:UsdGeom.Imageable(prim).GetVisibilityAttr().Set('inherited')
+                if v:UsdShade.MaterialBindingAPI.Apply(prim).Bind(UsdShade.Material(stage.GetPrimAtPath(e['mats'][v-1])),UsdShade.Tokens.strongerThanDescendants)
+                targets.append(p)
+    inst.CreatePrototypesRel().SetTargets(targets)
+    index=base[eidx,var]+((ids*2654435761+seed)%count[eidx] if n else 0)                    # a group row picks one of its children, by the id of the stamp
     q,S=stamp_effective(r,ids,eidx,entries,seed) if n else (np.zeros((0,4)),np.zeros((0,3)))
     inst.CreatePositionsAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*map(float,p)) for p in r[:,0:3]]) if n else Vt.Vec3fArray())
     inst.CreateOrientationsAttr().Set(Vt.QuathArray([Gf.Quath(float(w),float(x),float(y),float(z)) for x,y,z,w in q]) if n else Vt.QuathArray())

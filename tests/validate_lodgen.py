@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import versions
 VID=versions.resolve(sys.argv[1] if len(sys.argv)>1 else versions.CURRENT)
-PREVIOUS={'v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
+PREVIOUS={'v1.38.3':'v1.38.2','v1.38.2':'v1.38.1','v1.38.1':'v1.38.0','v1.38.0':'v1.37.0','v1.37.0':'v1.36.0','v1.36.0':'v1.35.0','v1.35.0':'v1.34.1','v1.34.1':'v1.34.0','v1.34.0':'v1.33.0','v1.33.0':'v1.32.0','v1.32.0':'v1.31.1','v1.31.1':'v1.31.0','v1.31.0':'v1.30.1','v1.30.1':'v1.30.0','v1.30.0':'v1.29.0','v1.29.0':'v1.28.0','v1.8.0':'v1.7.0','v1.9.0':'v1.8.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0','v1.16.0':'v1.15.0','v1.17.0':'v1.16.0','v1.18.0':'v1.17.0','v1.19.0':'v1.18.0','v1.20.0':'v1.19.0','v1.21.0':'v1.20.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.21.1':'v1.21.0','v1.22.0':'v1.21.1','v1.23.0':'v1.22.0','v1.24.0':'v1.23.0','v1.25.0':'v1.24.0','v1.25.1':'v1.25.0','v1.10.0':'v1.9.0','v1.11.0':'v1.10.0','v1.12.0':'v1.11.0','v1.13.0':'v1.12.0','v1.14.0':'v1.13.0','v1.15.0':'v1.14.0'}[VID]
 TYPE=versions.type_name(VID);OLD_TYPE=versions.type_name(PREVIOUS)
 WORK=Path(tempfile.mkdtemp(prefix='arraytron_lodgen_'));checks=[];MUTATE=os.environ.get('ARRAYTRON_MUTATE')
 spec=importlib.util.spec_from_file_location('lodgen_src',str(ROOT/'src/arraytron_lodgen.py'));LG=importlib.util.module_from_spec(spec);spec.loader.exec_module(LG)   # the pure functions, no Houdini needed
@@ -212,6 +212,22 @@ def materials():
         assert np.array_equal(np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Props/Dragon/Body/'+sub)).GetIndicesAttr().Get()),np.array(UsdGeom.Subset(es.GetPrimAtPath('/World/Arraytron_LOD/Proto01_LOD1/Body/'+sub)).GetIndicesAttr().Get()))
     off=painted(st,sc,[(0,0,-3)],name='Off',lodg_on=0,proto_prim1='/World/Props/Dragon');out(off);assert not off.stage().GetPrimAtPath('/World/Arraytron_LOD')
 
+def levels_follow_hero_materials():
+    """v1.38.2: the generated levels in the instancer's prototype list use the materials of the hero prototype (its copy under <output>/Prototypes), so everything done to those materials after
+    the instancer (Lookdev, an edit) shows on every level; a material outside the source prim stays where it is."""
+    from pxr import UsdShade
+    st,sc=new_scene('follow');a=painted(st,sc,[(0,0,-3)],lodg_on=1,proto_prim1='/World/Props/Dragon');o=out(a);s=a.stage();assert len(o['targets'])==4,o['targets']
+    hero=o['targets'][0];assert hero.endswith('/Dragon') and hero!='/World/Props/Dragon',hero
+    for lod in o['targets'][1:]:
+        for sub,mat in (('SkinA','MatA'),('SkinB','MatB')):
+            sp=s.GetPrimAtPath(lod+'/Body/'+sub);assert sp and sp.IsValid(),(lod,sub);bound=UsdShade.MaterialBindingAPI(sp).ComputeBoundMaterial()[0]
+            assert bound and str(bound.GetPath())==hero+'/Looks/'+mat,(lod,sub,bound)                                              # the material inside the hero copy
+    assert UsdShade.Material(s.GetPrimAtPath(hero+'/Looks/MatA')),'the hero copy has its materials'
+    r=painted(st,sc,[(0,0,-3)],name='Rock2',lodg_on=1,proto_prim1='/World/Props/Rock');ro=out(r);rs=r.stage()
+    for lod in ro['targets'][1:]:
+        bound=UsdShade.MaterialBindingAPI(rs.GetPrimAtPath(lod+'/Rock')).ComputeBoundMaterial()[0];assert bound and str(bound.GetPath())=='/World/Looks/Stone',(lod,bound)           # a library material is not a copy: unchanged
+    gen=rs.GetPrimAtPath('/World/Arraytron_LOD/Proto01_LOD1/Rock');assert gen and str(UsdShade.MaterialBindingAPI(gen).ComputeBoundMaterial()[0].GetPath())=='/World/Looks/Stone'      # the generated prims themselves keep the source's bindings
+
 def handedness_and_instancing():
     """v1.21.1: the normals of a left-handed mesh (Houdini's own meshes) point out of it, not into it (a level shaded from the inside renders black), and an instanceable prototype (Houdini's Test
     Geometry assets: its meshes and materials are instance proxies) is cloned like any other."""
@@ -281,6 +297,7 @@ def main():
                       ('Primvars: face-varying, vertex, uniform and constant carried over to the reduced mesh',primvar_maths),
                       ('On the node: generated prims (hierarchy, transform, material, primvars, normals), hero untouched, prototype list, read-out',stage_prims),
                       ('Materials: face subsets mapped onto the reduced triangles, bindings kept (also inherited ones), no material copied, the hero network untouched, an exact copy keeps its subsets',materials),
+                      ('The generated levels use the materials of the hero prototype copy; a library material stays',levels_follow_hero_materials),
                       ('Left-handed meshes get outward normals; an instanceable prototype (Test Geometry assets) is cloned with its material',handedness_and_instancing),
                       ('Level of detail switch uses the generated levels by camera distance',lod_switch),
                       ('A prim of its own wins over the generated level',explicit_wins),

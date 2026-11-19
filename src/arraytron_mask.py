@@ -163,6 +163,7 @@ def _mask_values_raw(asset,P,ids):
         return _mesh_field(asset,name,1).lookup(P,asset.evalParm('mask_mesh_outside'))[:,0]
     if source==4:return maskpaint_field(asset,P)                                  # v1.26.0: the painted mask (src/arraytron_maskpaint.py)
     if source==5:return hpaint_field(asset,P)                                     # v1.28.0: the mask painted with Houdini's Attribute Paint (src/arraytron_hpaint.py)
+    if source==6:return mup_values(asset,P)                                       # v1.38.0: a mask saved by an Arraytron node above (src/arraytron_maskstage.py)
     return np.ones(len(P))
 
 def mask_weights(asset,raw):
@@ -192,6 +193,9 @@ def sop_mask(geo,asset):
     P=np.array(geo.pointFloatAttribValues('P')).reshape(-1,3);ids=np.array(geo.pointIntAttribValues('id'))
     raw=mask_values(asset,P,ids);w=mask_weights(asset,raw);effect=asset.evalParm('mask_effect')
     geo.addAttrib(hou.attribType.Point,'maskweight',1.0);geo.setPointFloatAttribValues('maskweight',w.tolist())              # copied to the mask primvar when asked for
+    if 'mstage_primvar' in globals():                                                                                          # v1.38.0: Save Mask also writes the weight as a primvar of its own name (<node>_mask or the typed name)
+        pvname=mstage_primvar(asset)
+        if pvname:geo.addAttrib(hou.attribType.Point,pvname,1.0);geo.setPointFloatAttribValues(pvname,w.tolist())
     geo.setGlobalAttribValue('mask_min',float(w.min()));geo.setGlobalAttribValue('mask_mean',float(w.mean()));geo.setGlobalAttribValue('mask_max',float(w.max()))
     if effect in (1,2):
         floor=asset.evalParm('mask_minscale');ws=mask_scale_response(asset,w);geo.addAttrib(hou.attribType.Point,'maskscale',1.0);geo.setPointFloatAttribValues('maskscale',(floor+(1.0-floor)*ws).tolist())          # v1.32.0: the Scale Response curve shapes the scale on its own

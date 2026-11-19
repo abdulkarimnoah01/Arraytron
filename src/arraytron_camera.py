@@ -98,6 +98,9 @@ import hou
 def primvar_attribs(asset):
     """Space separated point attributes the PointInstancer copies to primvars: the ticked ones of the Primvars section."""
     names=[name for toggle,name in PRIMVAR_TOGGLES if asset.parm(toggle) is not None and asset.evalParm(toggle)]
+    if 'mstage_primvar' in globals():
+        saved=mstage_primvar(asset)                                                                                              # v1.38.0: the saved mask is a primvar of its own name
+        if saved and saved not in names:names.append(saved)
     if asset.parm('imp_copy') is not None and asset.evalParm('mode')==8:names+=[n for n in asset.evalParm('imp_copy').replace(',',' ').split() if n and n not in names]     # the source attributes asked for in Imported Points
     return ' '.join(names)
 

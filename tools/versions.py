@@ -75,9 +75,17 @@ VERSIONS={
  'v1.32.0':dict(old='-',type='arraytron::instancer::1.32.0',h205=True),     # Falloff follows the shape of any mask, mask export / bake / save and load, the Layout tab is the Scatter tab and holds the Mask and the Field Stack
  'v1.33.0':dict(old='-',type='arraytron::instancer::1.33.0',h205=True),
  'v1.34.0':dict(old='-',type='arraytron::instancer::1.34.0',h205=True),     # the Mirror tab: planes, custom planes, radial and kaleidoscope, any number of operations, flipping
+ 'v1.34.1':dict(old='-',type='arraytron::instancer::1.34.1',h205=True),     # Check for Updates tries again when GitHub or the network is busy; the release carries the all-demos scene only
+ 'v1.35.0':dict(old='-',type='arraytron::instancer::1.35.0',h205=True),     # Select And Edit Instances: the selection and Edit mode of Arraytron Stamp for the generated instances
+ 'v1.36.0':dict(old='-',type='arraytron::instancer::1.36.0',h205=True),     # Paint Engine 2.0: BrushCore shared with Arraytron Stamp, continuous strokes with density and scale falloff, the sculpt brushes
+ 'v1.37.0':dict(old='-',type='arraytron::instancer::1.37.0',h205=True),     # Prototype sockets: Import Prototype Inputs fills the Prototype Bank and the Asset Library from Prototype Inputs 2 - 4
+ 'v1.38.0':dict(old='-',type='arraytron::instancer::1.38.0',h205=True),     # Saved masks: Save Mask writes the mask as a grid and a named primvar, Upstream Mask reuses it below, a window offers it when nodes are wired
+ 'v1.38.1':dict(old='-',type='arraytron::instancer::1.38.1',h205=True),     # Camera Optimisation measures a prototype with the scale on its root prim (frustum culling and screen-size LOD of a scaled car)
+ 'v1.38.2':dict(old='-',type='arraytron::instancer::1.38.2',h205=True),     # the generated LOD levels follow the materials of the hero prototype (Lookdev colours, edits after the instancer)
+ 'v1.38.3':dict(old='-',type='arraytron::instancer::1.38.3',h205=True),     # a USD File prototype without a default prim but with one top level prim (Quixel variants) uses that prim
      # the Field Stack offers Height, Distance, Exclusion and Mask (keep points off the mask, on it or around it), Mask Effect None
 }
-CURRENT='v1.34.0'
+CURRENT='v1.38.3'
 # Other spellings still accepted on command lines: the first ad-hoc tags, and the short-lived zero-padded ids (v00.03.05).
 ALIASES={'v01':'v0.1.0','v015':'v0.1.5','v016':'v0.1.6','v02':'v0.2.0','v021':'v0.2.1','v03':'v0.3.0','v035':'v0.3.5',
          '0.1':'v0.1.0','0.15':'v0.1.5','0.16':'v0.1.6','0.2':'v0.2.0','0.21':'v0.2.1','0.3':'v0.3.0','0.35':'v0.3.5',
@@ -164,4 +172,5 @@ def tab_names(vid):
     new=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,13,0)
     scatter=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,32,0)                  # v1.32.0: the Layout tab is the Scatter tab and holds the Mask and the Field Stack (the Variation tab no longer does)
     mirror=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,34,0)                                                   # v1.34.0: the Mirror tab after Variation
-    return dict(mirror_tab=('Mirror',) if mirror else (),source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None,layout='Scatter' if scatter else 'Layout',mask_in_layout=scatter)
+    edit=tuple(int(x) for x in resolve(vid)[1:].split('.'))>=(1,35,0)                                                     # v1.35.0: the Edit and Lookdev tabs before Optimize
+    return dict(edit_tabs=('Edit','Lookdev') if edit else (),mirror_tab=('Mirror',) if mirror else (),source='Prototypes' if new else 'Source',look='Variation' if new else 'Look',finish='Debugging' if new else 'Finish',export='Export' if new else None,layout='Scatter' if scatter else 'Layout',mask_in_layout=scatter)
